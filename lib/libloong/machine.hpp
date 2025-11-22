@@ -1,0 +1,117 @@
+#pragma once
+#include "common.hpp"
+#include "cpu.hpp"
+#include "memory.hpp"
+#include <string>
+#include <vector>
+#include <functional>
+
+namespace loongarch
+{
+	template <int W>
+	struct alignas(LA_MACHINE_ALIGNMENT) Machine
+	{
+		using address_t = address_type<W>;
+		using syscall_t = void(Machine<W>&);
+
+		// Construction
+		Machine(std::string_view binary, const MachineOptions<W>& options = {});
+		Machine(const std::vector<uint8_t>& binary, const MachineOptions<W>& options = {});
+		Machine(const Machine&) = delete;
+		~Machine();
+
+		// Setup
+		void setup_linux(
+			const std::vector<std::string>& args,
+			const std::vector<std::string>& env);
+		static void setup_minimal_syscalls();
+		static void setup_linux_syscalls();
+
+		// Execution
+		template <bool Throw = true>
+		bool simulate(uint64_t max_instructions = UINT64_MAX, uint64_t counter = 0);
+
+		void stop() noexcept { m_max_instructions = 0; }
+		bool stopped() const noexcept { return m_counter >= m_max_instructions; }
+		bool instruction_limit_reached() const noexcept { return m_counter >= m_max_instructions && m_max_instructions != 0; }
+
+		// Instruction counting
+		uint64_t instruction_counter() const noexcept { return m_counter; }
+		void set_instruction_counter(uint64_t val) noexcept { m_counter = val; }
+		void increment_counter(uint64_t val) noexcept { m_counter += val; }
+
+		uint64_t max_instructions() const noexcept { return m_max_instructions; }
+		void set_max_instructions(uint64_t val) noexcept { m_max_instructions = val; }
+
+		// System call interface
+		static void install_syscall_handler(unsigned sysnum, syscall_t* handler);
+		void system_call(unsigned sysnum);
+		template <typename T>
+		void set_result(T&& value);
+		template <typename T = address_t>
+		T return_value() const;
+
+		// Function calls (implemented in machine_vmcall.hpp)
+		template <uint64_t MAX_INSTRUCTIONS = 10'000'000ull, typename... Args>
+		address_t vmcall(address_t func_addr, Args&&... args);
+
+		template <uint64_t MAX_INSTRUCTIONS = 10'000'000ull, typename... Args>
+		address_t vmcall(const std::string& func_name, Args&&... args);
+
+		// Preemptible function calls with instruction limit
+		template <bool Throw = true, bool StoreRegs = false, typename... Args>
+		address_t preempt(uint64_t max_instr, address_t func_addr, Args&&... args);
+
+		template <bool Throw = true, bool StoreRegs = false, typename... Args>
+		address_t preempt(uint64_t max_instr, const std::string& func_name, Args&&... args);
+
+		// Stack manipulation helpers (for vmcall)
+		address_t stack_push(address_t& sp, const void* data, size_t size);
+
+		template <typename T>
+		address_t stack_push(address_t& sp, const T& value);
+
+		// Symbol lookup (delegates to memory)
+		address_t address_of(const std::string& name) const;
+		const Symbol<W>* lookup_symbol(address_t addr) const;
+
+		// Components
+		CPU<W> cpu;
+		Memory<W> memory;
+
+		// Multi-threading support
+		struct ThreadData {
+			int tid = 1;
+			address_t clear_tid_addr = 0;
+			address_t robust_list = 0;
+		};
+		int gettid() const noexcept { return m_threads.tid; }
+		void set_tid_address(address_t addr) noexcept { m_threads.clear_tid_addr = addr; }
+		address_t get_tid_address() const noexcept { return m_threads.clear_tid_addr; }
+
+		// Options
+		bool has_options() const noexcept { return m_options_ptr != nullptr; }
+		const MachineOptions<W>& options() const { return *m_options_ptr; }
+
+		// Serialization
+		size_t serialize_to(std::vector<uint8_t>& vec) const;
+		int deserialize_from(const std::vector<uint8_t>& vec);
+
+		// Print helper
+		void print(const char* data, size_t len);
+		void print(std::string_view str);
+
+	private:
+		uint64_t m_counter = 0;
+		uint64_t m_max_instructions = 0;
+		const MachineOptions<W>* m_options_ptr = nullptr;
+		ThreadData m_threads;
+		static inline std::array<syscall_t*, 512> m_syscall_handlers = {};
+
+		void push_argument(address_t& sp, address_t value);
+	};
+
+} // namespace loongarch
+
+#include "machine_inline.hpp"
+#include "machine_vmcall.hpp"

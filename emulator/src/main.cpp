@@ -1,0 +1,312 @@
+#include <libloong/machine.hpp>
+#include <cstring>
+#include <chrono>
+#include <fstream>
+#include <vector>
+#include <inttypes.h>
+#include <cstdlib>
+
+#ifndef _WIN32
+#include <getopt.h>
+#define HAVE_GETOPT_LONG
+#endif
+
+using namespace loongarch;
+
+struct EmulatorOptions {
+	std::string binary_path;
+	std::vector<std::string> program_args;
+	uint64_t max_instructions = UINT64_MAX;
+	uint64_t memory_max = 512ull * 1024 * 1024; // 512 MB
+	bool verbose = false;
+	bool timing = false;
+	bool silent = false;
+};
+
+// ELF class constants
+static constexpr uint8_t ELFCLASS32 = 1;
+static constexpr uint8_t ELFCLASS64 = 2;
+
+static std::vector<uint8_t> load_file(const char* filename)
+{
+	std::ifstream file(filename, std::ios::binary | std::ios::ate);
+	if (!file.is_open()) {
+		throw std::runtime_error(std::string("Failed to open file: ") + filename);
+	}
+
+	std::streamsize size = file.tellg();
+	file.seekg(0, std::ios::beg);
+
+	std::vector<uint8_t> buffer(size);
+	if (!file.read((char*)buffer.data(), size)) {
+		throw std::runtime_error("Failed to read file");
+	}
+
+	return buffer;
+}
+
+template <int W>
+static int run_program(const std::vector<uint8_t>& binary, const EmulatorOptions& opts)
+{
+	try {
+		// Create machine
+		Machine<W> machine { binary, {
+			.memory_max = opts.memory_max,
+			.verbose_loader = opts.verbose,
+			.verbose_syscalls = opts.verbose,
+		}};
+
+		// Setup Linux syscalls
+		machine.setup_linux_syscalls();
+
+		// Setup program arguments
+		if (opts.verbose) {
+			printf("Arguments:\n");
+			for (const auto& arg : opts.program_args) {
+				printf("  %s\n", arg.c_str());
+			}
+		}
+		machine.setup_linux(opts.program_args, {"LC_ALL=C", "USER=groot"});
+
+		if (opts.verbose) {
+			printf("Program entry point at: 0x%" PRIx64 "\n",
+				   (uint64_t)machine.memory.start_address());
+		}
+
+		const auto t0 = std::chrono::high_resolution_clock::now();
+
+		// Run the program
+		if (opts.max_instructions == UINT64_MAX) {
+			machine.cpu.simulate_inaccurate(machine.cpu.pc());
+		} else {
+			machine.simulate(opts.max_instructions);
+		}
+
+		const auto t1 = std::chrono::high_resolution_clock::now();
+		const std::chrono::duration<double> elapsed = t1 - t0;
+
+		// Check if stopped normally
+		if (!machine.instruction_limit_reached()) {
+			const int exit_code = machine.template return_value<int>();
+			if (!opts.silent) {
+				if (opts.timing && opts.max_instructions != UINT64_MAX) {
+					printf("Program exited with code %d after %" PRIu64 " instructions (%.6f seconds)\n",
+							exit_code,
+							machine.instruction_counter(),
+							elapsed.count());
+				} else if (opts.timing) {
+					printf("Program exited with code %d (%.6f seconds)\n",
+							exit_code,
+							elapsed.count());
+				} else {
+					printf("Program exited with code %d\n", exit_code);
+				}
+			}
+			return exit_code;
+		} else {
+			if (!opts.silent) {
+				fprintf(stderr, "Execution timeout after %" PRIu64 " instructions",
+						machine.instruction_counter());
+				if (opts.timing) {
+					fprintf(stderr, " (%.6f seconds)", elapsed.count());
+				}
+				fprintf(stderr, "\n");
+			}
+			return -1;
+		}
+
+	} catch (const MachineException& e) {
+		fprintf(stderr, "Machine exception: %s (data: 0x%llx)\n",
+			e.what(), (unsigned long long)e.data());
+		return -1;
+	} catch (const std::exception& e) {
+		fprintf(stderr, "Error: %s\n", e.what());
+		return -1;
+	}
+}
+
+static void print_help(const char* progname)
+{
+	printf("Usage: %s [options] <program> [args...]\n\n", progname);
+	printf("LoongArch Emulator - Execute LoongArch ELF binaries\n\n");
+	printf("Options:\n");
+	printf("  -h, --help              Show this help message\n");
+	printf("  -v, --verbose           Enable verbose output (loader & syscalls)\n");
+	printf("  -s, --silent            Suppress all output except errors\n");
+	printf("  -t, --timing            Show execution timing and instruction count\n");
+	printf("  -f, --fuel <num>        Maximum instructions to execute (default: 2000000000)\n");
+	printf("                          Use 0 for unlimited execution\n");
+	printf("  -m, --memory <size>     Maximum memory in MiB (default: 512)\n\n");
+	printf("The emulator automatically detects LA32/LA64 architecture from the ELF binary.\n\n");
+	printf("Examples:\n");
+	printf("  %s program.elf\n", progname);
+	printf("  %s --verbose --timing program.elf arg1 arg2\n", progname);
+	printf("  %s --fuel 1000000 --memory 256 program.elf\n\n", progname);
+}
+
+static EmulatorOptions parse_arguments(int argc, char* argv[])
+{
+	EmulatorOptions opts;
+
+#ifdef HAVE_GETOPT_LONG
+	static const struct option long_options[] = {
+		{"help",    no_argument,       0, 'h'},
+		{"verbose", no_argument,       0, 'v'},
+		{"silent",  no_argument,       0, 's'},
+		{"timing",  no_argument,       0, 't'},
+		{"fuel",    required_argument, 0, 'f'},
+		{"memory",  required_argument, 0, 'm'},
+		{0, 0, 0, 0}
+	};
+
+	int opt;
+	while ((opt = getopt_long(argc, argv, "hvstf:m:", long_options, nullptr)) != -1) {
+		switch (opt) {
+		case 'h':
+			print_help(argv[0]);
+			exit(0);
+		case 'v':
+			opts.verbose = true;
+			break;
+		case 's':
+			opts.silent = true;
+			break;
+		case 't':
+			opts.timing = true;
+			break;
+		case 'f':
+			opts.max_instructions = strtoull(optarg, nullptr, 10);
+			if (opts.max_instructions == 0) {
+				opts.max_instructions = UINT64_MAX;
+			}
+			break;
+		case 'm':
+			opts.memory_max = strtoull(optarg, nullptr, 10) << 20; // Convert MiB to bytes
+			break;
+		default:
+			print_help(argv[0]);
+			exit(1);
+		}
+	}
+
+	if (optind >= argc) {
+		fprintf(stderr, "Error: No program file specified\n\n");
+		print_help(argv[0]);
+		exit(1);
+	}
+
+	opts.binary_path = argv[optind];
+	// Collect program arguments (including the program name as argv[0])
+	for (int i = optind; i < argc; i++) {
+		opts.program_args.push_back(argv[i]);
+	}
+#else
+	// Fallback for systems without getopt_long (e.g., Windows)
+	// Support environment variables for configuration
+	if (getenv("VERBOSE") != nullptr)
+		opts.verbose = true;
+	if (getenv("SILENT") != nullptr)
+		opts.silent = true;
+	if (getenv("TIMING") != nullptr)
+		opts.timing = true;
+	if (getenv("FUEL") != nullptr) {
+		opts.max_instructions = strtoull(getenv("FUEL"), nullptr, 10);
+		if (opts.max_instructions == 0) {
+			opts.max_instructions = UINT64_MAX;
+		}
+	}
+	if (getenv("MEMORY") != nullptr)
+		opts.memory_max = strtoull(getenv("MEMORY"), nullptr, 10) << 20;
+
+	// Simple argument parsing
+	int first_non_option = 1;
+	for (int i = 1; i < argc; i++) {
+		if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+			print_help(argv[0]);
+			exit(0);
+		} else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--verbose") == 0) {
+			opts.verbose = true;
+			first_non_option++;
+		} else if (strcmp(argv[i], "-s") == 0 || strcmp(argv[i], "--silent") == 0) {
+			opts.silent = true;
+			first_non_option++;
+		} else if (strcmp(argv[i], "-t") == 0 || strcmp(argv[i], "--timing") == 0) {
+			opts.timing = true;
+			first_non_option++;
+		} else {
+			break; // First non-option argument
+		}
+	}
+
+	if (first_non_option >= argc) {
+		fprintf(stderr, "Error: No program file specified\n\n");
+		print_help(argv[0]);
+		exit(1);
+	}
+
+	opts.binary_path = argv[first_non_option];
+	// Collect program arguments
+	for (int i = first_non_option; i < argc; i++) {
+		opts.program_args.push_back(argv[i]);
+	}
+#endif
+
+	return opts;
+}
+
+int main(int argc, char* argv[])
+{
+	EmulatorOptions opts = parse_arguments(argc, argv);
+
+	try {
+		// Load binary
+		auto binary = load_file(opts.binary_path.c_str());
+
+		if (binary.size() < 5) {
+			fprintf(stderr, "Error: File too small to be a valid ELF binary\n");
+			return 1;
+		}
+
+		// Check ELF magic number
+		if (binary[0] != 0x7f || binary[1] != 'E' || binary[2] != 'L' || binary[3] != 'F') {
+			fprintf(stderr, "Error: Not a valid ELF binary\n");
+			return 1;
+		}
+
+		// Detect architecture from ELF class (byte 4)
+		const uint8_t elf_class = binary[4];
+		const bool is_64bit = (elf_class == ELFCLASS64);
+		const bool is_32bit = (elf_class == ELFCLASS32);
+
+		if (!is_32bit && !is_64bit) {
+			fprintf(stderr, "Error: Unknown ELF class: %d\n", elf_class);
+			return 1;
+		}
+
+		if (opts.verbose) {
+			fprintf(stderr, "Loaded %zu bytes from %s\n", binary.size(), opts.binary_path.c_str());
+			fprintf(stderr, "Detected %s architecture\n", is_64bit ? "LA64" : "LA32");
+		}
+
+		// Run program with detected architecture
+		if (is_32bit) {
+#ifdef LA_32
+			return run_program<LA32>(binary, opts);
+#else
+			fprintf(stderr, "Error: LA32 support not compiled in\n");
+			return 1;
+#endif
+		} else { // is_64bit
+#ifdef LA_64
+			return run_program<LA64>(binary, opts);
+#else
+			fprintf(stderr, "Error: LA64 support not compiled in\n");
+			return 1;
+#endif
+		}
+
+	} catch (const std::exception& e) {
+		fprintf(stderr, "Fatal error: %s\n", e.what());
+		return 1;
+	}
+}

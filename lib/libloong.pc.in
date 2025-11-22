@@ -1,0 +1,10 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: libloong
+Description: LoongArch userspace emulator library
+Version: @LOONGARCH_VERSION_MAJOR@.@LOONGARCH_VERSION_MINOR@
+Cflags: -I${includedir}
+Libs: -L${libdir} -lloongarch

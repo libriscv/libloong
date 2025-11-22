@@ -1,0 +1,44 @@
+# Build directories
+build/
+.build/
+build_*/
+cmake-build-*/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Compiled files
+*.o
+*.a
+*.so
+*.so.*
+*.dylib
+*.dll
+*.exe
+*.out
+*.elf
+
+# Package files
+packages/
+*.deb
+*.rpm
+*.tar.gz
+
+# Generated files
+*.log
+*.bak
+core
+vgcore.*
+
+# Ninja
+.ninja_deps
+.ninja_log
+
+# Test artifacts
+test_output/
+*.test

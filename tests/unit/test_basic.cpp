@@ -1,0 +1,260 @@
+#include <catch2/catch_test_macros.hpp>
+#include "codebuilder.hpp"
+#include "test_utils.hpp"
+
+using namespace loongarch;
+using namespace loongarch::test;
+
+TEST_CASE("Basic C program execution", "[basic]") {
+	CodeBuilder builder;
+
+	SECTION("Simple return value") {
+		auto binary = builder.build(R"(
+			int main() {
+				return 42;
+			}
+		)", "simple_return");
+
+		auto result = run_binary(binary, 42);
+		REQUIRE(result.success);
+		REQUIRE(result.exit_code == 42);
+		REQUIRE(result.instructions_executed > 0);
+	}
+
+	SECTION("Arithmetic operations") {
+		auto binary = builder.build(R"(
+			int main() {
+				int a = 15;
+				int b = 27;
+				return a + b;
+			}
+		)", "arithmetic");
+
+		auto result = run_binary(binary, 42);
+		REQUIRE(result.success);
+		REQUIRE(result.exit_code == 42);
+	}
+
+	SECTION("Local variables") {
+		auto binary = builder.build(R"(
+			int main() {
+				int x = 10;
+				int y = 20;
+				int z = 30;
+				return x + y + z - 18;
+			}
+		)", "local_vars");
+
+		auto result = run_binary(binary, 42);
+		REQUIRE(result.success);
+		REQUIRE(result.exit_code == 42);
+	}
+}
+
+TEST_CASE("Control flow", "[basic][control]") {
+	CodeBuilder builder;
+
+	SECTION("If statement") {
+		auto binary = builder.build(R"(
+			int main() {
+				int x = 10;
+				if (x == 10) {
+					return 42;
+				}
+				return 1;
+			}
+		)", "if_statement");
+
+		auto result = run_binary(binary, 42);
+		REQUIRE(result.success);
+		REQUIRE(result.exit_code == 42);
+	}
+
+	SECTION("If-else statement") {
+		auto binary = builder.build(R"(
+			int main() {
+				int x = 5;
+				if (x > 10) {
+					return 1;
+				} else {
+					return 42;
+				}
+			}
+		)", "if_else");
+
+		auto result = run_binary(binary, 42);
+		REQUIRE(result.success);
+		REQUIRE(result.exit_code == 42);
+	}
+
+	SECTION("For loop") {
+		auto binary = builder.build(R"(
+			int main() {
+				int sum = 0;
+				for (int i = 0; i < 10; i++) {
+					sum += i;
+				}
+				return sum - 3;  // 0+1+2+...+9 = 45, return 42
+			}
+		)", "for_loop");
+
+		auto result = run_binary(binary, 42);
+		REQUIRE(result.success);
+		REQUIRE(result.exit_code == 42);
+	}
+
+	SECTION("While loop") {
+		auto binary = builder.build(R"(
+			int main() {
+				int i = 0;
+				int sum = 0;
+				while (i < 10) {
+					sum += i;
+					i++;
+				}
+				return sum - 3;
+			}
+		)", "while_loop");
+
+		auto result = run_binary(binary, 42);
+		REQUIRE(result.success);
+		REQUIRE(result.exit_code == 42);
+	}
+}
+
+TEST_CASE("Functions", "[basic][functions]") {
+	CodeBuilder builder;
+
+	SECTION("Simple function call") {
+		auto binary = builder.build(R"(
+			int add(int a, int b) {
+				return a + b;
+			}
+
+			int main() {
+				return add(15, 27);
+			}
+		)", "function_call");
+
+		auto result = run_binary(binary, 42);
+		REQUIRE(result.success);
+		REQUIRE(result.exit_code == 42);
+	}
+
+	SECTION("Recursive function - factorial") {
+		auto binary = builder.build(R"(
+			int factorial(int n) {
+				if (n <= 1) return 1;
+				return n * factorial(n - 1);
+			}
+
+			int main() {
+				int result = factorial(5);  // 120
+				return result / 10 + 30;     // 12 + 30 = 42
+			}
+		)", "factorial");
+
+		auto result = run_binary(binary, 42);
+		REQUIRE(result.success);
+		REQUIRE(result.exit_code == 42);
+	}
+
+	SECTION("Fibonacci") {
+		auto binary = builder.build(R"(
+			int fib(int n) {
+				if (n <= 1) return n;
+				return fib(n - 1) + fib(n - 2);
+			}
+
+			int main() {
+				return fib(9) + 8;  // fib(9) = 34, +8 = 42
+			}
+		)", "fibonacci");
+
+		auto result = run_binary(binary, 42);
+		REQUIRE(result.success);
+		REQUIRE(result.exit_code == 42);
+	}
+}
+
+TEST_CASE("Arrays and pointers", "[basic][memory]") {
+	CodeBuilder builder;
+
+	SECTION("Array access") {
+		auto binary = builder.build(R"(
+			int main() {
+				int arr[5] = {10, 20, 30, 40, 50};
+				return arr[1] + arr[3] - 18;  // 20 + 40 - 18 = 42
+			}
+		)", "array_access");
+
+		auto result = run_binary(binary, 42);
+		REQUIRE(result.success);
+		REQUIRE(result.exit_code == 42);
+	}
+
+	SECTION("Array modification") {
+		auto binary = builder.build(R"(
+			int main() {
+				int arr[3] = {1, 2, 3};
+				arr[0] = 10;
+				arr[1] = 20;
+				arr[2] = 12;
+				return arr[0] + arr[1] + arr[2];  // 42
+			}
+		)", "array_modify");
+
+		auto result = run_binary(binary, 42);
+		REQUIRE(result.success);
+		REQUIRE(result.exit_code == 42);
+	}
+
+	SECTION("Pointer arithmetic") {
+		auto binary = builder.build(R"(
+			int main() {
+				int arr[3] = {10, 20, 12};
+				int *p = arr;
+				int sum = *p + *(p+1) + *(p+2);
+				return sum;
+			}
+		)", "pointer_arithmetic");
+
+		auto result = run_binary(binary, 42);
+		REQUIRE(result.success);
+		REQUIRE(result.exit_code == 42);
+	}
+}
+
+TEST_CASE("stdio functions", "[basic][stdio]") {
+	CodeBuilder builder;
+
+	SECTION("printf") {
+		auto binary = builder.build(R"(
+			#include <stdio.h>
+			int main() {
+				printf("Hello from LoongArch!\n");
+				return 0;
+			}
+		)", "printf_test");
+
+		auto result = run_binary(binary, 0);
+		REQUIRE(result.success);
+		REQUIRE(result.exit_code == 0);
+	}
+
+	SECTION("Multiple printf calls") {
+		auto binary = builder.build(R"(
+			#include <stdio.h>
+			int main() {
+				printf("Line 1\n");
+				printf("Line 2\n");
+				printf("Line 3\n");
+				return 42;
+			}
+		)", "multi_printf");
+
+		auto result = run_binary(binary, 42);
+		REQUIRE(result.success);
+		REQUIRE(result.exit_code == 42);
+	}
+}

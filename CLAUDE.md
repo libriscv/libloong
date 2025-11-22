@@ -1,0 +1,51 @@
+# Project structure
+This project is a custom high-performance LoongArch emulator with a flat memory arena as memory instead of virtual paging, designed in the same way as libriscv. Static LoongArch ELFs are loaded, executed and after execution one can vmcall functions in the guest. It's a CMake project with this structure:
+- /lib/libloong has the C++ library implementation
+    - Instruction templates are in /lib/libloong/la_instr_impl.hpp and /lib/libloong/la_instr_atomic.hpp
+	- Instruction printers (for debugging) is in /lib/libloong/la_instr_printers.hpp
+	- Instruction decoding is in /lib/libloong/la64.cpp
+- /tests/unit has the unit tests (and a run_unit_tests.sh)
+    - Unit tests build temporary C and C++ programs and execute them in various ways in the emulator
+- /emulator is a C++ CLI with build.sh producing .build/laemu
+    - laemu runs forever (or until completion) unless -f <instruction count> is passed
+	- it uses a different, faster dispatch than the debugger
+- /tests/debug_test.cpp is a full-fledged CLI debugger
+
+# How to debug
+
+`./tests/debug_test` is a comprehensive debugger built in the build folder. It prints each instruction as it executes. Passing -r will also show register state *after* each instruction. Passing -o will compare against ground-truth objdump in case an instruction is incorrectly decoded.
+
+Examples:
+```sh
+build$ ./tests/debug_test -o tests/loongarch_bins/return_42_bare
+```
+Execute `return_42_bare` until completion, compare instructions (left) against objdump (right).
+
+```sh
+build$ ./tests/debug_test -r -o tests/loongarch_bins/return_42_bare
+```
+Execute `return_42_bare` until completion, show registers after each instruction, compare instructions (left) against objdump (right).
+
+```sh
+build$ ./tests/debug_test -o tests/loongarch_bins/cxx_test --call test_exception
+```
+Execute `cxx_test` until completion without debug lines, then start executing the guest-side function `test_exception` with debugging. This saves a bunch of time and prevents logspam. Only debug lines from test_exception will be shown.
+
+# Testing long-running programs
+
+Some programs runs for so long that only the emulator CLI can run it properly:
+
+```sh
+emulator$ ./build.sh && .build/laemu ../tests/programs/coremark.elf
+```
+
+Hard to debug with, but can be a fast way to check if the emulator is still sane and working.
+
+# Avoid these pitfalls
+
+These are directions to avoid when investigating:
+
+1. BSS is always zeroed. The emulators memory is backed by an anonymous memory mapping and is always zeroes when starting. glibc is also likely to zero BSS.
+2. TLS is handled fully and entirely by glibc in the guest. We do not need to deal with thread-local storage at all.
+3. glibc resolves IFUNCs in the guest. We do not need to care about ELF relocs.
+4. LoongArch Linux ELFs will have LSX instructions in them no matter what. Trying -mno-lsx will have no effect.

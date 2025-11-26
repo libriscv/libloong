@@ -7,7 +7,7 @@
 namespace loongarch
 {
 	template <int W>
-	extern uint32_t optimize_bytecode(const uint8_t bytecode, uint32_t instruction_bits);
+	extern uint32_t optimize_bytecode(const uint8_t bytecode, address_type<W> pc, uint32_t instruction_bits);
 
 	// Check if an instruction is diverging (changes control flow)
 	// Note: PC-reading instructions (PCADDI, PCALAU12I, PCADDU12I) are NOT diverging
@@ -219,7 +219,7 @@ namespace loongarch
 	// Populate decoder cache for an execute segment
 	template <int W>
 	void populate_decoder_cache(DecodedExecuteSegment<W>& segment,
-		const uint8_t* code, size_t code_size)
+		address_type<W> exec_begin, const uint8_t* code, size_t code_size)
 	{
 		// Round down to nearest instruction boundary (4 bytes)
 		// This safely handles segments where .text + .rodata are merged
@@ -263,7 +263,8 @@ namespace loongarch
 			// Set bytecode for threaded dispatch
 			cache[i].bytecode = determine_bytecode<W>(instr);
 			// Optimize instruction bits for popular bytecodes
-			cache[i].instr = optimize_bytecode<W>(cache[i].bytecode, instr);
+			const address_type<W> pc = exec_begin + (i * sizeof(la_instruction));
+			cache[i].instr = optimize_bytecode<W>(cache[i].bytecode, pc, instr);
 
 			if (is_diverging_instruction<W>(instr)) {
 				// Diverging instruction: block_bytes = 0
@@ -290,12 +291,12 @@ namespace loongarch
 	template struct DecodedExecuteSegment<LA32>;
 	template struct DecoderCache<LA32>;
 	template struct DecoderData<LA32>;
-	template void populate_decoder_cache<LA32>(DecodedExecuteSegment<LA32>&, const uint8_t*, size_t);
+	template void populate_decoder_cache<LA32>(DecodedExecuteSegment<LA32>&, address_type<LA32>, const uint8_t*, size_t);
 #endif
 #ifdef LA_64
 	template struct DecodedExecuteSegment<LA64>;
 	template struct DecoderCache<LA64>;
 	template struct DecoderData<LA64>;
-	template void populate_decoder_cache<LA64>(DecodedExecuteSegment<LA64>&, const uint8_t*, size_t);
+	template void populate_decoder_cache<LA64>(DecodedExecuteSegment<LA64>&, address_type<LA64>, const uint8_t*, size_t);
 #endif
 } // loongarch

@@ -43,6 +43,7 @@ namespace loongarch
 	private:
 		static inline std::vector<handler_t> m_handlers;
 	};
+	static_assert(sizeof(DecoderData<LA32>) == 8, "DecoderData<LA32> size incorrect");
 
 	template <int W>
 	struct DecoderCache {

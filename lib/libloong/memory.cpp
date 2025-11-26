@@ -13,6 +13,9 @@
 namespace loongarch
 {
 template <int W>
+extern void populate_decoder_cache(DecodedExecuteSegment<W>& segment, address_type<W> exec_begin, const uint8_t* code, size_t code_size);
+
+template <int W>
 Memory<W>::Memory(Machine<W>& machine,
 	std::string_view binary, const MachineOptions<W>& options)
 	: m_machine(machine), m_binary(binary)
@@ -267,7 +270,7 @@ DecodedExecuteSegment<W>& Memory<W>::create_execute_segment(
 	auto segment = std::make_shared<DecodedExecuteSegment<W>>(
 		addr, addr + aligned_size, page_count);
 
-	populate_decoder_cache(*segment, static_cast<const uint8_t*>(data), len);
+	populate_decoder_cache(*segment, addr, static_cast<const uint8_t*>(data), len);
 
 	if (is_initial) {
 		m_main_exec_segment = segment;

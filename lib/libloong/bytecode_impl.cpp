@@ -36,7 +36,7 @@ INSTRUCTION(LA64_BC_ADDI_W, la64_addi_w)
 {
 	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
 	int32_t result = (int32_t)REG(fi.rj) + fi.imm;
-	REG(fi.rd) = (int64_t)result;
+	REG(fi.rd) = (saddress_t)result;
 	NEXT_INSTR();
 }
 
@@ -53,7 +53,7 @@ INSTRUCTION(LA64_BC_ANDI, la64_andi)
 {
 	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
 	// ANDI uses zero-extended immediate (mask to 12 bits)
-	REG(fi.rd) = REG(fi.rj) & (uint64_t)(fi.imm & 0xFFF);
+	REG(fi.rd) = REG(fi.rj) & (fi.imm & 0xFFF);
 	NEXT_INSTR();
 }
 
@@ -78,7 +78,7 @@ INSTRUCTION(LA64_BC_ORI, la64_ori)
 {
 	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
 	// ORI uses zero-extended immediate (mask to 12 bits)
-	REG(fi.rd) = REG(fi.rj) | (uint64_t)(fi.imm & 0xFFF);
+	REG(fi.rd) = REG(fi.rj) | (fi.imm & 0xFFF);
 	NEXT_INSTR();
 }
 
@@ -86,8 +86,8 @@ INSTRUCTION(LA64_BC_ORI, la64_ori)
 INSTRUCTION(LA64_BC_SLLI_W, la64_slli_w)
 {
 	auto fi = *(FasterLA64_Shift *)&DECODER().instr;
-	uint32_t val = static_cast<uint32_t>(REG(fi.rj)) << fi.ui5;
-	REG(fi.rd) = static_cast<int64_t>(static_cast<int32_t>(val));
+	int32_t val = static_cast<uint32_t>(REG(fi.rj)) << fi.ui5;
+	REG(fi.rd) = (saddress_t)val;
 	NEXT_INSTR();
 }
 
@@ -104,7 +104,7 @@ INSTRUCTION(LA64_BC_LD_BU, la64_ld_bu)
 {
 	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
 	const auto addr = REG(fi.rj) + fi.imm;
-	REG(fi.rd) = (uint64_t)MACHINE().memory.template read<uint8_t>(addr);
+	REG(fi.rd) = MACHINE().memory.template read<uint8_t>(addr);
 	NEXT_INSTR();
 }
 
@@ -141,7 +141,7 @@ INSTRUCTION(LA64_BC_PCALAU12I, la64_pcalau12i)
 {
 	VIEW_INSTR();
 	const int64_t offset = (int32_t)(instr.ri20.imm << 12);
-	REG(instr.ri20.rd) = (pc & ~uint64_t(0xFFF)) + offset;
+	REG(instr.ri20.rd) = (pc & ~address_t(0xFFF)) + offset;
 	NEXT_BLOCK(4);
 }
 
@@ -149,7 +149,7 @@ INSTRUCTION(LA64_BC_PCALAU12I, la64_pcalau12i)
 INSTRUCTION(LA64_BC_LDPTR_D, la64_ldptr_d)
 {
 	auto fi = *(FasterLA64_RI14 *)&DECODER().instr;
-	const auto addr = REG(fi.rj) + (int64_t(fi.imm14) << 2);
+	const auto addr = REG(fi.rj) + (saddress_t(fi.imm14) << 2);
 	REG(fi.rd) = MACHINE().memory.template read<uint64_t>(addr);
 	NEXT_INSTR();
 }
@@ -158,8 +158,8 @@ INSTRUCTION(LA64_BC_LDPTR_D, la64_ldptr_d)
 INSTRUCTION(LA64_BC_LDPTR_W, la64_ldptr_w)
 {
 	auto fi = *(FasterLA64_RI14 *)&DECODER().instr;
-	const auto addr = REG(fi.rj) + (int64_t(fi.imm14) << 2);
-	REG(fi.rd) = (int64_t)(int32_t)MACHINE().memory.template read<uint32_t>(addr);
+	const auto addr = REG(fi.rj) + (saddress_t(fi.imm14) << 2);
+	REG(fi.rd) = (saddress_t)(int32_t)MACHINE().memory.template read<uint32_t>(addr);
 	NEXT_INSTR();
 }
 
@@ -177,7 +177,7 @@ INSTRUCTION(LA64_BC_LU12I_W, la64_lu12i_w)
 {
 	VIEW_INSTR();
 	int32_t result = (int32_t)(instr.ri20.imm << 12);
-	REG(instr.ri20.rd) = (int64_t)result;
+	REG(instr.ri20.rd) = (saddress_t)result;
 	NEXT_INSTR();
 }
 
@@ -185,9 +185,9 @@ INSTRUCTION(LA64_BC_LU12I_W, la64_lu12i_w)
 INSTRUCTION(LA64_BC_BSTRPICK_D, la64_bstrpick_d)
 {
 	auto fi = *(FasterLA64_BitField *)&DECODER().instr;
-	const uint64_t src = REG(fi.rj);
+	const address_t src = REG(fi.rj);
 	const uint32_t width = fi.msbd - fi.lsbd + 1;
-	const uint64_t mask = (1ULL << width) - 1;
+	const address_t mask = (1ULL << width) - 1;
 	REG(fi.rd) = (src >> fi.lsbd) & mask;
 	NEXT_INSTR();
 }
@@ -213,7 +213,7 @@ INSTRUCTION(LA64_BC_ALSL_D, la64_alsl_d)
 INSTRUCTION(LA64_BC_SRLI_D, la64_srli_d)
 {
 	auto fi = *(FasterLA64_Shift64 *)&DECODER().instr;
-	REG(fi.rd) = (uint64_t)REG(fi.rj) >> fi.ui6;
+	REG(fi.rd) = REG(fi.rj) >> fi.ui6;
 	NEXT_INSTR();
 }
 
@@ -230,7 +230,7 @@ INSTRUCTION(LA64_BC_LD_B, la64_ld_b)
 INSTRUCTION(LA64_BC_STPTR_W, la64_stptr_w)
 {
 	auto fi = *(FasterLA64_RI14 *)&DECODER().instr;
-	const auto addr = REG(fi.rj) + (int64_t(fi.imm14) << 2);
+	const auto addr = REG(fi.rj) + (saddress_t(fi.imm14) << 2);
 	MACHINE().memory.template write<uint32_t>(addr, REG(fi.rd));
 	NEXT_INSTR();
 }
@@ -311,7 +311,7 @@ INSTRUCTION(LA64_BC_BNE, la64_bne)
 INSTRUCTION(LA64_BC_BLT, la64_blt)
 {
 	VIEW_INSTR();
-	if ((int64_t)REG(instr.ri16.rj) < (int64_t)REG(instr.ri16.rd)) {
+	if ((saddress_t)REG(instr.ri16.rj) < (saddress_t)REG(instr.ri16.rd)) {
 		auto offset = InstructionHelpers<W>::sign_extend_16(instr.ri16.imm) << 2;
 		PERFORM_BRANCH(offset);
 	}
@@ -322,7 +322,7 @@ INSTRUCTION(LA64_BC_BLT, la64_blt)
 INSTRUCTION(LA64_BC_BGE, la64_bge)
 {
 	VIEW_INSTR();
-	if ((int64_t)REG(instr.ri16.rj) >= (int64_t)REG(instr.ri16.rd)) {
+	if ((saddress_t)REG(instr.ri16.rj) >= (saddress_t)REG(instr.ri16.rd)) {
 		auto offset = InstructionHelpers<W>::sign_extend_16(instr.ri16.imm) << 2;
 		PERFORM_BRANCH(offset);
 	}
@@ -333,7 +333,7 @@ INSTRUCTION(LA64_BC_BGE, la64_bge)
 INSTRUCTION(LA64_BC_BLTU, la64_bltu)
 {
 	VIEW_INSTR();
-	if ((uint64_t)REG(instr.ri16.rj) < (uint64_t)REG(instr.ri16.rd)) {
+	if (REG(instr.ri16.rj) < REG(instr.ri16.rd)) {
 		auto offset = InstructionHelpers<W>::sign_extend_16(instr.ri16.imm) << 2;
 		PERFORM_BRANCH(offset);
 	}
@@ -344,7 +344,7 @@ INSTRUCTION(LA64_BC_BLTU, la64_bltu)
 INSTRUCTION(LA64_BC_BGEU, la64_bgeu)
 {
 	VIEW_INSTR();
-	if ((uint64_t)REG(instr.ri16.rj) >= (uint64_t)REG(instr.ri16.rd)) {
+	if (REG(instr.ri16.rj) >= REG(instr.ri16.rd)) {
 		auto offset = InstructionHelpers<W>::sign_extend_16(instr.ri16.imm) << 2;
 		PERFORM_BRANCH(offset);
 	}

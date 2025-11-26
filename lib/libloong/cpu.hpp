@@ -27,6 +27,7 @@ namespace loongarch
 	struct CPU
 	{
 		using address_t = address_type<W>;
+		using saddress_t = std::make_signed_t<address_t>;
 		using format_t = la_instruction;
 		using instruction_t = Instruction<W>;
 		using breakpoint_t = std::function<void(CPU<W>&)>;

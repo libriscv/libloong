@@ -4,10 +4,6 @@
 
 namespace loongarch
 {
-	// Forward declaration
-	template <int W>
-	void populate_decoder_cache(DecodedExecuteSegment<W>& segment, const uint8_t* code, size_t code_size);
-
 	template <int W>
 	struct DecodedExecuteSegment {
 		using address_t = address_type<W>;

@@ -80,6 +80,10 @@ namespace loongarch
 		if (op17 == 0x00054) {
 			return LA64_BC_OR;
 		}
+		// AND: op17 = 0x00052 (0x00148000)
+		if (op17 == 0x00052) {
+			return LA64_BC_AND;
+		}
 		// ANDI: op10 = 0x00D (0x03400000)
 		if (op10 == 0x00D) {
 			return LA64_BC_ANDI;
@@ -91,6 +95,10 @@ namespace loongarch
 		// SUB.D: op17 = 0x00023 (0x00118000)
 		if (op17 == 0x00023) {
 			return LA64_BC_SUB_D;
+		}
+		// ALSL.D: op17 = 0x00058 (0x002c0000 >> 15)
+		if (op17 == 0x00058) {
+			return LA64_BC_ALSL_D;
 		}
 		// ORI: op10 = 0x00E (0x03800000)
 		if (op10 == 0x00E) {
@@ -104,6 +112,10 @@ namespace loongarch
 		if (op17 == 0x00082) {
 			return LA64_BC_SLLI_D;
 		}
+		// SRLI.D: op17 = 0x0008A (0x00450000 >> 15)
+		if (op17 == 0x0008A) {
+			return LA64_BC_SRLI_D;
+		}
 		// LD.BU: op10 = 0x0A8 (0x2a000000)
 		if (op10 == 0x0A8) {
 			return LA64_BC_LD_BU;
@@ -111,6 +123,10 @@ namespace loongarch
 		// ST.B: op10 = 0x0A4 (0x29000000)
 		if (op10 == 0x0A4) {
 			return LA64_BC_ST_B;
+		}
+		// ST.W: op10 = 0x0A6 (0x29800000)
+		if (op10 == 0x0A6) {
+			return LA64_BC_ST_W;
 		}
 		// PCADDI: op7 = 0x0C (check bits[31:25] = 0x18 >> 1)
 		if (op7 == 0x0C) {
@@ -136,14 +152,24 @@ namespace loongarch
 		if (op7 == 0x0A) {
 			return LA64_BC_LU12I_W;
 		}
+		// BSTRPICK.D: op10 = 0x003 (0x00c00000)
+		if (op10 == 0x003) {
+			return LA64_BC_BSTRPICK_D;
+		}
+		// LD.B: op10 = 0x0A0 (0x28000000)
+		if (op10 == 0x0A0) {
+			return LA64_BC_LD_B;
+		}
+		// STPTR.W: op10 = 0x094 (0x25000000)
+		if (op10 == 0x094) {
+			return LA64_BC_STPTR_W;
+		}
+		// LDX.D: op17 = 0x01C18 (0x380C0000 >> 15)
+		if (op17 == 0x01C18) {
+			return LA64_BC_LDX_D;
+		}
 
 		// Branch instructions
-		if (op6 == 0x14) { // B
-			return LA64_BC_B;
-		}
-		if (op6 == 0x15) { // BL
-			return LA64_BC_BL;
-		}
 		if (op6 == 0x10) { // BEQZ
 			return LA64_BC_BEQZ;
 		}
@@ -157,6 +183,16 @@ namespace loongarch
 			} else if (funct3 == 0x1) {
 				return LA64_BC_BNE;
 			}
+		}
+		// JIRL: op6 = 0x13 (0x4C000000)
+		if (op6 == 0x13) {
+			return LA64_BC_JIRL;
+		}
+		if (op6 == 0x14) { // B
+			return LA64_BC_B;
+		}
+		if (op6 == 0x15) { // BL
+			return LA64_BC_BL;
 		}
 		if (op6 == 0x18) { // BLT
 			return LA64_BC_BLT;

@@ -117,6 +117,15 @@ INSTRUCTION(LA64_BC_ST_B, la64_st_b)
 	NEXT_INSTR();
 }
 
+// LA64_BC_ST_W: Store word (mem[rj + sign_ext(imm12)] = rd[31:0])
+INSTRUCTION(LA64_BC_ST_W, la64_st_w)
+{
+	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
+	const auto addr = REG(fi.rj) + fi.imm;
+	MACHINE().memory.template write<uint32_t>(addr, REG(fi.rd));
+	NEXT_INSTR();
+}
+
 // LA64_BC_PCADDI: PC-relative add immediate (rd = PC + sign_ext(imm20 << 2))
 INSTRUCTION(LA64_BC_PCADDI, la64_pcaddi)
 {
@@ -169,6 +178,69 @@ INSTRUCTION(LA64_BC_LU12I_W, la64_lu12i_w)
 	VIEW_INSTR();
 	int32_t result = (int32_t)(instr.ri20.imm << 12);
 	REG(instr.ri20.rd) = (int64_t)result;
+	NEXT_INSTR();
+}
+
+// LA64_BC_BSTRPICK_D: Bit string pick doubleword (rd = extract bits[msbd:lsbd] from rj)
+INSTRUCTION(LA64_BC_BSTRPICK_D, la64_bstrpick_d)
+{
+	auto fi = *(FasterLA64_BitField *)&DECODER().instr;
+	const uint64_t src = REG(fi.rj);
+	const uint32_t width = fi.msbd - fi.lsbd + 1;
+	const uint64_t mask = (1ULL << width) - 1;
+	REG(fi.rd) = (src >> fi.lsbd) & mask;
+	NEXT_INSTR();
+}
+
+// LA64_BC_AND: Bitwise AND (rd = rj & rk)
+INSTRUCTION(LA64_BC_AND, la64_and)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	REG(fi.rd) = REG(fi.rj) & REG(fi.rk);
+	NEXT_INSTR();
+}
+
+// LA64_BC_ALSL_D: Arithmetic left shift and add doubleword (rd = (rj << (sa2 + 1)) + rk)
+INSTRUCTION(LA64_BC_ALSL_D, la64_alsl_d)
+{
+	auto fi = *(FasterLA64_R3SA2 *)&DECODER().instr;
+	const uint32_t shift = fi.sa2 + 1;
+	REG(fi.rd) = (REG(fi.rj) << shift) + REG(fi.rk);
+	NEXT_INSTR();
+}
+
+// LA64_BC_SRLI_D: Shift right logical immediate doubleword (rd = rj >> ui6)
+INSTRUCTION(LA64_BC_SRLI_D, la64_srli_d)
+{
+	auto fi = *(FasterLA64_Shift64 *)&DECODER().instr;
+	REG(fi.rd) = (uint64_t)REG(fi.rj) >> fi.ui6;
+	NEXT_INSTR();
+}
+
+// LA64_BC_LD_B: Load byte signed (rd = sign_ext(mem[rj + sign_ext(imm12)]))
+INSTRUCTION(LA64_BC_LD_B, la64_ld_b)
+{
+	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
+	const auto addr = REG(fi.rj) + fi.imm;
+	REG(fi.rd) = (int64_t)MACHINE().memory.template read<int8_t>(addr);
+	NEXT_INSTR();
+}
+
+// LA64_BC_STPTR_W: Store pointer word (mem[rj + sign_ext(imm14 << 2)] = rd[31:0])
+INSTRUCTION(LA64_BC_STPTR_W, la64_stptr_w)
+{
+	auto fi = *(FasterLA64_RI14 *)&DECODER().instr;
+	const auto addr = REG(fi.rj) + (int64_t(fi.imm14) << 2);
+	MACHINE().memory.template write<uint32_t>(addr, REG(fi.rd));
+	NEXT_INSTR();
+}
+
+// LA64_BC_LDX_D: Load doubleword indexed (rd = mem[rj + rk])
+INSTRUCTION(LA64_BC_LDX_D, la64_ldx_d)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	const auto addr = REG(fi.rj) + REG(fi.rk);
+	REG(fi.rd) = MACHINE().memory.template read<int64_t>(addr);
 	NEXT_INSTR();
 }
 
@@ -277,6 +349,21 @@ INSTRUCTION(LA64_BC_BGEU, la64_bgeu)
 		PERFORM_BRANCH(offset);
 	}
 	NEXT_BLOCK(4);
+}
+
+// LA64_BC_JIRL: Jump indirect and link register
+INSTRUCTION(LA64_BC_JIRL, la64_jirl)
+{
+	VIEW_INSTR();
+	auto next_pc = pc + 4;
+	auto base = REG(instr.ri16.rj);
+	auto offset = InstructionHelpers<W>::sign_extend_16(instr.ri16.imm) << 2;
+	auto target = base + offset;
+
+	if (instr.ri16.rd != 0) {
+		REG(instr.ri16.rd) = next_pc;
+	}
+	NEXT_BLOCK(target - pc);
 }
 
 // ============ Generic Bytecode Handlers ============

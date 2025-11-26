@@ -22,20 +22,29 @@ namespace loongarch
 		LA64_BC_SLLI_D,            // Shift left logical immediate doubleword (699 in coremark, 687 in stream)
 		LA64_BC_LD_BU,             // Load byte unsigned (838 in coremark, 807 in stream)
 		LA64_BC_ST_B,              // Store byte (870 in coremark, 857 in stream)
+		LA64_BC_ST_W,              // Store word (624 in stream)
 		LA64_BC_PCADDI,            // PC-relative add immediate (2586 in stream)
 		LA64_BC_PCALAU12I,         // PC-aligned add upper immediate (621 in stream)
 		LA64_BC_LDPTR_D,           // Load pointer doubleword (2183 in stream)
 		LA64_BC_LDPTR_W,           // Load pointer word (1710 in stream)
 		LA64_BC_STPTR_D,           // Store pointer doubleword (1114 in stream)
 		LA64_BC_LU12I_W,           // Load upper 12-bit immediate word (877 in stream)
+		LA64_BC_BSTRPICK_D,        // Bit string pick doubleword (615 in stream)
+		LA64_BC_AND,               // Bitwise AND (565 in stream)
+		LA64_BC_ALSL_D,            // Arithmetic left shift and add doubleword (365 in stream)
+		LA64_BC_SRLI_D,            // Shift right logical immediate doubleword (271 in stream)
+		LA64_BC_LD_B,              // Load byte signed (495 in stream)
+		LA64_BC_STPTR_W,           // Store pointer word (270 in stream)
+		LA64_BC_LDX_D,             // Load doubleword indexed (369 in stream)
 
 		// Branch instructions
-		LA64_BC_B,                 // Unconditional branch
-		LA64_BC_BL,                // Branch and link
 		LA64_BC_BEQZ,              // Branch if equal to zero
 		LA64_BC_BNEZ,              // Branch if not equal to zero
 		LA64_BC_BEQ,               // Branch if equal
 		LA64_BC_BNE,               // Branch if not equal
+		LA64_BC_JIRL,              // Jump indirect and link register (1513 in stream)
+		LA64_BC_B,                 // Unconditional branch
+		LA64_BC_BL,                // Branch and link
 		LA64_BC_BLT,               // Branch if less than
 		LA64_BC_BGE,               // Branch if greater than or equal
 		LA64_BC_BLTU,              // Branch if less than unsigned
@@ -126,6 +135,38 @@ namespace loongarch
 		void set_imm(uint16_t imm) {
 			// Sign-extend 14-bit immediate to int16_t
 			this->imm14 = int16_t(imm << 2) >> 2;
+		}
+	};
+
+	union FasterLA64_BitField {
+		uint32_t whole;
+		struct {
+			uint8_t rd;     // bits [4:0]
+			uint8_t rj;     // bits [9:5]
+			uint8_t lsbd;   // bits [15:10] - low bit position
+			uint8_t msbd;   // bits [21:16] - high bit position
+		};
+	};
+
+	union FasterLA64_R3SA2 {
+		uint32_t whole;
+		struct {
+			uint8_t rd;     // bits [4:0]
+			uint8_t rj;     // bits [9:5]
+			uint8_t rk;     // bits [14:10]
+			uint8_t sa2;    // bits [16:15] - shift amount (2 bits)
+		};
+	};
+
+	union FasterLA64_RI16 {
+		uint32_t whole;
+		struct {
+			uint8_t rd;      // bits [4:0]
+			uint8_t rj;      // bits [9:5]
+			int16_t imm16;   // bits [25:10] sign-extended 16-bit immediate
+		};
+		void set_imm(uint16_t imm) {
+			this->imm16 = (int16_t)imm;
 		}
 	};
 

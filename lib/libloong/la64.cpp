@@ -469,49 +469,50 @@ namespace loongarch
 			}
 			break;
 
-	case 0x02: // Fused multiply-add/sub instructions (4R-type)
-		{
-			// FMSUB.D: bits[31:15] can be 0x010D9 or 0x010DA (both are valid encodings)
-			uint32_t op17_4r = (instr.whole >> 15) & 0x1FFFF;
-			if (op17_4r == 0x010D9 || op17_4r == 0x010DA) return DECODED_INSTR(FMSUB_D);
-			// FMADD.D: bits[31:15] can be 0x01040, 0x01059, or 0x0105d (multiple valid encodings)
-			if (op17_4r == 0x01040 || op17_4r == 0x01059 || op17_4r == 0x0105d) return DECODED_INSTR(FMADD_D);
-			// VFMADD.D: Vector FMA (bits[31:20] = 0x092)
-			uint32_t op12 = (instr.whole >> 20) & 0xFFF;
-			if (op12 == 0x092) return DECODED_INSTR(VFMADD_D);
-		}
-		break;
-
-	case 0x03: // VSHUF.B (4R-type vector shuffle) and FCMP instructions
-		// VSHUF.B: bits[31:20] = 0x00D5
-		if ((instr.whole >> 20) == 0x00D5) return DECODED_INSTR(VSHUF_B);
-		// VBITSEL.V: bits[31:20] = 0x0D1
-		if ((instr.whole >> 20) == 0x0D1) return DECODED_INSTR(VBITSEL_V);
-
-		// FSEL: FP conditional select - bits[31:18] = 0x0340
-		if (((instr.whole >> 18) & 0x3FFF) == 0x0340) return DECODED_INSTR(FSEL);
-
-		// FCMP instructions: bits[31:22] = 0x030, bits[19:15] = condition code
-		{
-			uint32_t op10 = (instr.whole >> 22) & 0x3FF;
-			if (op10 == 0x030) {
-				uint32_t cond = (instr.whole >> 15) & 0x1F;
-				if (cond == 0x14) return DECODED_INSTR(FCMP_COR_D);
-				if (cond == 0x0E) return DECODED_INSTR(FCMP_CULE_D);
-				if (cond == 0x03) return DECODED_INSTR(FCMP_SLT_D);
-				if (cond == 0x07) return DECODED_INSTR(FCMP_SLE_D);
+		case 0x02: // Fused multiply-add/sub instructions (4R-type)
+			{
+				// FMSUB.D: bits[31:15] can be 0x010D9 or 0x010DA (both are valid encodings)
+				uint32_t op17_4r = (instr.whole >> 15) & 0x1FFFF;
+				if (op17_4r == 0x010D9 || op17_4r == 0x010DA) return DECODED_INSTR(FMSUB_D);
+				// FMADD.D: bits[31:15] can be 0x01040, 0x01059, or 0x0105d (multiple valid encodings)
+				if (op17_4r == 0x01040 || op17_4r == 0x01059 || op17_4r == 0x0105d) return DECODED_INSTR(FMADD_D);
+				// VFMADD.D: Vector FMA (bits[31:20] = 0x092)
+				uint32_t op12 = (instr.whole >> 20) & 0xFFF;
+				if (op12 == 0x092) return DECODED_INSTR(VFMADD_D);
 			}
-		}
-		// VFCMP instructions: bits[31:21] = 0x063, bits[20:15] = condition code
-		{
-			uint32_t op11 = (instr.whole >> 21) & 0x7FF;
-			if (op11 == 0x063) {
-				uint32_t cond = (instr.whole >> 15) & 0x3F;
-				if (cond == 0x03) return DECODED_INSTR(VFCMP_SLT_D);
-				if (cond == 0x07) return DECODED_INSTR(VFCMP_SLE_D);
+			break;
+
+		case 0x03: // VSHUF.B (4R-type vector shuffle) and FCMP instructions
+			// VSHUF.B: bits[31:20] = 0x00D5
+			if ((instr.whole >> 20) == 0x00D5) return DECODED_INSTR(VSHUF_B);
+			// VBITSEL.V: bits[31:20] = 0x0D1
+			if ((instr.whole >> 20) == 0x0D1) return DECODED_INSTR(VBITSEL_V);
+
+			// FSEL: FP conditional select - bits[31:18] = 0x0340
+			if (((instr.whole >> 18) & 0x3FFF) == 0x0340) return DECODED_INSTR(FSEL);
+
+			// FCMP instructions: bits[31:22] = 0x030, bits[19:15] = condition code
+			{
+				uint32_t op10 = (instr.whole >> 22) & 0x3FF;
+				if (op10 == 0x030) {
+					uint32_t cond = (instr.whole >> 15) & 0x1F;
+					if (cond == 0x14) return DECODED_INSTR(FCMP_COR_D);
+					if (cond == 0x0E) return DECODED_INSTR(FCMP_CULE_D);
+					if (cond == 0x03) return DECODED_INSTR(FCMP_SLT_D);
+					if (cond == 0x07) return DECODED_INSTR(FCMP_SLE_D);
+				}
 			}
-		}
-		break;		case 0x05: // LU12I.W (0x14000000) / LU32I.D (0x16000000)
+			// VFCMP instructions: bits[31:21] = 0x063, bits[20:15] = condition code
+			{
+				uint32_t op11 = (instr.whole >> 21) & 0x7FF;
+				if (op11 == 0x063) {
+					uint32_t cond = (instr.whole >> 15) & 0x3F;
+					if (cond == 0x03) return DECODED_INSTR(VFCMP_SLT_D);
+					if (cond == 0x07) return DECODED_INSTR(VFCMP_SLE_D);
+				}
+			}
+			break;
+		case 0x05: // LU12I.W (0x14000000) / LU32I.D (0x16000000)
 			// Need to check bits[31:25] to distinguish:
 			// LU12I.W: 0001010 (0x0A), LU32I.D: 0001011 (0x0B)
 			{
@@ -563,31 +564,31 @@ namespace loongarch
 			if (op22 == (Opcode::FST_D & 0xFFC00000)) return DECODED_INSTR(FST_D);
 			break;
 
-			case 0x10: // BEQZ
-				return DECODED_INSTR(BEQZ);
-			case 0x11: // BNEZ
-				return DECODED_INSTR(BNEZ);
+		case 0x10: // BEQZ
+			return DECODED_INSTR(BEQZ);
+		case 0x11: // BNEZ
+			return DECODED_INSTR(BNEZ);
 
-			case 0x13: // JIRL
-				return DECODED_INSTR(JIRL);
+		case 0x13: // JIRL
+			return DECODED_INSTR(JIRL);
 
-			case 0x14: // B
-				return DECODED_INSTR(B);
-			case 0x15: // BL
-				return DECODED_INSTR(BL);
+		case 0x14: // B
+			return DECODED_INSTR(B);
+		case 0x15: // BL
+			return DECODED_INSTR(BL);
 
-			case 0x16: // BEQ
-				return DECODED_INSTR(BEQ);
-			case 0x17: // BNE
-				return DECODED_INSTR(BNE);
-			case 0x18: // BLT
-				return DECODED_INSTR(BLT);
-			case 0x19: // BGE
-				return DECODED_INSTR(BGE);
-			case 0x1A: // BLTU
-				return DECODED_INSTR(BLTU);
-			case 0x1B: // BGEU
-				return DECODED_INSTR(BGEU);
+		case 0x16: // BEQ
+			return DECODED_INSTR(BEQ);
+		case 0x17: // BNE
+			return DECODED_INSTR(BNE);
+		case 0x18: // BLT
+			return DECODED_INSTR(BLT);
+		case 0x19: // BGE
+			return DECODED_INSTR(BGE);
+		case 0x1A: // BLTU
+			return DECODED_INSTR(BLTU);
+		case 0x1B: // BGEU
+			return DECODED_INSTR(BGEU);
 
 		case 0x08: // LL/SC instructions
 			{

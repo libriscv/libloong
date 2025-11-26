@@ -18,31 +18,33 @@ namespace loongarch {
 			uint32_t opcode : 22;
 		} r2;
 
-	// 3R-type: op rd, rj, rk
-	struct {
-		uint32_t rd     : 5;
-		uint32_t rj     : 5;
-		uint32_t rk     : 5;
-		uint32_t opcode : 17;
-	} r3;
+		// 3R-type: op rd, rj, rk
+		struct {
+			uint32_t rd     : 5;
+			uint32_t rj     : 5;
+			uint32_t rk     : 5;
+			uint32_t opcode : 17;
+		} r3;
 
-	// 3R-type with sa2: op rd, rj, rk, sa2 (ALSL)
-	struct {
-		uint32_t rd     : 5;
-		uint32_t rj     : 5;
-		uint32_t rk     : 5;
-		uint32_t sa2    : 2;
-		uint32_t opcode : 15;
-	} r3sa2;
+		// 3R-type with sa2: op rd, rj, rk, sa2 (ALSL)
+		struct {
+			uint32_t rd     : 5;
+			uint32_t rj     : 5;
+			uint32_t rk     : 5;
+			uint32_t sa2    : 2;
+			uint32_t opcode : 15;
+		} r3sa2;
 
-	// 4R-type: op rd, rj, rk, ra
-	struct {
-		uint32_t rd     : 5;
-		uint32_t rj     : 5;
-		uint32_t rk     : 5;
-		uint32_t ra     : 5;
-		uint32_t opcode : 12;
-	} r4;		// 2RI8-type: op rd, rj, imm8
+		// 4R-type: op rd, rj, rk, ra
+		struct {
+			uint32_t rd     : 5;
+			uint32_t rj     : 5;
+			uint32_t rk     : 5;
+			uint32_t ra     : 5;
+			uint32_t opcode : 12;
+		} r4;
+
+		// 2RI8-type: op rd, rj, imm8
 		struct {
 			uint32_t rd     : 5;
 			uint32_t rj     : 5;
@@ -95,18 +97,20 @@ namespace loongarch {
 			}
 		} ri21;
 
-	// I26-type: op offs26 (jumps B/BL)
-	// offs[25:0] is split: bits[9:0] = offs[25:16], bits[25:10] = offs[15:0]
-	struct {
-		uint32_t offs_hi  : 10;  // bits[9:0] = offs[25:16]
-		uint32_t offs_lo  : 16;  // bits[25:10] = offs[15:0]
-		uint32_t opcode   : 6;   // bits[31:26]
+		// I26-type: op offs26 (jumps B/BL)
+		// offs[25:0] is split: bits[9:0] = offs[25:16], bits[25:10] = offs[15:0]
+		struct {
+			uint32_t offs_hi  : 10;  // bits[9:0] = offs[25:16]
+			uint32_t offs_lo  : 16;  // bits[25:10] = offs[15:0]
+			uint32_t opcode   : 6;   // bits[31:26]
 
-		// Get the combined 26-bit offset
-		constexpr uint32_t offs() const {
-			return (offs_hi << 16) | offs_lo;
-		}
-	} i26;		constexpr la_instruction() : whole(0) {}
+			// Get the combined 26-bit offset
+			constexpr uint32_t offs() const {
+				return (offs_hi << 16) | offs_lo;
+			}
+		} i26;
+
+		constexpr la_instruction() : whole(0) {}
 		constexpr la_instruction(uint32_t val) : whole(val) {}
 
 		constexpr uint32_t opcode() const noexcept { return whole; }

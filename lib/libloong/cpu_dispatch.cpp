@@ -35,7 +35,7 @@ namespace loongarch
 			// block_bytes is the count of non-diverging bytes, +1 for diverging
 			unsigned block_bytes = decoder->block_bytes;
 			local_pc += block_bytes;
-			const auto num_instrs = (block_bytes >> 2) + 1;
+			const auto num_instrs = decoder->instruction_count();
 			counter += num_instrs;
 
 			// Execute all non-diverging instructions in the block

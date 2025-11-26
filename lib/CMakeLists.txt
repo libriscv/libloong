@@ -23,13 +23,14 @@ set(loong_VERSION_MINOR 1)
 set(SOURCES
 	libloong/common.cpp
 	libloong/cpu.cpp
+	libloong/elf_loader.cpp
 	libloong/machine.cpp
 	libloong/memory.cpp
 	libloong/memory_rw.cpp
 	libloong/decoder_cache.cpp
 	libloong/debug.cpp
 	libloong/serialize.cpp
-	libloong/elf_loader.cpp
+	libloong/threaded_rewriter.cpp
 	libloong/posix/signals.cpp
 	libloong/posix/threads.cpp
 	libloong/linux/syscalls.cpp
@@ -48,10 +49,17 @@ if (FALSE AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND NOT MSVC)
 	# Tail-call optimization dispatch (fastest)
 	list(APPEND SOURCES libloong/tailcall_dispatch.cpp)
 	message(STATUS "Using tail-call optimization dispatch")
+elseif (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+	# Threaded dispatch for GCC/Clang (using computed goto)
+	list(APPEND SOURCES
+		libloong/threaded_dispatch.cpp
+		libloong/threaded_inaccurate_dispatch.cpp
+	)
+	message(STATUS "Using threaded dispatch (computed goto)")
 else()
-	# Threaded dispatch for GCC, switch-case for others
+	# Fallback handler-based dispatch for other compilers
 	list(APPEND SOURCES libloong/cpu_dispatch.cpp)
-	message(STATUS "Using standard dispatch")
+	message(STATUS "Using handler-based dispatch")
 endif()
 
 # Binary translation support

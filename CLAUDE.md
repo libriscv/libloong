@@ -1,5 +1,10 @@
-# Project structure
-This project is a custom high-performance LoongArch emulator with a flat memory arena as memory instead of virtual paging, designed in the same way as libriscv. Static LoongArch ELFs are loaded, executed and after execution one can vmcall functions in the guest. It's a CMake project with this structure:
+# Project information
+
+This project is a custom high-performance LoongArch emulator with a flat memory arena as memory instead of virtual paging, designed otherwise in the same way as libriscv. Static LoongArch ELFs are loaded, executed and after execution one can vmcall functions in the guest.
+
+## Project structure
+
+It's a CMake project with this structure:
 - /lib/libloong has the C++ library implementation
     - Instruction templates are in /lib/libloong/la_instr_impl.hpp and /lib/libloong/la_instr_atomic.hpp
 	- Instruction printers (for debugging) is in /lib/libloong/la_instr_printers.hpp
@@ -11,27 +16,28 @@ This project is a custom high-performance LoongArch emulator with a flat memory 
 	- it uses a different, faster dispatch than the debugger
 - /tests/debug_test.cpp is a full-fledged CLI debugger
 
-# How to debug
+## How to debug
 
 `./tests/debug_test` is a comprehensive debugger built in the build folder. It prints each instruction as it executes. Passing -r will also show register state *after* each instruction. Passing -o will compare against ground-truth objdump in case an instruction is incorrectly decoded.
 
-Examples:
+### Examples
+
+Execute `return_42_bare` until completion, compare instructions (left) against objdump (right):
 ```sh
 build$ ./tests/debug_test -o tests/loongarch_bins/return_42_bare
 ```
-Execute `return_42_bare` until completion, compare instructions (left) against objdump (right).
 
+Execute `return_42_bare` until completion, show registers after each instruction, compare instructions (left) against objdump (right):
 ```sh
 build$ ./tests/debug_test -r -o tests/loongarch_bins/return_42_bare
 ```
-Execute `return_42_bare` until completion, show registers after each instruction, compare instructions (left) against objdump (right).
 
+Execute `cxx_test` until completion without debug lines, then start executing the guest-side function `test_exception` with debugging. This saves a bunch of time and prevents logspam. Only debug lines from test_exception will be shown.
 ```sh
 build$ ./tests/debug_test -o tests/loongarch_bins/cxx_test --call test_exception
 ```
-Execute `cxx_test` until completion without debug lines, then start executing the guest-side function `test_exception` with debugging. This saves a bunch of time and prevents logspam. Only debug lines from test_exception will be shown.
 
-# Testing long-running programs
+## Testing long-running programs
 
 Some programs runs for so long that only the emulator CLI can run it properly:
 
@@ -41,7 +47,19 @@ emulator$ ./build.sh && .build/laemu ../tests/programs/coremark.elf
 
 Hard to debug with, but can be a fast way to check if the emulator is still sane and working.
 
-# Avoid these pitfalls
+## Key Technical Concepts
+
+- **Threaded dispatch**: Using computed goto (GCC/Clang extension) for fast bytecode dispatch
+- **Block-based execution**: Pre-computing block boundaries to execute multiple instructions between divergence points
+- **Bytecode translation**: Converting instructions to bytecodes during cache population (and optimizing them)
+- **PC management**: Program Counter handling for control flow
+- **Instruction counting**: Tracking executed instructions for timeouts
+- **Handler caching**: Storing index to slow-path instruction handlers in decoder cache
+- **Build-time dispatch selection**: Conditional compilation based on compiler
+- **Decoder cache**: Pre-decoded instruction information stored per 4-byte instruction
+- **Diverging vs non-diverging instructions**: PC-modifying vs regular instructions
+
+## Avoid these pitfalls
 
 These are directions to avoid when investigating:
 
@@ -49,3 +67,4 @@ These are directions to avoid when investigating:
 2. TLS is handled fully and entirely by glibc in the guest. We do not need to deal with thread-local storage at all.
 3. glibc resolves IFUNCs in the guest. We do not need to care about ELF relocs.
 4. LoongArch Linux ELFs will have LSX instructions in them no matter what. Trying -mno-lsx will have no effect.
+5. Threaded dispatch exists only in the emulator CLI and unit tests and *not* the debugger

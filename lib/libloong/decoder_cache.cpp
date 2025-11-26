@@ -205,15 +205,24 @@ namespace loongarch
 
 		// Scan backwards to calculate block_bytes
 		// This computes how many bytes until the next diverging instruction
+		const uint32_t* instr_ptr = reinterpret_cast<const uint32_t*>(code);
 		uint32_t accumulated_bytes = 0;
+		std::unordered_map<typename DecoderData<W>::handler_t, uint8_t> handler_map;
 		for (size_t i = num_instructions; i-- > 0; ) {
-			uint32_t instr;
-			std::memcpy(&instr, code + i * 4, 4);
+			const uint32_t instr = instr_ptr[i];
 
-			cache[i].instr = instr;
 			// Decode and cache the handler for fast dispatch
 			const auto& decoded = CPU<W>::decode(la_instruction{instr});
-			cache[i].handler_idx = DecoderData<W>::compute_handler_for(decoded.handler);
+			auto it = handler_map.find(decoded.handler);
+			if (it != handler_map.end()) {
+				// Existing handler
+				cache[i].handler_idx = it->second;
+			} else {
+				// New handler
+				const uint8_t handler_idx = DecoderData<W>::compute_handler_for(decoded.handler);
+				handler_map.insert_or_assign(decoded.handler, handler_idx);
+				cache[i].handler_idx = handler_idx;
+			}
 
 			// Set bytecode for threaded dispatch
 			cache[i].bytecode = determine_bytecode<W>(instr);

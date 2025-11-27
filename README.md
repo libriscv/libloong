@@ -52,14 +52,14 @@ libloong follows the same design principles as libriscv:
 
 ```sh
 Function    Best Rate MB/s  Avg time     Min time     Max time
-Copy:            4635.9     0.038666     0.034513     0.046993
-Scale:           2513.6     0.080806     0.063653     0.085414
-Add:             6428.1     0.040918     0.037336     0.048907
-Triad:           4948.8     0.049776     0.048497     0.057069
+Copy:            7031.7     0.023630     0.022754     0.025720
+Scale:           2093.0     0.086733     0.076447     0.094273
+Add:             4338.6     0.057728     0.055317     0.059529
+Triad:           4696.6     0.052594     0.051101     0.057418
 
-CoreMark 1.0 : 1894.643546 / GCC14.2.0 -O3 -DPERFORMANCE_RUN=1   / Static
+CoreMark 1.0 : 2129.621545 / GCC14.2.0 -O3 -DPERFORMANCE_RUN=1   / Static
 ```
-Despite not having a fast threaded dispatch yet, it is quite fast.
+Despite not having a complete threaded dispatch yet, it is quite fast.
 
 ## Documentation
 

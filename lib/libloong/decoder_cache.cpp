@@ -164,9 +164,84 @@ namespace loongarch
 		if (op10 == 0x094) {
 			return LA64_BC_STPTR_W;
 		}
-		// LDX.D: op17 = 0x01C18 (0x380C0000 >> 15)
-		if (op17 == 0x01C18) {
+		// LDX.D: op17 = 0x7018 (0x380C0000 >> 15)
+		if (op17 == 0x7018) {
 			return LA64_BC_LDX_D;
+		}
+		// MASKEQZ: op17 = 0x00026 (0x00130000 >> 15)
+		if (op17 == 0x00026) {
+			return LA64_BC_MASKEQZ;
+		}
+		// MASKNEZ: op17 = 0x00027 (0x00138000 >> 15)
+		if (op17 == 0x00027) {
+			return LA64_BC_MASKNEZ;
+		}
+		// MUL.D: op17 = 0x0003B (0x001d8000 >> 15)
+		if (op17 == 0x0003B) {
+			return LA64_BC_MUL_D;
+		}
+		// SUB.W: op17 = 0x00022 (0x00110000 >> 15)
+		if (op17 == 0x00022) {
+			return LA64_BC_SUB_W;
+		}
+		// SLL.D: op17 = 0x00031 (0x00188000 >> 15)
+		if (op17 == 0x00031) {
+			return LA64_BC_SLL_D;
+		}
+		// STX.D: op17 = 0x7038 (0x381C0000 >> 15)
+		if (op17 == 0x7038) {
+			return LA64_BC_STX_D;
+		}
+		// BSTRPICK.W: op11 = 0x003 (bits[31:21])
+		const uint32_t op11 = (instr >> 21) & 0x7FF;
+		if (op11 == 0x003) {
+			return LA64_BC_BSTRPICK_W;
+		}
+		// SLTU: op17 = 0x00025 (0x00128000 >> 15)
+		if (op17 == 0x00025) {
+			return LA64_BC_SLTU;
+		}
+		// LDX.W: op17 = 0x7010 (0x38080000 >> 15)
+		if (op17 == 0x7010) {
+			return LA64_BC_LDX_W;
+		}
+		// STX.W: op17 = 0x7030 (0x38180000 >> 15)
+		if (op17 == 0x7030) {
+			return LA64_BC_STX_W;
+		}
+		// XOR: op17 = 0x0002B (0x00158000 >> 15)
+		if (op17 == 0x0002B) {
+			return LA64_BC_XOR;
+		}
+		// LD.HU: op10 = 0x0A9 (0x2a400000 >> 22)
+		if (op10 == 0x0A9) {
+			return LA64_BC_LD_HU;
+		}
+		// ADD.W: op17 = 0x00020 (0x00100000 >> 15)
+		if (op17 == 0x00020) {
+			return LA64_BC_ADD_W;
+		}
+		// SRAI.D: op16 = 0x0049 (bits[31:16])
+		const uint32_t op16 = (instr >> 16) & 0xFFFF;
+		if (op16 == 0x0049) {
+			return LA64_BC_SRAI_D;
+		}
+		// EXT.W.B: op22 = 0x000017 (bits[31:10])
+		const uint32_t op22 = (instr >> 10) & 0x3FFFFF;
+		if (op22 == 0x000017) {
+			return LA64_BC_EXT_W_B;
+		}
+		// LDX.BU: bits[31:15] = 0x7040 (0x38200000 >> 15)
+		if (op17 == 0x7040) {
+			return LA64_BC_LDX_BU;
+		}
+		// BSTRINS.D: op10 = 0x002 (0x00800000 >> 22)
+		if (op10 == 0x002) {
+			return LA64_BC_BSTRINS_D;
+		}
+		// LU32I.D: op7 = 0x0B (0x16000000 >> 25)
+		if (op7 == 0x0B) {
+			return LA64_BC_LU32I_D;
 		}
 
 		// Branch instructions

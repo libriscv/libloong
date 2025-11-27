@@ -244,6 +244,177 @@ INSTRUCTION(LA64_BC_LDX_D, la64_ldx_d)
 	NEXT_INSTR();
 }
 
+// LA64_BC_MASKEQZ: Mask if equal to zero (rd = (rk == 0) ? 0 : rj)
+INSTRUCTION(LA64_BC_MASKEQZ, la64_maskeqz)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	REG(fi.rd) = (REG(fi.rk) == 0) ? 0 : REG(fi.rj);
+	NEXT_INSTR();
+}
+
+// LA64_BC_MASKNEZ: Mask if not equal to zero (rd = (rk != 0) ? 0 : rj)
+INSTRUCTION(LA64_BC_MASKNEZ, la64_masknez)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	REG(fi.rd) = (REG(fi.rk) != 0) ? 0 : REG(fi.rj);
+	NEXT_INSTR();
+}
+
+// LA64_BC_MUL_D: Multiply doubleword (rd = rj * rk)
+INSTRUCTION(LA64_BC_MUL_D, la64_mul_d)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	REG(fi.rd) = REG(fi.rj) * REG(fi.rk);
+	NEXT_INSTR();
+}
+
+// LA64_BC_SUB_W: Subtract word (rd = sign_ext((int32_t)rj - (int32_t)rk))
+INSTRUCTION(LA64_BC_SUB_W, la64_sub_w)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	int32_t result = (int32_t)REG(fi.rj) - (int32_t)REG(fi.rk);
+	REG(fi.rd) = (saddress_t)result;
+	NEXT_INSTR();
+}
+
+// LA64_BC_SLL_D: Shift left logical doubleword (rd = rj << (rk & 0x3F))
+INSTRUCTION(LA64_BC_SLL_D, la64_sll_d)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	uint32_t shift = REG(fi.rk) & 0x3F;
+	REG(fi.rd) = REG(fi.rj) << shift;
+	NEXT_INSTR();
+}
+
+// LA64_BC_STX_D: Store doubleword indexed (mem[rj + rk] = rd)
+INSTRUCTION(LA64_BC_STX_D, la64_stx_d)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	const auto addr = REG(fi.rj) + REG(fi.rk);
+	MACHINE().memory.template write<uint64_t>(addr, REG(fi.rd));
+	NEXT_INSTR();
+}
+
+// LA64_BC_BSTRPICK_W: Bit string pick word (rd = extract bits[msbw:lsbw] from rj, zero-extend)
+INSTRUCTION(LA64_BC_BSTRPICK_W, la64_bstrpick_w)
+{
+	auto fi = *(FasterLA64_BitFieldW *)&DECODER().instr;
+	const uint32_t src = (uint32_t)REG(fi.rj);
+	const uint32_t width = fi.msbw - fi.lsbw + 1;
+	const uint32_t mask = (1U << width) - 1;
+	REG(fi.rd) = (src >> fi.lsbw) & mask;
+	NEXT_INSTR();
+}
+
+// LA64_BC_SLTU: Set if less than unsigned (rd = (rj < rk) ? 1 : 0)
+INSTRUCTION(LA64_BC_SLTU, la64_sltu)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	REG(fi.rd) = (REG(fi.rj) < REG(fi.rk)) ? 1 : 0;
+	NEXT_INSTR();
+}
+
+// LA64_BC_LDX_W: Load word indexed (rd = sign_ext(mem[rj + rk]))
+INSTRUCTION(LA64_BC_LDX_W, la64_ldx_w)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	const auto addr = REG(fi.rj) + REG(fi.rk);
+	REG(fi.rd) = (saddress_t)(int32_t)MACHINE().memory.template read<int32_t>(addr);
+	NEXT_INSTR();
+}
+
+// LA64_BC_STX_W: Store word indexed (mem[rj + rk] = rd[31:0])
+INSTRUCTION(LA64_BC_STX_W, la64_stx_w)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	const auto addr = REG(fi.rj) + REG(fi.rk);
+	MACHINE().memory.template write<uint32_t>(addr, REG(fi.rd));
+	NEXT_INSTR();
+}
+
+// LA64_BC_XOR: Bitwise XOR (rd = rj ^ rk)
+INSTRUCTION(LA64_BC_XOR, la64_xor)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	REG(fi.rd) = REG(fi.rj) ^ REG(fi.rk);
+	NEXT_INSTR();
+}
+
+// LA64_BC_LD_HU: Load halfword unsigned (rd = zero_ext(mem[rj + sign_ext(imm12)]))
+INSTRUCTION(LA64_BC_LD_HU, la64_ld_hu)
+{
+	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
+	const auto addr = REG(fi.rj) + fi.imm;
+	REG(fi.rd) = MACHINE().memory.template read<uint16_t>(addr);
+	NEXT_INSTR();
+}
+
+// LA64_BC_ADD_W: Add word (rd = sign_ext((int32_t)rj + (int32_t)rk))
+INSTRUCTION(LA64_BC_ADD_W, la64_add_w)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	int32_t result = (int32_t)REG(fi.rj) + (int32_t)REG(fi.rk);
+	REG(fi.rd) = (saddress_t)result;
+	NEXT_INSTR();
+}
+
+// LA64_BC_SRAI_D: Shift right arithmetic immediate doubleword (rd = (int64_t)rj >> ui6)
+INSTRUCTION(LA64_BC_SRAI_D, la64_srai_d)
+{
+	auto fi = *(FasterLA64_Shift64 *)&DECODER().instr;
+	REG(fi.rd) = static_cast<int64_t>(REG(fi.rj)) >> fi.ui6;
+	NEXT_INSTR();
+}
+
+// LA64_BC_EXT_W_B: Extend byte to word with sign (rd = sign_ext(rj[7:0]))
+INSTRUCTION(LA64_BC_EXT_W_B, la64_ext_w_b)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	int8_t val = static_cast<int8_t>(REG(fi.rj));
+	REG(fi.rd) = static_cast<int64_t>(val);
+	NEXT_INSTR();
+}
+
+// LA64_BC_LDX_BU: Load byte unsigned indexed (rd = zero_ext(mem[rj + rk]))
+INSTRUCTION(LA64_BC_LDX_BU, la64_ldx_bu)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	const auto addr = REG(fi.rj) + REG(fi.rk);
+	REG(fi.rd) = (uint64_t)MACHINE().memory.template read<uint8_t>(addr);
+	NEXT_INSTR();
+}
+
+// LA64_BC_BSTRINS_D: Bit string insert doubleword (rd[msbd:lsbd] = rj[msbd-lsbd:0])
+INSTRUCTION(LA64_BC_BSTRINS_D, la64_bstrins_d)
+{
+	auto fi = *(FasterLA64_BitField *)&DECODER().instr;
+	uint64_t src = REG(fi.rj);
+	uint64_t dst = REG(fi.rd);
+
+	// Valid when msbd >= lsbd
+	if (fi.msbd >= fi.lsbd) {
+		uint32_t width = fi.msbd - fi.lsbd + 1;
+		uint64_t mask = ((1ULL << width) - 1) << fi.lsbd;
+		uint64_t bits = (src << fi.lsbd) & mask;
+		REG(fi.rd) = (dst & ~mask) | bits;
+	}
+	NEXT_INSTR();
+}
+
+// LA64_BC_LU32I_D: Load upper 32-bit immediate doubleword (rd[51:32] = si20, rd[63:52] = sign_ext(si20[19]), rd[31:0] unchanged)
+INSTRUCTION(LA64_BC_LU32I_D, la64_lu32i_d)
+{
+	auto fi = *(FasterLA64_RI20 *)&DECODER().instr;
+	uint64_t lower = REG(fi.rd) & 0xFFFFFFFF;
+
+	// Sign-extend the 20-bit immediate to 32 bits, then place at bits [51:32]
+	int32_t si20 = fi.get_imm();
+	uint64_t imm_ext = ((uint64_t)(uint32_t)si20) << 32;
+
+	REG(fi.rd) = imm_ext | lower;
+	NEXT_INSTR();
+}
+
 // ============ Branching Bytecode Handlers ============
 
 // LA64_BC_B: Unconditional branch

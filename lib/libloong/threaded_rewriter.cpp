@@ -187,6 +187,133 @@ uint32_t optimize_bytecode(uint8_t& bytecode, address_type<W> pc, uint32_t instr
 			fi.rk = original.r3.rk;
 			return fi.whole;
 		} break;
+		case LA64_BC_MASKEQZ: {
+			auto fi = *(FasterLA64_R3 *)&instruction_bits;
+			fi.rd = original.r3.rd;
+			fi.rj = original.r3.rj;
+			fi.rk = original.r3.rk;
+			return fi.whole;
+		} break;
+		case LA64_BC_MASKNEZ: {
+			auto fi = *(FasterLA64_R3 *)&instruction_bits;
+			fi.rd = original.r3.rd;
+			fi.rj = original.r3.rj;
+			fi.rk = original.r3.rk;
+			return fi.whole;
+		} break;
+		case LA64_BC_MUL_D: {
+			auto fi = *(FasterLA64_R3 *)&instruction_bits;
+			fi.rd = original.r3.rd;
+			fi.rj = original.r3.rj;
+			fi.rk = original.r3.rk;
+			return fi.whole;
+		} break;
+		case LA64_BC_SUB_W: {
+			auto fi = *(FasterLA64_R3 *)&instruction_bits;
+			fi.rd = original.r3.rd;
+			fi.rj = original.r3.rj;
+			fi.rk = original.r3.rk;
+			return fi.whole;
+		} break;
+		case LA64_BC_SLL_D: {
+			auto fi = *(FasterLA64_R3 *)&instruction_bits;
+			fi.rd = original.r3.rd;
+			fi.rj = original.r3.rj;
+			fi.rk = original.r3.rk;
+			return fi.whole;
+		} break;
+		case LA64_BC_STX_D: {
+			auto fi = *(FasterLA64_R3 *)&instruction_bits;
+			fi.rd = original.r3.rd;
+			fi.rj = original.r3.rj;
+			fi.rk = original.r3.rk;
+			return fi.whole;
+		} break;
+		case LA64_BC_BSTRPICK_W: {
+			auto fi = *(FasterLA64_BitFieldW *)&instruction_bits;
+			fi.rd = (original.whole >> 0) & 0x1F;
+			fi.rj = (original.whole >> 5) & 0x1F;
+			fi.lsbw = (original.whole >> 10) & 0x1F;
+			fi.msbw = (original.whole >> 16) & 0x1F;
+			return fi.whole;
+		} break;
+		case LA64_BC_SLTU: {
+			auto fi = *(FasterLA64_R3 *)&instruction_bits;
+			fi.rd = original.r3.rd;
+			fi.rj = original.r3.rj;
+			fi.rk = original.r3.rk;
+			return fi.whole;
+		} break;
+		case LA64_BC_LDX_W: {
+			auto fi = *(FasterLA64_R3 *)&instruction_bits;
+			fi.rd = original.r3.rd;
+			fi.rj = original.r3.rj;
+			fi.rk = original.r3.rk;
+			return fi.whole;
+		} break;
+		case LA64_BC_STX_W: {
+			auto fi = *(FasterLA64_R3 *)&instruction_bits;
+			fi.rd = original.r3.rd;
+			fi.rj = original.r3.rj;
+			fi.rk = original.r3.rk;
+			return fi.whole;
+		} break;
+		case LA64_BC_XOR: {
+			auto fi = *(FasterLA64_R3 *)&instruction_bits;
+			fi.rd = original.r3.rd;
+			fi.rj = original.r3.rj;
+			fi.rk = original.r3.rk;
+			return fi.whole;
+		} break;
+		case LA64_BC_LD_HU: {
+			auto fi = *(FasterLA64_RI12 *)&instruction_bits;
+			fi.rd = original.ri12.rd;
+			fi.rj = original.ri12.rj;
+			fi.set_imm(original.ri12.imm);
+			return fi.whole;
+		} break;
+		case LA64_BC_ADD_W: {
+			auto fi = *(FasterLA64_R3 *)&instruction_bits;
+			fi.rd = original.r3.rd;
+			fi.rj = original.r3.rj;
+			fi.rk = original.r3.rk;
+			return fi.whole;
+		} break;
+		case LA64_BC_SRAI_D: {
+			auto fi = *(FasterLA64_Shift64 *)&instruction_bits;
+			fi.rd = original.r3.rd;
+			fi.rj = original.r3.rj;
+			fi.ui6 = (original.whole >> 10) & 0x3F;
+			return fi.whole;
+		} break;
+		case LA64_BC_EXT_W_B: {
+			auto fi = *(FasterLA64_R3 *)&instruction_bits;
+			fi.rd = original.r2.rd;
+			fi.rj = original.r2.rj;
+			fi.rk = 0; // Not used
+			return fi.whole;
+		} break;
+		case LA64_BC_LDX_BU: {
+			auto fi = *(FasterLA64_R3 *)&instruction_bits;
+			fi.rd = original.r3.rd;
+			fi.rj = original.r3.rj;
+			fi.rk = original.r3.rk;
+			return fi.whole;
+		} break;
+		case LA64_BC_BSTRINS_D: {
+			auto fi = *(FasterLA64_BitField *)&instruction_bits;
+			fi.rd = (original.whole >> 0) & 0x1F;
+			fi.rj = (original.whole >> 5) & 0x1F;
+			fi.lsbd = (original.whole >> 10) & 0x3F;
+			fi.msbd = (original.whole >> 16) & 0x3F;
+			return fi.whole;
+		} break;
+		case LA64_BC_LU32I_D: {
+			auto fi = *(FasterLA64_RI20 *)&instruction_bits;
+			fi.rd = original.ri20.rd;
+			fi.set_imm(original.ri20.imm);
+			return fi.whole;
+		} break;
 		case LA64_BC_JIRL:
 			// No optimization needed - JIRL uses original instruction bits
 			// because it needs to access ri16 fields directly in VIEW_INSTR()

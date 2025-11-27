@@ -36,6 +36,24 @@ namespace loongarch
 		LA64_BC_LD_B,              // Load byte signed (495 in stream)
 		LA64_BC_STPTR_W,           // Store pointer word (270 in stream)
 		LA64_BC_LDX_D,             // Load doubleword indexed (369 in stream)
+		LA64_BC_MASKEQZ,           // Mask if equal to zero (256 in stream)
+		LA64_BC_MASKNEZ,           // Mask if not equal to zero (257 in stream)
+		LA64_BC_MUL_D,             // Multiply doubleword (224 in stream)
+		LA64_BC_SUB_W,             // Subtract word (210 in stream)
+		LA64_BC_SLL_D,             // Shift left logical doubleword (184 in stream)
+		LA64_BC_STX_D,             // Store doubleword indexed (178 in stream)
+		LA64_BC_BSTRPICK_W,        // Bit string pick word (167 in stream)
+		LA64_BC_SLTU,              // Set if less than unsigned (167 in stream)
+		LA64_BC_LDX_W,             // Load word indexed (163 in stream)
+		LA64_BC_STX_W,             // Store word indexed (157 in stream)
+		LA64_BC_XOR,               // Bitwise XOR (154 in stream)
+		LA64_BC_LD_HU,             // Load halfword unsigned (244 in stream)
+		LA64_BC_ADD_W,             // Add word (131 in stream)
+		LA64_BC_SRAI_D,            // Shift right arithmetic immediate doubleword (121 in stream)
+		LA64_BC_EXT_W_B,           // Extend byte to word with sign (125 in stream)
+		LA64_BC_LDX_BU,            // Load byte unsigned indexed (132 in stream)
+		LA64_BC_BSTRINS_D,         // Bit string insert doubleword (115 in stream)
+		LA64_BC_LU32I_D,           // Load upper 32-bit immediate doubleword (93 in stream)
 
 		// Branch instructions
 		LA64_BC_BEQZ,              // Branch if equal to zero
@@ -145,6 +163,16 @@ namespace loongarch
 			uint8_t rj;     // bits [9:5]
 			uint8_t lsbd;   // bits [15:10] - low bit position
 			uint8_t msbd;   // bits [21:16] - high bit position
+		};
+	};
+
+	union FasterLA64_BitFieldW {
+		uint32_t whole;
+		struct {
+			uint8_t rd;     // bits [4:0]
+			uint8_t rj;     // bits [9:5]
+			uint8_t lsbw;   // bits [14:10] - low bit position (5 bits)
+			uint8_t msbw;   // bits [20:16] - high bit position (5 bits)
 		};
 	};
 

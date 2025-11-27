@@ -104,6 +104,14 @@ namespace loongarch
 	// Atomic operations (using separate template class)
 	static constexpr CPU<LA64>::instruction_t instr64_AMSWAP_W { AtomicI::AMSWAP_W, AtomicP::AMSWAP_W };
 	static constexpr CPU<LA64>::instruction_t instr64_AMSWAP_D { AtomicI::AMSWAP_D, AtomicP::AMSWAP_D };
+	static constexpr CPU<LA64>::instruction_t instr64_AMADD_W { AtomicI::AMADD_W, AtomicP::AMADD_W };
+	static constexpr CPU<LA64>::instruction_t instr64_AMADD_D { AtomicI::AMADD_D, AtomicP::AMADD_D };
+	static constexpr CPU<LA64>::instruction_t instr64_AMAND_W { AtomicI::AMAND_W, AtomicP::AMAND_W };
+	static constexpr CPU<LA64>::instruction_t instr64_AMAND_D { AtomicI::AMAND_D, AtomicP::AMAND_D };
+	static constexpr CPU<LA64>::instruction_t instr64_AMOR_W { AtomicI::AMOR_W, AtomicP::AMOR_W };
+	static constexpr CPU<LA64>::instruction_t instr64_AMOR_D { AtomicI::AMOR_D, AtomicP::AMOR_D };
+	static constexpr CPU<LA64>::instruction_t instr64_AMXOR_W { AtomicI::AMXOR_W, AtomicP::AMXOR_W };
+	static constexpr CPU<LA64>::instruction_t instr64_AMXOR_D { AtomicI::AMXOR_D, AtomicP::AMXOR_D };
 
 	// Branches
 	INSTRUCTION(BEQZ);
@@ -628,12 +636,40 @@ namespace loongarch
 			// VSTX: Vector indexed store (LSX 128-bit)
 			if ((instr.whole & 0xFFFC0000) == 0x38440000) return DECODED_INSTR(VSTX);
 
-			// Atomic instructions: bits [31:20] for AMSWAP base (0x386)
-			// Bits [19:18] = atomic operation type (00=AMSWAP)
-			// Bits [17:16] = memory ordering, bit [15] = size (0=W, 1=D)
+			// Atomic instructions: bits [31:20] = 0x386
+			// Empirical encoding: bits[19:16] encode both operation and ordering
+			// Bit [15] = size (0=W, 1=D)
+			// Pattern: bits[19:16] = base_operation + (ordering_bits)
+			// Examples:
+			//   amswap.w:    bits[19:16]=0, bit[15]=0
+			//   amswap_db.w: bits[19:16]=9, bit[15]=0
+			//   amadd.w:     bits[19:16]=1, bit[15]=0
+			//   amadd_db.w:  bits[19:16]=10, bit[15]=0
 			if ((instr.whole & 0xFFF00000) == 0x38600000) {
-				// AMSWAP family - check bit [15] for size
-				return ((instr.whole >> 15) & 1) ? DECODED_INSTR(AMSWAP_D) : DECODED_INSTR(AMSWAP_W);
+				uint32_t op_ord = (instr.whole >> 16) & 0xF;
+				bool is_64bit = ((instr.whole >> 15) & 1);
+
+				// Decode by bits[19:16] value
+				// Based on empirical observation:
+				// AMSWAP: 0 (no ord), 9 (_db)
+				// AMADD: 1 (no ord), 10 (_db)
+				// Assuming pattern continues: AMAND: 2, AMOR: 3, etc.
+				switch (op_ord) {
+					case 0: case 9: // AMSWAP
+						return is_64bit ? DECODED_INSTR(AMSWAP_D) : DECODED_INSTR(AMSWAP_W);
+					case 1: case 10: // AMADD
+						return is_64bit ? DECODED_INSTR(AMADD_D) : DECODED_INSTR(AMADD_W);
+					case 2: case 11: // AMAND (guessed)
+						return is_64bit ? DECODED_INSTR(AMAND_D) : DECODED_INSTR(AMAND_W);
+					case 3: case 12: // AMOR (guessed)
+						return is_64bit ? DECODED_INSTR(AMOR_D) : DECODED_INSTR(AMOR_W);
+					// TODO: Verify AMXOR, AMMAX, AMMIN encodings when encountered
+				}
+			}
+			// AMXOR: bits [31:20] = 0x387
+			if ((instr.whole & 0xFFF00000) == 0x38700000) {
+				bool is_64bit = ((instr.whole >> 15) & 1);
+				return is_64bit ? DECODED_INSTR(AMXOR_D) : DECODED_INSTR(AMXOR_W);
 			}
 			break;
 		case 0x0B: // VLD / VST / XVLD / XVST instructions (op6 = 0x0B for 0x2Cxxxxxx)

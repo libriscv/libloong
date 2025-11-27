@@ -55,6 +55,19 @@ namespace loongarch
 		LA64_BC_LDX_BU,            // Load byte unsigned indexed (132 in stream)
 		LA64_BC_BSTRINS_D,         // Bit string insert doubleword (115 in stream)
 		LA64_BC_LU32I_D,           // Load upper 32-bit immediate doubleword (93 in stream)
+		LA64_BC_LL_W,              // Load-linked word (877 in stream)
+		LA64_BC_CLO_W,             // Count leading ones word (374 in stream)
+		LA64_BC_CLZ_W,             // Count leading zeros word (297 in stream)
+		LA64_BC_CLZ_D,             // Count leading zeros doubleword (228 in stream)
+		LA64_BC_REVB_2H,           // Reverse bytes in 2 halfwords (214 in stream)
+		LA64_BC_BYTEPICK_D,        // Byte pick doubleword (198 in stream)
+		LA64_BC_SLTI,              // Set if less than immediate (196 in stream)
+		LA64_BC_CLO_D,             // Count leading ones doubleword (184 in stream)
+		LA64_BC_ST_H,              // Store halfword (140 in stream)
+		LA64_BC_FLD_D,             // Floating-point load doubleword (137 in stream)
+		LA64_BC_FADD_D,            // Floating-point add doubleword
+		LA64_BC_FMUL_D,            // Floating-point multiply doubleword
+		LA64_BC_FST_D,             // Floating-point store doubleword
 
 		// LSX (SIMD) instructions
 		LA64_BC_VLD,               // Vector load 128-bit (293 in stream)
@@ -137,6 +150,19 @@ namespace loongarch
 		case LA64_BC_LDX_BU: return "LDX.BU";
 		case LA64_BC_BSTRINS_D: return "BSTRINS.D";
 		case LA64_BC_LU32I_D: return "LU32I.D";
+		case LA64_BC_LL_W: return "LL.W";
+		case LA64_BC_CLO_W: return "CLO.W";
+		case LA64_BC_CLZ_W: return "CLZ.W";
+		case LA64_BC_CLZ_D: return "CLZ.D";
+		case LA64_BC_REVB_2H: return "REVB.2H";
+		case LA64_BC_BYTEPICK_D: return "BYTEPICK.D";
+		case LA64_BC_SLTI: return "SLTI";
+		case LA64_BC_CLO_D: return "CLO.D";
+		case LA64_BC_ST_H: return "ST.H";
+		case LA64_BC_FLD_D: return "FLD.D";
+		case LA64_BC_FADD_D: return "FADD.D";
+		case LA64_BC_FMUL_D: return "FMUL.D";
+		case LA64_BC_FST_D: return "FST.D";
 		case LA64_BC_VLD: return "VLD";
 		case LA64_BC_VST: return "VST";
 		case LA64_BC_VFADD_D: return "VFADD.D";
@@ -268,6 +294,24 @@ namespace loongarch
 			uint8_t rj;     // bits [9:5]
 			uint8_t rk;     // bits [14:10]
 			uint8_t sa2;    // bits [16:15] - shift amount (2 bits)
+		};
+	};
+
+	union FasterLA64_R2 {
+		uint32_t whole;
+		struct {
+			uint8_t rd;     // bits [4:0]
+			uint8_t rj;     // bits [9:5]
+		};
+	};
+
+	union FasterLA64_R3SA3 {
+		uint32_t whole;
+		struct {
+			uint8_t rd;     // bits [4:0]
+			uint8_t rj;     // bits [9:5]
+			uint8_t rk;     // bits [14:10]
+			uint8_t sa3;    // bits [17:15] - shift amount (3 bits)
 		};
 	};
 

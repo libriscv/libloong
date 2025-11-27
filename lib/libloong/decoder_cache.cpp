@@ -248,6 +248,46 @@ namespace loongarch
 		if (op7 == 0x0B) {
 			return LA64_BC_LU32I_D;
 		}
+		// LL.W: op8 = 0x20 (bits[31:24])
+		const uint32_t op8 = (instr >> 24) & 0xFF;
+		if (op8 == 0x20) {
+			return LA64_BC_LL_W;
+		}
+		// CLO.W, CLZ.W, CLO.D, CLZ.D, REVB.2H: op22_val = bits[31:10]
+		const uint32_t op22_val = (instr >> 10) & 0x3FFFFF;
+		if (op22_val == 0x000004) return LA64_BC_CLO_W;
+		if (op22_val == 0x000005) return LA64_BC_CLZ_W;
+		if (op22_val == 0x000008) return LA64_BC_CLO_D;
+		if (op22_val == 0x000009) return LA64_BC_CLZ_D;
+		if (op22_val == 0x00000C) return LA64_BC_REVB_2H;
+		// BYTEPICK.D: bits[31:18] = 0x0003
+		if ((instr & 0xFFFC0000) == 0x000C0000) {
+			return LA64_BC_BYTEPICK_D;
+		}
+		// SLTI: op10 = 0x008 (0x02000000 >> 22)
+		if (op10 == 0x008) {
+			return LA64_BC_SLTI;
+		}
+		// ST.H: op10 = 0x0A5 (0x29400000 >> 22)
+		if (op10 == 0x0A5) {
+			return LA64_BC_ST_H;
+		}
+		// FLD.D: op10 = 0x0AE (0x2B800000 >> 22)
+		if (op10 == 0x0AE) {
+			return LA64_BC_FLD_D;
+		}
+		// FST.D: op10 = 0x0AF (0x2BC00000 >> 22)
+		if (op10 == 0x0AF) {
+			return LA64_BC_FST_D;
+		}
+		// FADD.D: op17 = 0x00202 (0x01010000 >> 15)
+		if (op17 == 0x00202) {
+			return LA64_BC_FADD_D;
+		}
+		// FMUL.D: op17 = 0x0020A (0x01050000 >> 15)
+		if (op17 == 0x0020A) {
+			return LA64_BC_FMUL_D;
+		}
 
 		// LSX (SIMD) instructions
 		// VLD: op10 = 0x0b0 (0x2c000000)

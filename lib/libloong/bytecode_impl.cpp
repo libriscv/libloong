@@ -666,6 +666,146 @@ INSTRUCTION(LA64_BC_SYSCALLIMM, la64_syscall_imm)
 	goto check_jump;
 }
 
+// LA64_BC_LL_W: Load-linked word (rd = sign_ext(mem[rj + sign_ext(imm14 << 2)]))
+INSTRUCTION(LA64_BC_LL_W, la64_ll_w)
+{
+	auto fi = *(FasterLA64_RI14 *)&DECODER().instr;
+	const auto addr = REG(fi.rj) + (saddress_t(fi.imm14) << 2);
+	REG(fi.rd) = (saddress_t)(int32_t)MACHINE().memory.template read<uint32_t>(addr);
+	CPU().set_ll_bit(true);
+	NEXT_INSTR();
+}
+
+// LA64_BC_CLO_W: Count leading ones word
+INSTRUCTION(LA64_BC_CLO_W, la64_clo_w)
+{
+	auto fi = *(FasterLA64_R2 *)&DECODER().instr;
+	uint32_t val = static_cast<uint32_t>(REG(fi.rj));
+	int count = 0;
+	for (int i = 31; i >= 0 && (val & (1u << i)); i--) count++;
+	REG(fi.rd) = count;
+	NEXT_INSTR();
+}
+
+// LA64_BC_CLZ_W: Count leading zeros word
+INSTRUCTION(LA64_BC_CLZ_W, la64_clz_w)
+{
+	auto fi = *(FasterLA64_R2 *)&DECODER().instr;
+	uint32_t val = static_cast<uint32_t>(REG(fi.rj));
+	REG(fi.rd) = val ? __builtin_clz(val) : 32;
+	NEXT_INSTR();
+}
+
+// LA64_BC_CLZ_D: Count leading zeros doubleword
+INSTRUCTION(LA64_BC_CLZ_D, la64_clz_d)
+{
+	auto fi = *(FasterLA64_R2 *)&DECODER().instr;
+	uint64_t val = REG(fi.rj);
+	REG(fi.rd) = val ? __builtin_clzll(val) : 64;
+	NEXT_INSTR();
+}
+
+// LA64_BC_REVB_2H: Reverse bytes in 2 halfwords
+INSTRUCTION(LA64_BC_REVB_2H, la64_revb_2h)
+{
+	auto fi = *(FasterLA64_R2 *)&DECODER().instr;
+	uint32_t val = static_cast<uint32_t>(REG(fi.rj));
+	uint32_t result = ((val & 0x00FF00FF) << 8) | ((val & 0xFF00FF00) >> 8);
+	REG(fi.rd) = static_cast<int64_t>(static_cast<int32_t>(result));
+	NEXT_INSTR();
+}
+
+// LA64_BC_BYTEPICK_D: Byte pick doubleword
+INSTRUCTION(LA64_BC_BYTEPICK_D, la64_bytepick_d)
+{
+	auto fi = *(FasterLA64_R3SA3 *)&DECODER().instr;
+	uint64_t rj_val = REG(fi.rj);
+	uint64_t rk_val = REG(fi.rk);
+	uint32_t shift = fi.sa3 * 8;
+	uint64_t result;
+	if (shift == 0) {
+		result = rj_val;
+	} else {
+		result = (rk_val << (64 - shift)) | (rj_val >> shift);
+	}
+	REG(fi.rd) = result;
+	NEXT_INSTR();
+}
+
+// LA64_BC_SLTI: Set if less than immediate
+INSTRUCTION(LA64_BC_SLTI, la64_slti)
+{
+	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
+	int64_t a = static_cast<int64_t>(REG(fi.rj));
+	int64_t b = fi.imm;
+	REG(fi.rd) = (a < b) ? 1 : 0;
+	NEXT_INSTR();
+}
+
+// LA64_BC_CLO_D: Count leading ones doubleword
+INSTRUCTION(LA64_BC_CLO_D, la64_clo_d)
+{
+	auto fi = *(FasterLA64_R2 *)&DECODER().instr;
+	uint64_t val = REG(fi.rj);
+	int count = 0;
+	for (int i = 63; i >= 0 && (val & (1ULL << i)); i--) count++;
+	REG(fi.rd) = count;
+	NEXT_INSTR();
+}
+
+// LA64_BC_ST_H: Store halfword (mem[rj + sign_ext(imm12)] = rd[15:0])
+INSTRUCTION(LA64_BC_ST_H, la64_st_h)
+{
+	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
+	const auto addr = REG(fi.rj) + fi.imm;
+	MACHINE().memory.template write<uint16_t>(addr, REG(fi.rd));
+	NEXT_INSTR();
+}
+
+// LA64_BC_FLD_D: Floating-point load doubleword
+INSTRUCTION(LA64_BC_FLD_D, la64_fld_d)
+{
+	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
+	const auto addr = REG(fi.rj) + fi.imm;
+	uint64_t val = MACHINE().memory.template read<uint64_t>(addr);
+	auto& vr = REGISTERS().getvr(fi.rd);
+	vr.du[0] = val;
+	vr.du[1] = 0;
+	NEXT_INSTR();
+}
+
+// LA64_BC_FST_D: Floating-point store doubleword
+INSTRUCTION(LA64_BC_FST_D, la64_fst_d)
+{
+	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
+	const auto addr = REG(fi.rj) + fi.imm;
+	const auto& vr = REGISTERS().getvr(fi.rd);
+	MACHINE().memory.template write<uint64_t>(addr, vr.du[0]);
+	NEXT_INSTR();
+}
+
+// LA64_BC_FADD_D: Floating-point add doubleword
+INSTRUCTION(LA64_BC_FADD_D, la64_fadd_d)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	const auto& vr_j = REGISTERS().getvr(fi.rj);
+	const auto& vr_k = REGISTERS().getvr(fi.rk);
+	auto& vr_d = REGISTERS().getvr(fi.rd);
+	vr_d.df[0] = vr_j.df[0] + vr_k.df[0];
+	NEXT_INSTR();
+}
+
+// LA64_BC_FMUL_D: Floating-point multiply doubleword
+INSTRUCTION(LA64_BC_FMUL_D, la64_fmul_d)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	const auto& vr_j = REGISTERS().getvr(fi.rj);
+	const auto& vr_k = REGISTERS().getvr(fi.rk);
+	auto& vr_d = REGISTERS().getvr(fi.rd);
+	vr_d.df[0] = vr_j.df[0] * vr_k.df[0];
+	NEXT_INSTR();
+}
+
 // LA64_BC_INVALID: Invalid instruction
 INSTRUCTION(LA64_BC_INVALID, execute_invalid)
 {

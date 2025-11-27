@@ -326,6 +326,67 @@ uint32_t optimize_bytecode(uint8_t& bytecode, address_type<W> pc, uint32_t instr
 			fi.set_imm(original.ri20.imm);
 			return fi.whole;
 		} break;
+		case LA64_BC_LL_W: {
+			auto fi = *(FasterLA64_RI14 *)&instruction_bits;
+			fi.rd = original.ri14.rd;
+			fi.rj = original.ri14.rj;
+			fi.set_imm(original.ri14.imm);
+			return fi.whole;
+		} break;
+		case LA64_BC_CLO_W:
+		case LA64_BC_CLZ_W:
+		case LA64_BC_CLO_D:
+		case LA64_BC_CLZ_D:
+		case LA64_BC_REVB_2H: {
+			auto fi = *(FasterLA64_R2 *)&instruction_bits;
+			fi.rd = original.r2.rd;
+			fi.rj = original.r2.rj;
+			return fi.whole;
+		} break;
+		case LA64_BC_BYTEPICK_D: {
+			auto fi = *(FasterLA64_R3SA3 *)&instruction_bits;
+			fi.rd = original.r3.rd;
+			fi.rj = original.r3.rj;
+			fi.rk = original.r3.rk;
+			fi.sa3 = (original.whole >> 15) & 0x7;
+			return fi.whole;
+		} break;
+		case LA64_BC_SLTI: {
+			auto fi = *(FasterLA64_RI12 *)&instruction_bits;
+			fi.rd = original.ri12.rd;
+			fi.rj = original.ri12.rj;
+			fi.set_imm(original.ri12.imm);
+			return fi.whole;
+		} break;
+		case LA64_BC_ST_H: {
+			auto fi = *(FasterLA64_RI12 *)&instruction_bits;
+			fi.rd = original.ri12.rd;
+			fi.rj = original.ri12.rj;
+			fi.set_imm(original.ri12.imm);
+			return fi.whole;
+		} break;
+		case LA64_BC_FLD_D: {
+			auto fi = *(FasterLA64_RI12 *)&instruction_bits;
+			fi.rd = original.ri12.rd;
+			fi.rj = original.ri12.rj;
+			fi.set_imm(original.ri12.imm);
+			return fi.whole;
+		} break;
+		case LA64_BC_FST_D: {
+			auto fi = *(FasterLA64_RI12 *)&instruction_bits;
+			fi.rd = original.ri12.rd;
+			fi.rj = original.ri12.rj;
+			fi.set_imm(original.ri12.imm);
+			return fi.whole;
+		} break;
+		case LA64_BC_FADD_D:
+		case LA64_BC_FMUL_D: {
+			auto fi = *(FasterLA64_R3 *)&instruction_bits;
+			fi.rd = original.r3.rd;
+			fi.rj = original.r3.rj;
+			fi.rk = original.r3.rk;
+			return fi.whole;
+		} break;
 		// LSX (SIMD) instructions
 		case LA64_BC_VLD: {
 			// VLD vd, rj, si12 - uses RI12 format

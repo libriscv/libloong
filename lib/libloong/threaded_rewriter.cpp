@@ -326,6 +326,47 @@ uint32_t optimize_bytecode(uint8_t& bytecode, address_type<W> pc, uint32_t instr
 			fi.set_imm(original.ri20.imm);
 			return fi.whole;
 		} break;
+		// LSX (SIMD) instructions
+		case LA64_BC_VLD: {
+			// VLD vd, rj, si12 - uses RI12 format
+			auto fi = *(FasterLA64_RI12 *)&instruction_bits;
+			fi.rd = original.ri12.rd;
+			fi.rj = original.ri12.rj;
+			fi.set_imm(original.ri12.imm);
+			return fi.whole;
+		} break;
+		case LA64_BC_VST: {
+			// VST vd, rj, si12 - uses RI12 format
+			auto fi = *(FasterLA64_RI12 *)&instruction_bits;
+			fi.rd = original.ri12.rd;
+			fi.rj = original.ri12.rj;
+			fi.set_imm(original.ri12.imm);
+			return fi.whole;
+		} break;
+		case LA64_BC_VLDX: {
+			// VLDX vd, rj, rk - uses R3 format
+			auto fi = *(FasterLA64_R3 *)&instruction_bits;
+			fi.rd = original.r3.rd;
+			fi.rj = original.r3.rj;
+			fi.rk = original.r3.rk;
+			return fi.whole;
+		} break;
+		case LA64_BC_VSTX: {
+			// VSTX vd, rj, rk - uses R3 format
+			auto fi = *(FasterLA64_R3 *)&instruction_bits;
+			fi.rd = original.r3.rd;
+			fi.rj = original.r3.rj;
+			fi.rk = original.r3.rk;
+			return fi.whole;
+		} break;
+		case LA64_BC_VFADD_D: {
+			// VFADD.D vd, vj, vk - uses R3 format
+			auto fi = *(FasterLA64_R3 *)&instruction_bits;
+			fi.rd = original.r3.rd;
+			fi.rj = original.r3.rj;
+			fi.rk = original.r3.rk;
+			return fi.whole;
+		} break;
 		case LA64_BC_JIRL:
 			// No optimization needed - JIRL uses original instruction bits
 			// because it needs to access ri16 fields directly in VIEW_INSTR()

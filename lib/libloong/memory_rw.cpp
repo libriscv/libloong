@@ -49,6 +49,12 @@ namespace loongarch
 		return std::memcmp(&m_arena[addr1 - m_rodata_start], &m_arena[addr2 - m_rodata_start], len);
 	}
 
+	template <int W>
+	void Memory<W>::protection_fault(address_t addr, const char* message)
+	{
+		throw MachineException(PROTECTION_FAULT, message, addr);
+	}
+
 // Template instantiations
 #ifdef LA_32
 	template struct Memory<LA32>;

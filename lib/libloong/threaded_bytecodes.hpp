@@ -56,6 +56,13 @@ namespace loongarch
 		LA64_BC_BSTRINS_D,         // Bit string insert doubleword (115 in stream)
 		LA64_BC_LU32I_D,           // Load upper 32-bit immediate doubleword (93 in stream)
 
+		// LSX (SIMD) instructions
+		LA64_BC_VLD,               // Vector load 128-bit (293 in stream)
+		LA64_BC_VST,               // Vector store 128-bit (234 in stream)
+		LA64_BC_VFADD_D,           // Vector floating-point add double (11 in stream)
+		LA64_BC_VLDX,              // Vector indexed load 128-bit (4 in stream)
+		LA64_BC_VSTX,              // Vector indexed store 128-bit (2 in stream)
+
 		// Branch instructions
 		LA64_BC_BEQZ,              // Branch if equal to zero
 		LA64_BC_BNEZ,              // Branch if not equal to zero
@@ -129,6 +136,11 @@ namespace loongarch
 		case LA64_BC_LDX_BU: return "LDX.BU";
 		case LA64_BC_BSTRINS_D: return "BSTRINS.D";
 		case LA64_BC_LU32I_D: return "LU32I.D";
+		case LA64_BC_VLD: return "VLD";
+		case LA64_BC_VST: return "VST";
+		case LA64_BC_VFADD_D: return "VFADD.D";
+		case LA64_BC_VLDX: return "VLDX";
+		case LA64_BC_VSTX: return "VSTX";
 		case LA64_BC_BEQZ: return "BEQZ";
 		case LA64_BC_BNEZ: return "BNEZ";
 		case LA64_BC_BEQ: return "BEQ";

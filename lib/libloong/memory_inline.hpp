@@ -9,7 +9,7 @@ template <typename T>
 inline T Memory<W>::read(address_t addr) const
 {
 	if (LA_UNLIKELY(addr < m_rodata_start || addr >= m_arena_size)) {
-		throw MachineException(PROTECTION_FAULT, "Read from unmapped memory", addr);
+		protection_fault(addr, "Read from unmapped memory");
 	}
 
 	const size_t offset = addr - m_rodata_start;
@@ -21,7 +21,7 @@ template <typename T>
 inline void Memory<W>::write(address_t addr, T value)
 {
 	if (LA_UNLIKELY(!is_writable(addr, sizeof(T)))) {
-		throw MachineException(PROTECTION_FAULT, "Write to read-only memory", addr);
+		protection_fault(addr, "Write to read-only memory");
 	}
 
 	const size_t offset = addr - m_rodata_start;

@@ -144,6 +144,7 @@ namespace loongarch
 		inline bool is_writable(address_t addr, size_t size = sizeof(address_t)) const noexcept {
 			return addr >= m_data_start && addr + size < m_arena_size;
 		}
+		[[noreturn]] LA_COLD_PATH() static void protection_fault(address_t addr, const char* message);
 	};
 
 } // loongarch

@@ -249,6 +249,28 @@ namespace loongarch
 			return LA64_BC_LU32I_D;
 		}
 
+		// LSX (SIMD) instructions
+		// VLD: op10 = 0x0b0 (0x2c000000)
+		if (op10 == 0x0b0) {
+			return LA64_BC_VLD;
+		}
+		// VST: op10 = 0x0b1 (0x2c400000)
+		if (op10 == 0x0b1) {
+			return LA64_BC_VST;
+		}
+		// VLDX: op17 = 0x7080 (0x38400000 >> 15)
+		if (op17 == 0x7080) {
+			return LA64_BC_VLDX;
+		}
+		// VSTX: op17 = 0x7088 (0x38440000 >> 15)
+		if (op17 == 0x7088) {
+			return LA64_BC_VSTX;
+		}
+		// VFADD.D: op17 = 0xe262 (0x71310000 >> 15)
+		if (op17 == 0xe262) {
+			return LA64_BC_VFADD_D;
+		}
+
 		// Branch instructions
 		if (op6 == 0x10) { // BEQZ
 			return LA64_BC_BEQZ;

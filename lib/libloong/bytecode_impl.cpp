@@ -547,6 +547,65 @@ INSTRUCTION(LA64_BC_JIRL, la64_jirl)
 
 // ============ Generic Bytecode Handlers ============
 
+// ============ LSX (SIMD) Instruction Bytecodes ============
+
+// LA64_BC_VLD: Vector load 128-bit (vd = mem[rj + sign_ext(imm12)])
+INSTRUCTION(LA64_BC_VLD, la64_vld)
+{
+	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
+	const auto addr = REG(fi.rj) + fi.imm;
+	auto& vr = REGISTERS().getvr(fi.rd);
+	vr.du[0] = MACHINE().memory.template read<uint64_t>(addr);
+	vr.du[1] = MACHINE().memory.template read<uint64_t>(addr + 8);
+	NEXT_INSTR();
+}
+
+// LA64_BC_VST: Vector store 128-bit (mem[rj + sign_ext(imm12)] = vd)
+INSTRUCTION(LA64_BC_VST, la64_vst)
+{
+	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
+	const auto addr = REG(fi.rj) + fi.imm;
+	const auto& vr = REGISTERS().getvr(fi.rd);
+	MACHINE().memory.template write<uint64_t>(addr, vr.du[0]);
+	MACHINE().memory.template write<uint64_t>(addr + 8, vr.du[1]);
+	NEXT_INSTR();
+}
+
+// LA64_BC_VLDX: Vector indexed load 128-bit (vd = mem[rj + rk])
+INSTRUCTION(LA64_BC_VLDX, la64_vldx)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	const auto addr = REG(fi.rj) + REG(fi.rk);
+	auto& vr = REGISTERS().getvr(fi.rd);
+	vr.du[0] = MACHINE().memory.template read<uint64_t>(addr);
+	vr.du[1] = MACHINE().memory.template read<uint64_t>(addr + 8);
+	NEXT_INSTR();
+}
+
+// LA64_BC_VSTX: Vector indexed store 128-bit (mem[rj + rk] = vd)
+INSTRUCTION(LA64_BC_VSTX, la64_vstx)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	const auto addr = REG(fi.rj) + REG(fi.rk);
+	const auto& vr = REGISTERS().getvr(fi.rd);
+	MACHINE().memory.template write<uint64_t>(addr, vr.du[0]);
+	MACHINE().memory.template write<uint64_t>(addr + 8, vr.du[1]);
+	NEXT_INSTR();
+}
+
+// LA64_BC_VFADD_D: Vector floating-point add double (vd[i] = vj[i] + vk[i])
+INSTRUCTION(LA64_BC_VFADD_D, la64_vfadd_d)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	auto& vrd = REGISTERS().getvr(fi.rd);
+	const auto& vrj = REGISTERS().getvr(fi.rj);
+	const auto& vrk = REGISTERS().getvr(fi.rk);
+	// VFADD.D operates on 2 double-precision elements
+	vrd.df[0] = vrj.df[0] + vrk.df[0];
+	vrd.df[1] = vrj.df[1] + vrk.df[1];
+	NEXT_INSTR();
+}
+
 // LA64_BC_FUNCTION: Regular non-PC-modifying instruction
 INSTRUCTION(LA64_BC_FUNCTION, execute_decoded_function)
 {

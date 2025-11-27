@@ -49,6 +49,13 @@ static constexpr void *computed_opcode[] = {
 	[LA64_BC_BSTRINS_D] = &&la64_bstrins_d,
 	[LA64_BC_LU32I_D]   = &&la64_lu32i_d,
 
+	// LSX (SIMD) instructions
+	[LA64_BC_VLD]       = &&la64_vld,
+	[LA64_BC_VST]       = &&la64_vst,
+	[LA64_BC_VFADD_D]   = &&la64_vfadd_d,
+	[LA64_BC_VLDX]      = &&la64_vldx,
+	[LA64_BC_VSTX]      = &&la64_vstx,
+
 	[LA64_BC_BEQZ]      = &&la64_beqz,
 	[LA64_BC_BNEZ]      = &&la64_bnez,
 	[LA64_BC_BEQ]       = &&la64_beq,

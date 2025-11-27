@@ -57,7 +57,7 @@ Scale:           2087.4     0.079466     0.076651     0.084307
 Add:             8719.0     0.027838     0.027526     0.028200
 Triad:           5699.1     0.042342     0.042112     0.042765
 
-CoreMark 1.0 : 2449.882148 / GCC14.2.0 -O3 -DPERFORMANCE_RUN=1   / Static
+CoreMark 1.0 : 2583.325820 / GCC14.2.0 -O3 -DPERFORMANCE_RUN=1   / Static
 ```
 Despite not having a complete threaded dispatch yet, it is quite fast.
 

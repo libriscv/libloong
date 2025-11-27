@@ -326,13 +326,6 @@ uint32_t optimize_bytecode(uint8_t& bytecode, address_type<W> pc, uint32_t instr
 			fi.set_imm(original.ri20.imm);
 			return fi.whole;
 		} break;
-		case LA64_BC_LL_W: {
-			auto fi = *(FasterLA64_RI14 *)&instruction_bits;
-			fi.rd = original.ri14.rd;
-			fi.rj = original.ri14.rj;
-			fi.set_imm(original.ri14.imm);
-			return fi.whole;
-		} break;
 		case LA64_BC_CLO_W:
 		case LA64_BC_CLZ_W:
 		case LA64_BC_CLO_D:
@@ -428,6 +421,209 @@ uint32_t optimize_bytecode(uint8_t& bytecode, address_type<W> pc, uint32_t instr
 			fi.rk = original.r3.rk;
 			return fi.whole;
 		} break;
+	case LA64_BC_SRLI_W: {
+		// SRLI.W rd, rj, ui5 - uses Shift format
+		auto fi = *(FasterLA64_Shift *)&instruction_bits;
+		fi.rd = original.r3.rd;
+		fi.rj = original.r3.rj;
+		fi.ui5 = (original.whole >> 10) & 0x1F;
+		if (fi.rd == 0) {
+			bytecode = LA64_BC_INVALID;
+		}
+		return fi.whole;
+	} break;
+	case LA64_BC_SRL_D: {
+		// SRL.D rd, rj, rk - uses R3 format
+		auto fi = *(FasterLA64_R3 *)&instruction_bits;
+		fi.rd = original.r3.rd;
+		fi.rj = original.r3.rj;
+		fi.rk = original.r3.rk;
+		if (fi.rd == 0) {
+			bytecode = LA64_BC_INVALID;
+		}
+		return fi.whole;
+	} break;
+	case LA64_BC_LU52I_D: {
+		// LU52I.D rd, rj, imm12 - uses RI12 format
+		auto fi = *(FasterLA64_RI12 *)&instruction_bits;
+		fi.rd = original.ri12.rd;
+		fi.rj = original.ri12.rj;
+		fi.set_imm(original.ri12.imm);
+		if (fi.rd == 0) {
+			bytecode = LA64_BC_INVALID;
+		}
+		return fi.whole;
+	} break;
+	case LA64_BC_XORI: {
+		// XORI rd, rj, imm12 - uses RI12 format
+		auto fi = *(FasterLA64_RI12 *)&instruction_bits;
+		fi.rd = original.ri12.rd;
+		fi.rj = original.ri12.rj;
+		fi.set_imm(original.ri12.imm);
+		if (fi.rd == 0) {
+			bytecode = LA64_BC_INVALID;
+		}
+		return fi.whole;
+	} break;
+	case LA64_BC_SLTUI: {
+		// SLTUI rd, rj, imm12 - uses RI12 format
+		auto fi = *(FasterLA64_RI12 *)&instruction_bits;
+		fi.rd = original.ri12.rd;
+		fi.rj = original.ri12.rj;
+		fi.set_imm(original.ri12.imm);
+		if (fi.rd == 0) {
+			bytecode = LA64_BC_INVALID;
+		}
+		return fi.whole;
+	} break;
+	case LA64_BC_LD_H: {
+		// LD.H rd, rj, imm12 - uses RI12 format
+		auto fi = *(FasterLA64_RI12 *)&instruction_bits;
+		fi.rd = original.ri12.rd;
+		fi.rj = original.ri12.rj;
+		fi.set_imm(original.ri12.imm);
+		return fi.whole;
+	} break;
+	case LA64_BC_LDX_HU: {
+		// LDX.HU rd, rj, rk - uses R3 format
+		auto fi = *(FasterLA64_R3 *)&instruction_bits;
+		fi.rd = original.r3.rd;
+		fi.rj = original.r3.rj;
+		fi.rk = original.r3.rk;
+		return fi.whole;
+	} break;
+	case LA64_BC_LD_WU: {
+		// LD.WU rd, rj, imm12 - uses RI12 format
+		auto fi = *(FasterLA64_RI12 *)&instruction_bits;
+		fi.rd = original.ri12.rd;
+		fi.rj = original.ri12.rj;
+		fi.set_imm(original.ri12.imm);
+		return fi.whole;
+	} break;
+	case LA64_BC_PCADDU12I:
+		// PCADDU12I uses PC, handled as diverging instruction
+		return instruction_bits;
+	case LA64_BC_ANDN: {
+		// ANDN rd, rj, rk - uses R3 format
+		auto fi = *(FasterLA64_R3 *)&instruction_bits;
+		fi.rd = original.r3.rd;
+		fi.rj = original.r3.rj;
+		fi.rk = original.r3.rk;
+		if (fi.rd == 0) {
+			bytecode = LA64_BC_INVALID;
+		}
+		return fi.whole;
+	} break;
+	case LA64_BC_STX_B: {
+		// STX.B rd, rj, rk - uses R3 format
+		auto fi = *(FasterLA64_R3 *)&instruction_bits;
+		fi.rd = original.r3.rd;
+		fi.rj = original.r3.rj;
+		fi.rk = original.r3.rk;
+		return fi.whole;
+	} break;
+	case LA64_BC_CTZ_D: {
+		// CTZ.D rd, rj - uses R2 format
+		auto fi = *(FasterLA64_R2 *)&instruction_bits;
+		fi.rd = original.r2.rd;
+		fi.rj = original.r2.rj;
+		if (fi.rd == 0) {
+			bytecode = LA64_BC_INVALID;
+		}
+		return fi.whole;
+	} break;
+	case LA64_BC_CTO_W: {
+		// CTO.W rd, rj - uses R2 format
+		auto fi = *(FasterLA64_R2 *)&instruction_bits;
+		fi.rd = original.r2.rd;
+		fi.rj = original.r2.rj;
+		if (fi.rd == 0) {
+			bytecode = LA64_BC_INVALID;
+		}
+		return fi.whole;
+	} break;
+	case LA64_BC_EXT_W_H: {
+		// EXT.W.H rd, rj - uses R2 format
+		auto fi = *(FasterLA64_R2 *)&instruction_bits;
+		fi.rd = original.r2.rd;
+		fi.rj = original.r2.rj;
+		if (fi.rd == 0) {
+			bytecode = LA64_BC_INVALID;
+		}
+		return fi.whole;
+	} break;
+	case LA64_BC_LDX_B: {
+		// LDX.B rd, rj, rk - uses R3 format
+		auto fi = *(FasterLA64_R3 *)&instruction_bits;
+		fi.rd = original.r3.rd;
+		fi.rj = original.r3.rj;
+		fi.rk = original.r3.rk;
+		return fi.whole;
+	} break;
+	case LA64_BC_SLT: {
+		// SLT rd, rj, rk - uses R3 format
+		auto fi = *(FasterLA64_R3 *)&instruction_bits;
+		fi.rd = original.r3.rd;
+		fi.rj = original.r3.rj;
+		fi.rk = original.r3.rk;
+		if (fi.rd == 0) {
+			bytecode = LA64_BC_INVALID;
+		}
+		return fi.whole;
+	} break;
+	case LA64_BC_ORN: {
+		// ORN rd, rj, rk - uses R3 format
+		auto fi = *(FasterLA64_R3 *)&instruction_bits;
+		fi.rd = original.r3.rd;
+		fi.rj = original.r3.rj;
+		fi.rk = original.r3.rk;
+		if (fi.rd == 0) {
+			bytecode = LA64_BC_INVALID;
+		}
+		return fi.whole;
+	} break;
+	case LA64_BC_CTO_D: {
+		// CTO.D rd, rj - uses R2 format
+		auto fi = *(FasterLA64_R2 *)&instruction_bits;
+		fi.rd = original.r2.rd;
+		fi.rj = original.r2.rj;
+		if (fi.rd == 0) {
+			bytecode = LA64_BC_INVALID;
+		}
+		return fi.whole;
+	} break;
+	case LA64_BC_MUL_W: {
+		// MUL.W rd, rj, rk - uses R3 format
+		auto fi = *(FasterLA64_R3 *)&instruction_bits;
+		fi.rd = original.r3.rd;
+		fi.rj = original.r3.rj;
+		fi.rk = original.r3.rk;
+		if (fi.rd == 0) {
+			bytecode = LA64_BC_INVALID;
+		}
+		return fi.whole;
+	} break;
+	case LA64_BC_MOD_DU: {
+		// MOD.DU rd, rj, rk - uses R3 format
+		auto fi = *(FasterLA64_R3 *)&instruction_bits;
+		fi.rd = original.r3.rd;
+		fi.rj = original.r3.rj;
+		fi.rk = original.r3.rk;
+		if (fi.rd == 0) {
+			bytecode = LA64_BC_INVALID;
+		}
+		return fi.whole;
+	} break;
+	case LA64_BC_REVB_4H: {
+		// REVB.4H rd, rj - uses R2 format
+		auto fi = *(FasterLA64_R2 *)&instruction_bits;
+		fi.rd = original.r2.rd;
+		fi.rj = original.r2.rj;
+		if (fi.rd == 0) {
+			bytecode = LA64_BC_INVALID;
+		}
+		return fi.whole;
+	} break;
 		case LA64_BC_JIRL:
 			// No optimization needed - JIRL uses original instruction bits
 			// because it needs to access ri16 fields directly in VIEW_INSTR()

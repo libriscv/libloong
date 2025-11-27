@@ -666,16 +666,6 @@ INSTRUCTION(LA64_BC_SYSCALLIMM, la64_syscall_imm)
 	goto check_jump;
 }
 
-// LA64_BC_LL_W: Load-linked word (rd = sign_ext(mem[rj + sign_ext(imm14 << 2)]))
-INSTRUCTION(LA64_BC_LL_W, la64_ll_w)
-{
-	auto fi = *(FasterLA64_RI14 *)&DECODER().instr;
-	const auto addr = REG(fi.rj) + (saddress_t(fi.imm14) << 2);
-	REG(fi.rd) = (saddress_t)(int32_t)MACHINE().memory.template read<uint32_t>(addr);
-	CPU().set_ll_bit(true);
-	NEXT_INSTR();
-}
-
 // LA64_BC_CLO_W: Count leading ones word
 INSTRUCTION(LA64_BC_CLO_W, la64_clo_w)
 {
@@ -803,6 +793,210 @@ INSTRUCTION(LA64_BC_FMUL_D, la64_fmul_d)
 	const auto& vr_k = REGISTERS().getvr(fi.rk);
 	auto& vr_d = REGISTERS().getvr(fi.rd);
 	vr_d.df[0] = vr_j.df[0] * vr_k.df[0];
+	NEXT_INSTR();
+}
+
+
+// ============ New Bytecodes from coremark profiling ============
+
+// LA64_BC_SRLI_W: Shift right logical immediate word
+INSTRUCTION(LA64_BC_SRLI_W, la64_srli_w)
+{
+	auto fi = *(FasterLA64_Shift *)&DECODER().instr;
+	uint32_t val = static_cast<uint32_t>(REG(fi.rj)) >> fi.ui5;
+	REG(fi.rd) = static_cast<int32_t>(val);
+	NEXT_INSTR();
+}
+
+// LA64_BC_SRL_D: Shift right logical doubleword
+INSTRUCTION(LA64_BC_SRL_D, la64_srl_d)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	uint32_t shift = REG(fi.rk) & 0x3F;
+	REG(fi.rd) = static_cast<uint64_t>(REG(fi.rj)) >> shift;
+	NEXT_INSTR();
+}
+
+// LA64_BC_LU52I_D: Load upper 52-bit immediate doubleword
+INSTRUCTION(LA64_BC_LU52I_D, la64_lu52i_d)
+{
+	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
+	// LU52I.D: GR[rd] = {imm12, GR[rj][51:0]}
+	uint64_t imm = static_cast<uint64_t>(fi.imm & 0xFFF) << 52;
+	uint64_t val = REG(fi.rj) & 0x000FFFFFFFFFFFFFull;
+	REG(fi.rd) = imm | val;
+	NEXT_INSTR();
+}
+
+// LA64_BC_XORI: XOR immediate
+INSTRUCTION(LA64_BC_XORI, la64_xori)
+{
+	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
+	REG(fi.rd) = REG(fi.rj) ^ (fi.imm & 0xFFF);
+	NEXT_INSTR();
+}
+
+// LA64_BC_SLTUI: Set if less than unsigned immediate
+INSTRUCTION(LA64_BC_SLTUI, la64_sltui)
+{
+	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
+	uint64_t a = REG(fi.rj);
+	uint64_t b = static_cast<uint64_t>(fi.imm) & 0xFFF;
+	REG(fi.rd) = (a < b) ? 1 : 0;
+	NEXT_INSTR();
+}
+
+// LA64_BC_LD_H: Load halfword signed
+INSTRUCTION(LA64_BC_LD_H, la64_ld_h)
+{
+	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
+	const auto addr = REG(fi.rj) + fi.imm;
+	REG(fi.rd) = static_cast<int64_t>(MACHINE().memory.template read<int16_t>(addr));
+	NEXT_INSTR();
+}
+
+// LA64_BC_LDX_HU: Load halfword unsigned indexed
+INSTRUCTION(LA64_BC_LDX_HU, la64_ldx_hu)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	const auto addr = REG(fi.rj) + REG(fi.rk);
+	REG(fi.rd) = MACHINE().memory.template read<uint16_t>(addr);
+	NEXT_INSTR();
+}
+
+// LA64_BC_LD_WU: Load word unsigned
+INSTRUCTION(LA64_BC_LD_WU, la64_ld_wu)
+{
+	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
+	const auto addr = REG(fi.rj) + fi.imm;
+	REG(fi.rd) = MACHINE().memory.template read<uint32_t>(addr);
+	NEXT_INSTR();
+}
+
+// LA64_BC_PCADDU12I: PC-aligned add upper 12 immediate
+INSTRUCTION(LA64_BC_PCADDU12I, la64_pcaddu12i)
+{
+	VIEW_INSTR();
+	const int64_t si20 = InstructionHelpers<W>::sign_extend_20(instr.ri20.imm);
+	const int64_t offset = si20 << 12;
+	REG(instr.ri20.rd) = pc + offset;
+	NEXT_BLOCK(4);
+}
+
+// LA64_BC_ANDN: AND NOT
+INSTRUCTION(LA64_BC_ANDN, la64_andn)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	REG(fi.rd) = REG(fi.rj) & ~REG(fi.rk);
+	NEXT_INSTR();
+}
+
+// LA64_BC_STX_B: Store byte indexed
+INSTRUCTION(LA64_BC_STX_B, la64_stx_b)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	const auto addr = REG(fi.rj) + REG(fi.rk);
+	MACHINE().memory.template write<uint8_t>(addr, REG(fi.rd));
+	NEXT_INSTR();
+}
+
+// LA64_BC_CTZ_D: Count trailing zeros doubleword
+INSTRUCTION(LA64_BC_CTZ_D, la64_ctz_d)
+{
+	auto fi = *(FasterLA64_R2 *)&DECODER().instr;
+	uint64_t val = REG(fi.rj);
+	REG(fi.rd) = (val == 0) ? 64 : __builtin_ctzll(val);
+	NEXT_INSTR();
+}
+
+// LA64_BC_CTO_W: Count trailing ones word
+INSTRUCTION(LA64_BC_CTO_W, la64_cto_w)
+{
+	auto fi = *(FasterLA64_R2 *)&DECODER().instr;
+	uint32_t val = static_cast<uint32_t>(REG(fi.rj));
+	REG(fi.rd) = (val == 0xFFFFFFFF) ? 32 : __builtin_ctz(~val);
+	NEXT_INSTR();
+}
+
+// LA64_BC_EXT_W_H: Extend halfword to word
+INSTRUCTION(LA64_BC_EXT_W_H, la64_ext_w_h)
+{
+	auto fi = *(FasterLA64_R2 *)&DECODER().instr;
+	REG(fi.rd) = static_cast<int64_t>(static_cast<int16_t>(REG(fi.rj)));
+	NEXT_INSTR();
+}
+
+// LA64_BC_LDX_B: Load byte signed indexed
+INSTRUCTION(LA64_BC_LDX_B, la64_ldx_b)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	const auto addr = REG(fi.rj) + REG(fi.rk);
+	REG(fi.rd) = static_cast<int64_t>(MACHINE().memory.template read<int8_t>(addr));
+	NEXT_INSTR();
+}
+
+// LA64_BC_SLT: Set if less than
+INSTRUCTION(LA64_BC_SLT, la64_slt)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	int64_t a = static_cast<int64_t>(REG(fi.rj));
+	int64_t b = static_cast<int64_t>(REG(fi.rk));
+	REG(fi.rd) = (a < b) ? 1 : 0;
+	NEXT_INSTR();
+}
+
+// LA64_BC_ORN: OR NOT
+INSTRUCTION(LA64_BC_ORN, la64_orn)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	REG(fi.rd) = REG(fi.rj) | ~REG(fi.rk);
+	NEXT_INSTR();
+}
+
+// LA64_BC_CTO_D: Count trailing ones doubleword
+INSTRUCTION(LA64_BC_CTO_D, la64_cto_d)
+{
+	auto fi = *(FasterLA64_R2 *)&DECODER().instr;
+	uint64_t val = REG(fi.rj);
+	REG(fi.rd) = (val == 0xFFFFFFFFFFFFFFFFull) ? 64 : __builtin_ctzll(~val);
+	NEXT_INSTR();
+}
+
+// LA64_BC_MUL_W: Multiply word
+INSTRUCTION(LA64_BC_MUL_W, la64_mul_w)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	int32_t a = static_cast<int32_t>(REG(fi.rj));
+	int32_t b = static_cast<int32_t>(REG(fi.rk));
+	REG(fi.rd) = static_cast<int64_t>(a * b);
+	NEXT_INSTR();
+}
+
+// LA64_BC_MOD_DU: Modulo doubleword unsigned
+INSTRUCTION(LA64_BC_MOD_DU, la64_mod_du)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	uint64_t a = REG(fi.rj);
+	uint64_t b = REG(fi.rk);
+	REG(fi.rd) = (b != 0) ? (a % b) : 0;
+	NEXT_INSTR();
+}
+
+// LA64_BC_REVB_4H: Reverse bytes in 4 halfwords
+INSTRUCTION(LA64_BC_REVB_4H, la64_revb_4h)
+{
+	auto fi = *(FasterLA64_R2 *)&DECODER().instr;
+	uint64_t val = REG(fi.rj);
+	uint64_t result = 0;
+	result |= ((val & 0x00000000000000FFull) << 8);
+	result |= ((val & 0x000000000000FF00ull) >> 8);
+	result |= ((val & 0x0000000000FF0000ull) << 8);
+	result |= ((val & 0x00000000FF000000ull) >> 8);
+	result |= ((val & 0x000000FF00000000ull) << 8);
+	result |= ((val & 0x0000FF0000000000ull) >> 8);
+	result |= ((val & 0x00FF000000000000ull) << 8);
+	result |= ((val & 0xFF00000000000000ull) >> 8);
+	REG(fi.rd) = result;
 	NEXT_INSTR();
 }
 

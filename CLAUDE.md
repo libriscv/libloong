@@ -50,6 +50,10 @@ Only once all 5 steps are complete can the CLI be tested. Bytecodes should be im
 
 Many instructions have slow-path instructions already decoded in la64.cpp and implemented in la_instr_impl.hpp, which can be used as a starting point.
 
+## Instruction statistics
+
+Running programs in the CLI with --stats will execute the guest program to completion and show statistics about which instructions have been decoded into bytecodes and not. Any instruction that has the bytecode FUNCTION is using the slow-path and is not really implemented as a bytecode, rather a fallback that calls the slow-path instruction handler is used. Popular instructions need to have a dedicated optimized bytecode for good emulation performance. If an instruction is showing as both FUNCTION and a dedicated bytecode, it is guaranteed that the bytecode decoding step is not covering the instruction properly.
+
 ## Testing long-running programs
 
 Some programs runs for so long that only the emulator CLI can run it properly:

@@ -101,8 +101,8 @@ namespace loongarch
 		if (op17 == 0x00023) {
 			return LA64_BC_SUB_D;
 		}
-		// ALSL.D: op17 = 0x00058 (0x002c0000 >> 15)
-		if (op17 == 0x00058) {
+		// ALSL.D: bits[31:18] = 0x000B with sa2 in bits[16:15]
+		if ((instr & 0xFFFC0000) == 0x002C0000) {
 			return LA64_BC_ALSL_D;
 		}
 		// ORI: op10 = 0x00E (0x03800000)

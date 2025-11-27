@@ -216,21 +216,19 @@ void Memory<W>::process_rela_section(size_t offset, size_t size, const MachineOp
 template <int W>
 size_t Memory<W>::strlen(address_t addr, size_t maxlen)
 {
-	size_t len = 0;
-	while (len < maxlen && read<uint8_t>(addr + len) != 0) len++;
-	return len;
+	const address_t end_addr = std::min(addr + maxlen, m_arena_size);
+	if (end_addr <= addr) return 0;
+	const address_t size = end_addr - addr;
+	const char* ptr = memarray<char>(addr, size);
+	return ::strnlen(ptr, size);
 }
 
 template <int W>
 std::string Memory<W>::memstring(address_t addr, size_t maxlen)
 {
-	size_t len = strlen(addr, maxlen);
-	std::string result;
-	result.reserve(len);
-	for (size_t i = 0; i < len; i++) {
-		result.push_back(read<char>(addr + i));
-	}
-	return result;
+	const size_t len = this->strlen(addr, maxlen);
+	const char* ptr = memarray<char>(addr, len);
+	return std::string(ptr, len);
 }
 
 template <int W>

@@ -80,6 +80,7 @@ namespace loongarch
 		LA64_BC_FUNCTION,          // Non-PC-modifying instruction (simple handler call)
 		LA64_BC_FUNCBLOCK,         // PC-modifying instruction (branches, jumps, PC-relative)
 		LA64_BC_SYSCALL,           // System call (needs special handling)
+		LA64_BC_SYSCALLIMM,        // System call with immediate number (most likely patched in)
 		LA64_BC_STOP,              // Stop execution marker
 		BYTECODES_MAX
 	};
@@ -155,6 +156,7 @@ namespace loongarch
 		case LA64_BC_FUNCTION: return "FUNCTION";
 		case LA64_BC_FUNCBLOCK: return "FUNCBLOCK";
 		case LA64_BC_SYSCALL: return "SYSCALL";
+		case LA64_BC_SYSCALLIMM: return "SYSCALL+IMM";
 		case LA64_BC_STOP: return "STOP";
 		default: return "UNKNOWN";
 		}

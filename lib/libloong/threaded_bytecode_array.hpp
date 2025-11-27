@@ -71,5 +71,6 @@ static constexpr void *computed_opcode[] = {
 	[LA64_BC_FUNCTION]  = &&execute_decoded_function,
 	[LA64_BC_FUNCBLOCK] = &&execute_function_block,
 	[LA64_BC_SYSCALL]   = &&la64_syscall,
+	[LA64_BC_SYSCALLIMM]= &&la64_syscall_imm,
 	[LA64_BC_STOP]      = &&la64_stop,
 };

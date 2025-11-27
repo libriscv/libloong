@@ -36,6 +36,8 @@ namespace loongarch
 		size_t size_bytes() const noexcept { return m_exec_end - m_exec_begin; }
 		bool empty() const noexcept { return m_exec_begin >= m_exec_end; }
 
+		void set(address_t entry_addr, const DecoderData<W>& data);
+
 		bool is_stale() const noexcept { return m_stale; }
 		void set_stale(bool stale) noexcept { m_stale = stale; }
 

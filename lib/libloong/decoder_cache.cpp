@@ -390,6 +390,21 @@ namespace loongarch
 		segment.set_decoder_cache(cache, num_instructions);
 	}
 
+	template <int W>
+	void DecodedExecuteSegment<W>::set(address_t entry_addr, const DecoderData<W>& data)
+	{
+		const size_t index = (entry_addr - m_exec_begin) >> DecoderCache<W>::SHIFT;
+		if (index < m_decoder_cache.size) {
+			m_decoder_cache.cache[index] = data;
+		} else {
+			fprintf(stderr,
+				"DecodedExecuteSegment: set() address out of range: 0x%lx index=%zu size=%zu\n",
+				long(entry_addr), index, m_decoder_cache.size);
+			throw MachineException(INVALID_PROGRAM,
+				"DecodedExecuteSegment: set() address out of range", entry_addr);
+		}
+	}
+
 #ifdef LA_32
 	template struct DecodedExecuteSegment<LA32>;
 	template struct DecoderCache<LA32>;

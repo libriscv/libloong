@@ -183,5 +183,4 @@ namespace loongarch
 #ifdef LA_64
 	template struct Machine<LA64>;
 #endif
-
 } // loongarch

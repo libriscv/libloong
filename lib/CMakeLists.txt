@@ -25,6 +25,7 @@ set(SOURCES
 	libloong/cpu.cpp
 	libloong/elf_loader.cpp
 	libloong/machine.cpp
+	libloong/machine_accelerate.cpp
 	libloong/machine_bytecode_stats.cpp
 	libloong/memory.cpp
 	libloong/memory_rw.cpp

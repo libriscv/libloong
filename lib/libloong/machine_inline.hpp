@@ -32,7 +32,7 @@ namespace loongarch
 
 	template <int W>
 	template <typename T>
-	inline void Machine<W>::set_result(T&& value)
+	inline void Machine<W>::set_result(const T& value)
 	{
 		if constexpr (std::is_integral_v<remove_cvref_t<T>>) {
 			cpu.reg(REG_A0) = static_cast<address_t>(value);

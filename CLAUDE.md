@@ -48,6 +48,8 @@ A single bytecode means modifying 5 different places:
 
 Only once all 5 steps are complete can the CLI be tested. Bytecodes should be implemented according to popularity as LoongArch has very many instructions. Any bytecode where register zero could be written to can be rewritten in the optimizer to either NOP or INVALID (bytecode==0) when rd == 0, so that a pointless check for rd != 0 is avoided in hot-path.
 
+Many instructions have slow-path instructions already decoded in la64.cpp and implemented in la_instr_impl.hpp, which can be used as a starting point.
+
 ## Testing long-running programs
 
 Some programs runs for so long that only the emulator CLI can run it properly:

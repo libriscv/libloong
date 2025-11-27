@@ -648,6 +648,24 @@ INSTRUCTION(LA64_BC_SYSCALL, la64_syscall)
 	NEXT_BLOCK(4);
 }
 
+// LA64_BC_SYSCALL_IMM: Immediate system call
+INSTRUCTION(LA64_BC_SYSCALLIMM, la64_syscall_imm)
+{
+	// Save PC for syscall handler
+	REGISTERS().pc = pc;
+	// Save instruction counter
+	MACHINE().set_instruction_counter(counter);
+	// Execute the system call (immediate syscall number)
+	MACHINE().system_call(DECODER().instr);
+	// Restore counters
+	counter = MACHINE().instruction_counter();
+	max_counter = MACHINE().max_instructions();
+
+	// Return immediately using REG_RA
+	pc = REG(REG_RA);
+	goto check_jump;
+}
+
 // LA64_BC_INVALID: Invalid instruction
 INSTRUCTION(LA64_BC_INVALID, execute_invalid)
 {

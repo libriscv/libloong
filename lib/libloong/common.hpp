@@ -10,6 +10,7 @@ namespace loongarch
 	// LoongArch address widths
 	static constexpr int LA32 = 4;
 	static constexpr int LA64 = 8;
+	#define LA_SYSCALLS_MAX  512
 
 	template <int W = LA64>
 	struct MachineOptions {

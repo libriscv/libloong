@@ -134,6 +134,8 @@ static int run_program(const std::vector<uint8_t>& binary, const EmulatorOptions
 
 		// Setup Linux syscalls
 		machine.setup_linux_syscalls();
+		// Setup accelerated syscalls
+		machine.setup_accelerated_syscalls();
 
 		// Setup program arguments
 		if (opts.verbose) {

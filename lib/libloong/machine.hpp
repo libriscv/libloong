@@ -26,6 +26,7 @@ namespace loongarch
 			const std::vector<std::string>& env);
 		static void setup_minimal_syscalls();
 		static void setup_linux_syscalls();
+		void setup_accelerated_syscalls(); // Warning: modifies decoder cache
 
 		// Execution
 		template <bool Throw = true>
@@ -46,8 +47,8 @@ namespace loongarch
 		// System call interface
 		static void install_syscall_handler(unsigned sysnum, syscall_t* handler);
 		void system_call(unsigned sysnum);
-		template <typename T>
-		void set_result(T&& value);
+		template <typename T = address_t>
+		void set_result(const T& value);
 		template <typename T = address_t>
 		T return_value() const;
 
@@ -114,7 +115,7 @@ namespace loongarch
 		uint64_t m_max_instructions = 0;
 		const MachineOptions<W>* m_options_ptr = nullptr;
 		ThreadData m_threads;
-		static inline std::array<syscall_t*, 512> m_syscall_handlers = {};
+		static inline std::array<syscall_t*, LA_SYSCALLS_MAX> m_syscall_handlers = {};
 
 		void push_argument(address_t& sp, address_t value);
 	};

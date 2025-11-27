@@ -7,7 +7,7 @@
 namespace loongarch
 {
 	template <int W>
-	extern uint32_t optimize_bytecode(const uint8_t bytecode, address_type<W> pc, uint32_t instruction_bits);
+	extern uint32_t optimize_bytecode(uint8_t& bytecode, address_type<W> pc, uint32_t instruction_bits);
 
 	// Check if an instruction is diverging (changes control flow)
 	// Note: PC-reading instructions (PCADDI, PCALAU12I, PCADDU12I) are NOT diverging
@@ -263,6 +263,9 @@ namespace loongarch
 			// Set bytecode for threaded dispatch
 			cache[i].bytecode = determine_bytecode<W>(instr);
 			// Optimize instruction bits for popular bytecodes
+			// The optimizer may also modify the bytecode if needed,
+			// typically to rewrite cases where rd == zero register.
+			// This avoids a check in the hot-path for rd != 0.
 			const address_type<W> pc = exec_begin + (i * sizeof(la_instruction));
 			cache[i].instr = optimize_bytecode<W>(cache[i].bytecode, pc, instr);
 

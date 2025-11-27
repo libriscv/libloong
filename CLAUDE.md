@@ -37,6 +37,17 @@ Execute `cxx_test` until completion without debug lines, then start executing th
 build$ ./tests/debug_test -o tests/loongarch_bins/cxx_test --call test_exception
 ```
 
+## Adding a new bytecode
+
+A single bytecode means modifying 5 different places:
+1. Adding the new bytecode in threaded_bytecodes.hpp
+2. Decoding to the new bytecode in decoder_cache.cpp
+3. Implementing an optimized instruction layout in threaded_rewriter.cpp
+4. Implementing the actual bytecode handler in bytecode_impl.cpp
+5. Adding an entry connecting the bytecode to the handler in threaded_bytecode_array.hpp
+
+Only once all 5 steps are complete can the CLI be tested. Bytecodes should be implemented according to popularity as LoongArch has very many instructions. Any bytecode where register zero could be written to can be rewritten in the optimizer to either NOP or INVALID (bytecode==0) when rd == 0, so that a pointless check for rd != 0 is avoided in hot-path.
+
 ## Testing long-running programs
 
 Some programs runs for so long that only the emulator CLI can run it properly:

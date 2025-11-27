@@ -6,7 +6,7 @@
 namespace loongarch {
 
 template <int W>
-uint32_t optimize_bytecode(const uint8_t bytecode, address_type<W> pc, uint32_t instruction_bits)
+uint32_t optimize_bytecode(uint8_t& bytecode, address_type<W> pc, uint32_t instruction_bits)
 {
 	const la_instruction original{instruction_bits};
 
@@ -198,9 +198,9 @@ uint32_t optimize_bytecode(const uint8_t bytecode, address_type<W> pc, uint32_t 
 }
 
 #ifdef LA_32
-	template uint32_t optimize_bytecode<LA32>(const uint8_t, address_type<LA32>, uint32_t);
+	template uint32_t optimize_bytecode<LA32>(uint8_t&, address_type<LA32>, uint32_t);
 #endif
 #ifdef LA_64
-	template uint32_t optimize_bytecode<LA64>(const uint8_t, address_type<LA64>, uint32_t);
+	template uint32_t optimize_bytecode<LA64>(uint8_t&, address_type<LA64>, uint32_t);
 #endif
 } // namespace loongarch

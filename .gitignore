@@ -2,6 +2,7 @@
 build/
 .build/
 build_*/
+.build_*/
 cmake-build-*/
 
 # IDE files

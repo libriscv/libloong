@@ -10,10 +10,10 @@ namespace loongarch
 	struct DecoderData {
 		using handler_t = void(*)(CPU<W>&, la_instruction);
 
-		uint8_t bytecode = 0;         // Bytecode for threaded dispatch
-		uint8_t handler_idx = 0;      // Handler index (0-255)
-		uint16_t block_bytes = 0;     // Bytes until next diverging instruction (0 = diverges here)
-		uint32_t instr = 0;           // The 32-bit instruction bits
+		uint8_t bytecode;         // Bytecode for threaded dispatch
+		uint8_t handler_idx;      // Handler index (0-255)
+		uint16_t block_bytes;     // Bytes until next diverging instruction (0 = diverges here)
+		uint32_t instr;           // The 32-bit instruction bits
 
 		// Calculate number of instructions in this block (LoongArch = 4 bytes per instruction)
 		// This includes the current (diverging) instruction: block instructions + 1

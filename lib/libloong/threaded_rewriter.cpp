@@ -19,6 +19,18 @@ uint32_t optimize_bytecode(uint8_t& bytecode, address_type<W> pc, uint32_t instr
 			fi.set_imm(original.ri12.imm);
 			return fi.whole;
 		} break;
+		case LA64_BC_MOVE: {
+			// MOVE is OR rd, zero, rk - we only need rd and rk
+			auto fi = *(FasterLA64_R3 *)&instruction_bits;
+			fi.rd = original.r3.rd;
+			fi.rj = 0;  // Always zero for MOVE
+			fi.rk = original.r3.rk;
+			// Check if rd == 0, convert to NOP/INVALID
+			if (fi.rd == 0) {
+				bytecode = LA64_BC_INVALID;
+			}
+			return fi.whole;
+		} break;
 		case LA64_BC_ST_D: {
 			auto fi = *(FasterLA64_RI12 *)&instruction_bits;
 			fi.rd = original.ri12.rd;

@@ -14,6 +14,14 @@ INSTRUCTION(LA64_BC_LD_D, la64_ld_d)
 	NEXT_INSTR();
 }
 
+// LA64_BC_MOVE: Move register (rd = rk, pseudo-instruction for OR rd, zero, rk)
+INSTRUCTION(LA64_BC_MOVE, la64_move)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	REG(fi.rd) = REG(fi.rk);
+	NEXT_INSTR();
+}
+
 // LA64_BC_OR: Bitwise OR (rd = rj | rk)
 INSTRUCTION(LA64_BC_OR, la64_or)
 {

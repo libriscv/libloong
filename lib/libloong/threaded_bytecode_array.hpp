@@ -3,6 +3,7 @@
 static constexpr void *computed_opcode[] = {
 	[LA64_BC_INVALID]   = &&execute_invalid,
 	[LA64_BC_LD_D]      = &&la64_ld_d,
+	[LA64_BC_MOVE]      = &&la64_move,
 	[LA64_BC_OR]        = &&la64_or,
 	[LA64_BC_ST_D]      = &&la64_st_d,
 	[LA64_BC_ADDI_W]    = &&la64_addi_w,

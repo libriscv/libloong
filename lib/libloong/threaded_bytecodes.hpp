@@ -10,6 +10,7 @@ namespace loongarch
 
 		// Popular instructions (top 5 from profiling)
 		LA64_BC_LD_D,              // Load doubleword (10355 occurrences)
+		LA64_BC_MOVE,              // Move register (OR with rj==0) (9202 occurrences)
 		LA64_BC_OR,                // Bitwise OR (9153 occurrences)
 		LA64_BC_ST_D,              // Store doubleword (7976 occurrences)
 		LA64_BC_ADDI_W,            // Add immediate word (6030 occurrences)
@@ -83,6 +84,7 @@ namespace loongarch
 		switch (bytecode) {
 		case LA64_BC_INVALID: return "INVALID";
 		case LA64_BC_LD_D: return "LD.D";
+		case LA64_BC_MOVE: return "MOVE";
 		case LA64_BC_OR: return "OR";
 		case LA64_BC_ST_D: return "ST.D";
 		case LA64_BC_ADDI_W: return "ADDI.W";

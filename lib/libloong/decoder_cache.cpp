@@ -76,12 +76,17 @@ namespace loongarch
 		if (op10 == 0x00B) {
 			return LA64_BC_ADDI_D;
 		}
-		// OR: op17 = 0x00054 (0x00150000)
-		if (op17 == 0x00054) {
+		// OR: op17 = 0x0002a (0x00150000)
+		// MOVE is OR with rj==0: OR rd, zero, rk
+		if (op17 == 0x0002a) {
+			const uint32_t rj = (instr >> 5) & 0x1F;
+			if (rj == 0) {
+				return LA64_BC_MOVE;
+			}
 			return LA64_BC_OR;
 		}
-		// AND: op17 = 0x00052 (0x00148000)
-		if (op17 == 0x00052) {
+		// AND: op17 = 0x00029 (0x00148000)
+		if (op17 == 0x00029) {
 			return LA64_BC_AND;
 		}
 		// ANDI: op10 = 0x00D (0x03400000)
@@ -251,13 +256,11 @@ namespace loongarch
 		if (op6 == 0x11) { // BNEZ
 			return LA64_BC_BNEZ;
 		}
-		if (op6 == 0x12) { // BEQ / BNE
-			const uint32_t funct3 = (instr >> 13) & 0x7;
-			if (funct3 == 0x0) {
-				return LA64_BC_BEQ;
-			} else if (funct3 == 0x1) {
-				return LA64_BC_BNE;
-			}
+		if (op6 == 0x16) { // BEQ
+			return LA64_BC_BEQ;
+		}
+		if (op6 == 0x17) { // BNE
+			return LA64_BC_BNE;
 		}
 		// JIRL: op6 = 0x13 (0x4C000000)
 		if (op6 == 0x13) {

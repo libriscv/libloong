@@ -88,9 +88,21 @@ static constexpr void *computed_opcode[] = {
 	[LA64_BC_VFADD_D]   = &&la64_vfadd_d,
 	[LA64_BC_VLDX]      = &&la64_vldx,
 	[LA64_BC_VSTX]      = &&la64_vstx,
+	[LA64_BC_VFMADD_D]  = &&la64_vfmadd_d,
+	[LA64_BC_VHADDW_D_W] = &&la64_vhaddw_d_w,
+
+	// LASX (256-bit) instructions
+	[LA64_BC_XVLD]      = &&la64_xvld,
+
+	// Floating-point instructions
+	[LA64_BC_FMADD_D]   = &&la64_fmadd_d,
+	[LA64_BC_FLDX_D]    = &&la64_fldx_d,
+	[LA64_BC_FSTX_D]    = &&la64_fstx_d,
 
 	[LA64_BC_BEQZ]      = &&la64_beqz,
 	[LA64_BC_BNEZ]      = &&la64_bnez,
+	[LA64_BC_BCEQZ]     = &&la64_bceqz,
+	[LA64_BC_BCNEZ]     = &&la64_bcnez,
 	[LA64_BC_BEQ]       = &&la64_beq,
 	[LA64_BC_BNE]       = &&la64_bne,
 	[LA64_BC_JIRL]      = &&la64_jirl,

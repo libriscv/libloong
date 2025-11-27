@@ -421,6 +421,58 @@ uint32_t optimize_bytecode(uint8_t& bytecode, address_type<W> pc, uint32_t instr
 			fi.rk = original.r3.rk;
 			return fi.whole;
 		} break;
+		case LA64_BC_VFMADD_D: {
+			// VFMADD.D vd, vj, vk, va - 4R-type format
+			// Extract fields manually: vd[4:0], vj[9:5], vk[14:10], va[19:15]
+			uint32_t vd = instruction_bits & 0x1F;
+			uint32_t vj = (instruction_bits >> 5) & 0x1F;
+			uint32_t vk = (instruction_bits >> 10) & 0x1F;
+			uint32_t va = (instruction_bits >> 15) & 0x1F;
+			// Repack into optimized layout
+			return vd | (vj << 5) | (vk << 10) | (va << 15);
+		} break;
+		case LA64_BC_VHADDW_D_W: {
+			// VHADDW.D.W vd, vj, vk - uses R3 format
+			auto fi = *(FasterLA64_R3 *)&instruction_bits;
+			fi.rd = original.r3.rd;
+			fi.rj = original.r3.rj;
+			fi.rk = original.r3.rk;
+			return fi.whole;
+		} break;
+		case LA64_BC_XVLD: {
+			// XVLD xd, rj, si12 - uses RI12 format
+			auto fi = *(FasterLA64_RI12 *)&instruction_bits;
+			fi.rd = original.ri12.rd;
+			fi.rj = original.ri12.rj;
+			fi.set_imm(original.ri12.imm);
+			return fi.whole;
+		} break;
+		case LA64_BC_FMADD_D: {
+			// FMADD.D fd, fj, fk, fa - 4R-type format
+			// Extract fields: fd[4:0], fj[9:5], fk[14:10], fa[19:15]
+			uint32_t fd = instruction_bits & 0x1F;
+			uint32_t fj = (instruction_bits >> 5) & 0x1F;
+			uint32_t fk = (instruction_bits >> 10) & 0x1F;
+			uint32_t fa = (instruction_bits >> 15) & 0x1F;
+			// Repack into optimized layout
+			return fd | (fj << 5) | (fk << 10) | (fa << 15);
+		} break;
+		case LA64_BC_FLDX_D: {
+			// FLDX.D fd, rj, rk - uses R3 format
+			auto fi = *(FasterLA64_R3 *)&instruction_bits;
+			fi.rd = original.r3.rd;
+			fi.rj = original.r3.rj;
+			fi.rk = original.r3.rk;
+			return fi.whole;
+		} break;
+		case LA64_BC_FSTX_D: {
+			// FSTX.D fd, rj, rk - uses R3 format
+			auto fi = *(FasterLA64_R3 *)&instruction_bits;
+			fi.rd = original.r3.rd;
+			fi.rj = original.r3.rj;
+			fi.rk = original.r3.rk;
+			return fi.whole;
+		} break;
 	case LA64_BC_SRLI_W: {
 		// SRLI.W rd, rj, ui5 - uses Shift format
 		auto fi = *(FasterLA64_Shift *)&instruction_bits;

@@ -284,78 +284,109 @@ namespace loongarch
 			return LA64_BC_FMUL_D;
 		}
 
+		// FLDX.D: Floating-point indexed load double - op17 = 0x7068 (0x38340000 >> 15)
+		if (op17 == 0x7068) {
+			return LA64_BC_FLDX_D;
+		}
+		// FSTX.D: Floating-point indexed store double - op17 = 0x7078 (0x383C0000 >> 15)
+		if (op17 == 0x7078) {
+			return LA64_BC_FSTX_D;
+		}
 
-	// New bytecodes from coremark profiling
-	// SRLI.W: op16 = 0x0044 (0x00448000 >> 16)
-	if (op16 == 0x0044) {
-		return LA64_BC_SRLI_W;
-	}
-	// SRL.D: op17 = 0x00032 (0x00190000 >> 15)
-	if (op17 == 0x00032) {
-		return LA64_BC_SRL_D;
-	}
-	// LU52I.D: op10 = 0x00C (0x03000000 >> 22)
-	if (op10 == 0x00C) {
-		return LA64_BC_LU52I_D;
-	}
-	// XORI: op10 = 0x00F (0x03C00000 >> 22)
-	if (op10 == 0x00F) {
-		return LA64_BC_XORI;
-	}
-	// SLTUI: op10 = 0x009 (0x02400000 >> 22)
-	if (op10 == 0x009) {
-		return LA64_BC_SLTUI;
-	}
-	// LD.H: op10 = 0x0A1 (0x28400000 >> 22)
-	if (op10 == 0x0A1) {
-		return LA64_BC_LD_H;
-	}
-	// LDX.HU: op17 = 0x7048 (0x38240000 >> 15)
-	if (op17 == 0x7048) {
-		return LA64_BC_LDX_HU;
-	}
-	// LD.WU: op10 = 0x0AA (0x2a800000 >> 22)
-	if (op10 == 0x0AA) {
-		return LA64_BC_LD_WU;
-	}
-	// PCADDU12I: op7 = 0x0E (0x1C000000 >> 25)
-	if (op7 == 0x0E) {
-		return LA64_BC_PCADDU12I;
-	}
-	// ANDN: op17 = 0x0002D (0x00168000 >> 15)
-	if (op17 == 0x0002D) {
-		return LA64_BC_ANDN;
-	}
-	// STX.B: op17 = 0x7020 (0x38100000 >> 15)
-	if (op17 == 0x7020) {
-		return LA64_BC_STX_B;
-	}
-	// CTZ.D, CTO.W, CTO.D, EXT.W.H, REVB.4H: op22_val = bits[31:10]
-	if (op22_val == 0x00000B) return LA64_BC_CTZ_D;
-	if (op22_val == 0x000006) return LA64_BC_CTO_W;
-	if (op22_val == 0x00000A) return LA64_BC_CTO_D;
-	if (op22_val == 0x000016) return LA64_BC_EXT_W_H;
-	if (op22_val == 0x00000D) return LA64_BC_REVB_4H;
-	// LDX.B: op17 = 0x7000 (0x38000000 >> 15)
-	if (op17 == 0x7000) {
-		return LA64_BC_LDX_B;
-	}
-	// SLT: op17 = 0x00024 (0x00120000 >> 15)
-	if (op17 == 0x00024) {
-		return LA64_BC_SLT;
-	}
-	// ORN: op17 = 0x0002C (0x00160000 >> 15)
-	if (op17 == 0x0002C) {
-		return LA64_BC_ORN;
-	}
-	// MUL.W: op17 = 0x00038 (0x001c0000 >> 15)
-	if (op17 == 0x00038) {
-		return LA64_BC_MUL_W;
-	}
-	// MOD.DU: op17 = 0x00047 (0x00238000 >> 15)
-	if (op17 == 0x00047) {
-		return LA64_BC_MOD_DU;
-	}
+		// FMADD.D: 4R-type format, check bits[31:15] for different encodings
+		// Based on la64.cpp: bits[31:15] can be 0x01040, 0x01059, or 0x0105d
+		const uint32_t op17_4r = (instr >> 15) & 0x1FFFF;
+		if (op17_4r == 0x01040 || op17_4r == 0x01059 || op17_4r == 0x0105d) {
+			return LA64_BC_FMADD_D;
+		}
+
+		// VFMADD.D: Vector FMA (bits[31:20] = 0x092)
+		const uint32_t op12 = (instr >> 20) & 0xFFF;
+		if (op12 == 0x092) {
+			return LA64_BC_VFMADD_D;
+		}
+
+		// VHADDW.D.W: Vector horizontal add with widening - op10 = 0x1C1
+		if (op10 == 0x1C1) {
+			return LA64_BC_VHADDW_D_W;
+		}
+
+		// XVLD: LASX 256-bit vector load - op10 = 0x0b2 (0x2C800000 >> 22)
+		if (op10 == 0x0b2) {
+			return LA64_BC_XVLD;
+		}
+
+		// New bytecodes from coremark profiling
+		// SRLI.W: op16 = 0x0044 (0x00448000 >> 16)
+		if (op16 == 0x0044) {
+			return LA64_BC_SRLI_W;
+		}
+		// SRL.D: op17 = 0x00032 (0x00190000 >> 15)
+		if (op17 == 0x00032) {
+			return LA64_BC_SRL_D;
+		}
+		// LU52I.D: op10 = 0x00C (0x03000000 >> 22)
+		if (op10 == 0x00C) {
+			return LA64_BC_LU52I_D;
+		}
+		// XORI: op10 = 0x00F (0x03C00000 >> 22)
+		if (op10 == 0x00F) {
+			return LA64_BC_XORI;
+		}
+		// SLTUI: op10 = 0x009 (0x02400000 >> 22)
+		if (op10 == 0x009) {
+			return LA64_BC_SLTUI;
+		}
+		// LD.H: op10 = 0x0A1 (0x28400000 >> 22)
+		if (op10 == 0x0A1) {
+			return LA64_BC_LD_H;
+		}
+		// LDX.HU: op17 = 0x7048 (0x38240000 >> 15)
+		if (op17 == 0x7048) {
+			return LA64_BC_LDX_HU;
+		}
+		// LD.WU: op10 = 0x0AA (0x2a800000 >> 22)
+		if (op10 == 0x0AA) {
+			return LA64_BC_LD_WU;
+		}
+		// PCADDU12I: op7 = 0x0E (0x1C000000 >> 25)
+		if (op7 == 0x0E) {
+			return LA64_BC_PCADDU12I;
+		}
+		// ANDN: op17 = 0x0002D (0x00168000 >> 15)
+		if (op17 == 0x0002D) {
+			return LA64_BC_ANDN;
+		}
+		// STX.B: op17 = 0x7020 (0x38100000 >> 15)
+		if (op17 == 0x7020) {
+			return LA64_BC_STX_B;
+		}
+		// CTZ.D, CTO.W, CTO.D, EXT.W.H, REVB.4H: op22_val = bits[31:10]
+		if (op22_val == 0x00000B) return LA64_BC_CTZ_D;
+		if (op22_val == 0x000006) return LA64_BC_CTO_W;
+		if (op22_val == 0x00000A) return LA64_BC_CTO_D;
+		if (op22_val == 0x000016) return LA64_BC_EXT_W_H;
+		if (op22_val == 0x00000D) return LA64_BC_REVB_4H;
+		// LDX.B: op17 = 0x7000 (0x38000000 >> 15)
+		if (op17 == 0x7000) {
+			return LA64_BC_LDX_B;
+		}
+		// SLT: op17 = 0x00024 (0x00120000 >> 15)
+		if (op17 == 0x00024) {
+			return LA64_BC_SLT;
+		}
+		// ORN: op17 = 0x0002C (0x00160000 >> 15)
+		if (op17 == 0x0002C) {
+			return LA64_BC_ORN;
+		}
+		// MUL.W: op17 = 0x00038 (0x001c0000 >> 15)
+		if (op17 == 0x00038) {
+			return LA64_BC_MUL_W;
+		}
+		// MOD.DU: op17 = 0x00047 (0x00238000 >> 15)
+		if (op17 == 0x00047) {
+			return LA64_BC_MOD_DU;
+		}
 		// LSX (SIMD) instructions
 		// VLD: op10 = 0x0b0 (0x2c000000)
 		if (op10 == 0x0b0) {
@@ -384,6 +415,15 @@ namespace loongarch
 		}
 		if (op6 == 0x11) { // BNEZ
 			return LA64_BC_BNEZ;
+		}
+		// BCEQZ/BCNEZ: op6 = 0x12 (0x48000000)
+		if (op6 == 0x12) {
+			// Distinguish BCEQZ (bits[8:8] = 0) vs BCNEZ (bits[8:8] = 1)
+			if ((instr & 0x00000300) == 0x00000000) {
+				return LA64_BC_BCEQZ;
+			} else if ((instr & 0x00000300) == 0x00000100) {
+				return LA64_BC_BCNEZ;
+			}
 		}
 		if (op6 == 0x16) { // BEQ
 			return LA64_BC_BEQ;

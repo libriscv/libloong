@@ -95,10 +95,22 @@ namespace loongarch
 		LA64_BC_VFADD_D,           // Vector floating-point add double (11 in stream)
 		LA64_BC_VLDX,              // Vector indexed load 128-bit (4 in stream)
 		LA64_BC_VSTX,              // Vector indexed store 128-bit (2 in stream)
+		LA64_BC_VFMADD_D,          // Vector fused multiply-add double
+		LA64_BC_VHADDW_D_W,        // Vector horizontal add with widening (word to doubleword)
+
+		// LASX (256-bit) instructions
+		LA64_BC_XVLD,              // Vector load 256-bit LASX
+
+		// Floating-point instructions
+		LA64_BC_FMADD_D,           // Fused multiply-add double
+		LA64_BC_FLDX_D,            // Floating-point indexed load double
+		LA64_BC_FSTX_D,            // Floating-point indexed store double
 
 		// Branch instructions
 		LA64_BC_BEQZ,              // Branch if equal to zero
 		LA64_BC_BNEZ,              // Branch if not equal to zero
+		LA64_BC_BCEQZ,             // Branch if condition flag equals zero
+		LA64_BC_BCNEZ,             // Branch if condition flag not equal to zero
 		LA64_BC_BEQ,               // Branch if equal
 		LA64_BC_BNE,               // Branch if not equal
 		LA64_BC_JIRL,              // Jump indirect and link register (1513 in stream)
@@ -209,8 +221,16 @@ namespace loongarch
 		case LA64_BC_VFADD_D: return "VFADD.D";
 		case LA64_BC_VLDX: return "VLDX";
 		case LA64_BC_VSTX: return "VSTX";
+		case LA64_BC_VFMADD_D: return "VFMADD.D";
+		case LA64_BC_VHADDW_D_W: return "VHADDW.D.W";
+		case LA64_BC_XVLD: return "XVLD";
+		case LA64_BC_FMADD_D: return "FMADD.D";
+		case LA64_BC_FLDX_D: return "FLDX.D";
+		case LA64_BC_FSTX_D: return "FSTX.D";
 		case LA64_BC_BEQZ: return "BEQZ";
 		case LA64_BC_BNEZ: return "BNEZ";
+		case LA64_BC_BCEQZ: return "BCEQZ";
+		case LA64_BC_BCNEZ: return "BCNEZ";
 		case LA64_BC_BEQ: return "BEQ";
 		case LA64_BC_BNE: return "BNE";
 		case LA64_BC_JIRL: return "JIRL";

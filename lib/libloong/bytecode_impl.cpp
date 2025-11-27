@@ -606,6 +606,119 @@ INSTRUCTION(LA64_BC_VFADD_D, la64_vfadd_d)
 	NEXT_INSTR();
 }
 
+// LA64_BC_VFMADD_D: Vector fused multiply-add double
+INSTRUCTION(LA64_BC_VFMADD_D, la64_vfmadd_d)
+{
+	// 4R-type format: vd = va + vj * vk
+	const uint32_t bits = DECODER().instr;
+	const uint32_t vd = bits & 0x1F;
+	const uint32_t vj = (bits >> 5) & 0x1F;
+	const uint32_t vk = (bits >> 10) & 0x1F;
+	const uint32_t va = (bits >> 15) & 0x1F;
+
+	auto& dst = REGISTERS().getvr(vd);
+	const auto& src_j = REGISTERS().getvr(vj);
+	const auto& src_k = REGISTERS().getvr(vk);
+	const auto& src_a = REGISTERS().getvr(va);
+
+	dst.df[0] = src_a.df[0] + src_j.df[0] * src_k.df[0];
+	dst.df[1] = src_a.df[1] + src_j.df[1] * src_k.df[1];
+	NEXT_INSTR();
+}
+
+// LA64_BC_VHADDW_D_W: Vector horizontal add with widening (word to doubleword)
+INSTRUCTION(LA64_BC_VHADDW_D_W, la64_vhaddw_d_w)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	auto& dst = REGISTERS().getvr(fi.rd);
+	const auto& src1 = REGISTERS().getvr(fi.rj);
+	const auto& src2 = REGISTERS().getvr(fi.rk);
+
+	// Add adjacent pairs: vj[0]+vj[1], vk[0]+vk[1]
+	dst.d[0] = (int64_t)src1.w[0] + (int64_t)src1.w[1];
+	dst.d[1] = (int64_t)src2.w[0] + (int64_t)src2.w[1];
+	NEXT_INSTR();
+}
+
+// LA64_BC_XVLD: LASX 256-bit vector load
+INSTRUCTION(LA64_BC_XVLD, la64_xvld)
+{
+	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
+	const auto addr = REG(fi.rj) + fi.imm;
+	auto& vr = REGISTERS().getvr(fi.rd);
+	vr.du[0] = MACHINE().memory.template read<uint64_t>(addr);
+	vr.du[1] = MACHINE().memory.template read<uint64_t>(addr + 8);
+	vr.du[2] = MACHINE().memory.template read<uint64_t>(addr + 16);
+	vr.du[3] = MACHINE().memory.template read<uint64_t>(addr + 24);
+	NEXT_INSTR();
+}
+
+// LA64_BC_FMADD_D: Fused multiply-add double precision
+INSTRUCTION(LA64_BC_FMADD_D, la64_fmadd_d)
+{
+	// 4R-type format: fd = fa + fj * fk
+	const uint32_t bits = DECODER().instr;
+	const uint32_t fd = bits & 0x1F;
+	const uint32_t fj = (bits >> 5) & 0x1F;
+	const uint32_t fk = (bits >> 10) & 0x1F;
+	const uint32_t fa = (bits >> 15) & 0x1F;
+
+	const auto& vr_j = REGISTERS().getvr(fj);
+	const auto& vr_k = REGISTERS().getvr(fk);
+	const auto& vr_a = REGISTERS().getvr(fa);
+	auto& vr_d = REGISTERS().getvr(fd);
+	vr_d.df[0] = vr_a.df[0] + vr_j.df[0] * vr_k.df[0];
+	NEXT_INSTR();
+}
+
+// LA64_BC_FLDX_D: Floating-point indexed load double
+INSTRUCTION(LA64_BC_FLDX_D, la64_fldx_d)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	const auto addr = REG(fi.rj) + REG(fi.rk);
+	auto& vr = REGISTERS().getvr(fi.rd);
+	vr.du[0] = MACHINE().memory.template read<uint64_t>(addr);
+	NEXT_INSTR();
+}
+
+// LA64_BC_FSTX_D: Floating-point indexed store double
+INSTRUCTION(LA64_BC_FSTX_D, la64_fstx_d)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	const auto addr = REG(fi.rj) + REG(fi.rk);
+	const auto& vr = REGISTERS().getvr(fi.rd);
+	MACHINE().memory.template write<uint64_t>(addr, vr.du[0]);
+	NEXT_INSTR();
+}
+
+// LA64_BC_BCEQZ: Branch if condition flag equals zero
+INSTRUCTION(LA64_BC_BCEQZ, la64_bceqz)
+{
+	VIEW_INSTR();
+	const uint32_t cj = (instr.whole >> 5) & 0x7;
+	int32_t offset = ((instr.whole >> 10) & 0xFFFF) << 2;
+	// Sign extend 18-bit offset
+	offset = (offset << (32 - 18)) >> (32 - 18);
+	if (REGISTERS().cf(cj) == 0) {
+		PERFORM_BRANCH(offset);
+	}
+	NEXT_BLOCK(4);
+}
+
+// LA64_BC_BCNEZ: Branch if condition flag not equal to zero
+INSTRUCTION(LA64_BC_BCNEZ, la64_bcnez)
+{
+	VIEW_INSTR();
+	const uint32_t cj = (instr.whole >> 5) & 0x7;
+	int32_t offset = ((instr.whole >> 10) & 0xFFFF) << 2;
+	// Sign extend 18-bit offset
+	offset = (offset << (32 - 18)) >> (32 - 18);
+	if (REGISTERS().cf(cj) != 0) {
+		PERFORM_BRANCH(offset);
+	}
+	NEXT_BLOCK(4);
+}
+
 // LA64_BC_FUNCTION: Regular non-PC-modifying instruction
 INSTRUCTION(LA64_BC_FUNCTION, execute_decoded_function)
 {

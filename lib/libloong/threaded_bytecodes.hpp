@@ -77,6 +77,75 @@ namespace loongarch
 	};
 	static_assert(BYTECODES_MAX <= 256, "A bytecode must fit in a byte");
 
+	// Get the name of a bytecode
+	static inline const char* bytecode_name(uint8_t bytecode)
+	{
+		switch (bytecode) {
+		case LA64_BC_INVALID: return "INVALID";
+		case LA64_BC_LD_D: return "LD.D";
+		case LA64_BC_OR: return "OR";
+		case LA64_BC_ST_D: return "ST.D";
+		case LA64_BC_ADDI_W: return "ADDI.W";
+		case LA64_BC_ADDI_D: return "ADDI.D";
+		case LA64_BC_ANDI: return "ANDI";
+		case LA64_BC_ADD_D: return "ADD.D";
+		case LA64_BC_SUB_D: return "SUB.D";
+		case LA64_BC_ORI: return "ORI";
+		case LA64_BC_SLLI_W: return "SLLI.W";
+		case LA64_BC_SLLI_D: return "SLLI.D";
+		case LA64_BC_LD_BU: return "LD.BU";
+		case LA64_BC_ST_B: return "ST.B";
+		case LA64_BC_ST_W: return "ST.W";
+		case LA64_BC_PCADDI: return "PCADDI";
+		case LA64_BC_PCALAU12I: return "PCALAU12I";
+		case LA64_BC_LDPTR_D: return "LDPTR.D";
+		case LA64_BC_LDPTR_W: return "LDPTR.W";
+		case LA64_BC_STPTR_D: return "STPTR.D";
+		case LA64_BC_LU12I_W: return "LU12I.W";
+		case LA64_BC_BSTRPICK_D: return "BSTRPICK.D";
+		case LA64_BC_AND: return "AND";
+		case LA64_BC_ALSL_D: return "ALSL.D";
+		case LA64_BC_SRLI_D: return "SRLI.D";
+		case LA64_BC_LD_B: return "LD.B";
+		case LA64_BC_STPTR_W: return "STPTR.W";
+		case LA64_BC_LDX_D: return "LDX.D";
+		case LA64_BC_MASKEQZ: return "MASKEQZ";
+		case LA64_BC_MASKNEZ: return "MASKNEZ";
+		case LA64_BC_MUL_D: return "MUL.D";
+		case LA64_BC_SUB_W: return "SUB.W";
+		case LA64_BC_SLL_D: return "SLL.D";
+		case LA64_BC_STX_D: return "STX.D";
+		case LA64_BC_BSTRPICK_W: return "BSTRPICK.W";
+		case LA64_BC_SLTU: return "SLTU";
+		case LA64_BC_LDX_W: return "LDX.W";
+		case LA64_BC_STX_W: return "STX.W";
+		case LA64_BC_XOR: return "XOR";
+		case LA64_BC_LD_HU: return "LD.HU";
+		case LA64_BC_ADD_W: return "ADD.W";
+		case LA64_BC_SRAI_D: return "SRAI.D";
+		case LA64_BC_EXT_W_B: return "EXT.W.B";
+		case LA64_BC_LDX_BU: return "LDX.BU";
+		case LA64_BC_BSTRINS_D: return "BSTRINS.D";
+		case LA64_BC_LU32I_D: return "LU32I.D";
+		case LA64_BC_BEQZ: return "BEQZ";
+		case LA64_BC_BNEZ: return "BNEZ";
+		case LA64_BC_BEQ: return "BEQ";
+		case LA64_BC_BNE: return "BNE";
+		case LA64_BC_JIRL: return "JIRL";
+		case LA64_BC_B: return "B";
+		case LA64_BC_BL: return "BL";
+		case LA64_BC_BLT: return "BLT";
+		case LA64_BC_BGE: return "BGE";
+		case LA64_BC_BLTU: return "BLTU";
+		case LA64_BC_BGEU: return "BGEU";
+		case LA64_BC_FUNCTION: return "FUNCTION";
+		case LA64_BC_FUNCBLOCK: return "FUNCBLOCK";
+		case LA64_BC_SYSCALL: return "SYSCALL";
+		case LA64_BC_STOP: return "STOP";
+		default: return "UNKNOWN";
+		}
+	}
+
 	// Optimized instruction formats for fast field access
 	union FasterLA64_RI12 {
 		uint32_t whole;

@@ -1,8 +1,8 @@
 #include <libloong/machine.hpp>
+#include <libloong/threaded_bytecodes.hpp>
 #include <cstring>
 #include <chrono>
 #include <fstream>
-#include <vector>
 #include <inttypes.h>
 #include <cstdlib>
 
@@ -21,6 +21,7 @@ struct EmulatorOptions {
 	bool verbose = false;
 	bool timing = false;
 	bool silent = false;
+	bool show_bytecode_stats = false;
 };
 
 // ELF class constants
@@ -43,6 +44,81 @@ static std::vector<uint8_t> load_file(const char* filename)
 	}
 
 	return buffer;
+}
+
+template <int W>
+static void print_bytecode_statistics(const Machine<W>& machine)
+{
+	printf("\n=== Bytecode Usage Statistics ===\n\n");
+
+	auto stats = machine.collect_bytecode_statistics();
+	if (stats.empty()) {
+		printf("No bytecode statistics available (decoder cache not populated)\n");
+		return;
+	}
+
+	// Calculate total instructions
+	uint64_t total = 0;
+	for (const auto& stat : stats) {
+		total += stat.count;
+	}
+
+	printf("%-20s %12s %10s\n", "Bytecode", "Count", "Percentage");
+	printf("%-20s %12s %10s\n", "--------", "-----", "----------");
+
+	for (const auto& stat : stats) {
+		const char* name = loongarch::bytecode_name(stat.bytecode);
+		const double percentage = (100.0 * stat.count) / total;
+
+		// For fallback bytecodes (FUNCTION, FUNCBLOCK), decode the sample instruction using the printer
+		if ((stat.bytecode == loongarch::LA64_BC_FUNCTION ||
+		     stat.bytecode == loongarch::LA64_BC_FUNCBLOCK) &&
+		    stat.sample_instruction != 0) {
+			// Decode the instruction to get its printer
+			loongarch::la_instruction instr;
+			instr.whole = stat.sample_instruction;
+			const auto& decoded = loongarch::CPU<W>::decode(instr);
+
+			if (decoded.printer) {
+				char buffer[256];
+				// Most printers don't use the CPU parameter, but some might.
+				// We create a temporary CPU on the stack for safety.
+				try {
+					// Call the printer - pass nullptr for CPU as most don't use it
+					int printed = decoded.printer(buffer, sizeof(buffer),
+						machine.cpu, instr, 0);
+
+					if (printed > 0 && buffer[0] != '\0') {
+						// Extract just the mnemonic (first word before space)
+						std::string mnemonic(buffer);
+						size_t space_pos = mnemonic.find(' ');
+						if (space_pos != std::string::npos) {
+							mnemonic = mnemonic.substr(0, space_pos);
+						}
+
+						printf("%-20s %12" PRIu64 " %9.2f%% (%s)\n",
+							   name, stat.count, percentage, mnemonic.c_str());
+					} else {
+						// Printer returned nothing, show hex
+						printf("%-20s %12" PRIu64 " %9.2f%% (0x%08x)\n",
+							   name, stat.count, percentage, stat.sample_instruction);
+					}
+				} catch (...) {
+					// Printer crashed (probably used CPU), show hex
+					printf("%-20s %12" PRIu64 " %9.2f%% (0x%08x)\n",
+						   name, stat.count, percentage, stat.sample_instruction);
+				}
+			} else {
+				// No printer, show hex
+				printf("%-20s %12" PRIu64 " %9.2f%% (0x%08x)\n",
+					   name, stat.count, percentage, stat.sample_instruction);
+			}
+		} else {
+			printf("%-20s %12" PRIu64 " %9.2f%%\n", name, stat.count, percentage);
+		}
+	}
+
+	printf("\nTotal instructions in cache: %" PRIu64 "\n", total);
 }
 
 template <int W>
@@ -84,6 +160,11 @@ static int run_program(const std::vector<uint8_t>& binary, const EmulatorOptions
 
 		const auto t1 = std::chrono::high_resolution_clock::now();
 		const std::chrono::duration<double> elapsed = t1 - t0;
+
+		// Show bytecode statistics if requested
+		if (opts.show_bytecode_stats) {
+			print_bytecode_statistics(machine);
+		}
 
 		// Check if stopped normally
 		if (!machine.instruction_limit_reached()) {
@@ -134,6 +215,7 @@ static void print_help(const char* progname)
 	printf("  -v, --verbose           Enable verbose output (loader & syscalls)\n");
 	printf("  -s, --silent            Suppress all output except errors\n");
 	printf("  -t, --timing            Show execution timing and instruction count\n");
+	printf("      --stats             Show bytecode usage statistics after execution\n");
 	printf("  -f, --fuel <num>        Maximum instructions to execute (default: 2000000000)\n");
 	printf("                          Use 0 for unlimited execution\n");
 	printf("  -m, --memory <size>     Maximum memory in MiB (default: 512)\n\n");
@@ -141,6 +223,7 @@ static void print_help(const char* progname)
 	printf("Examples:\n");
 	printf("  %s program.elf\n", progname);
 	printf("  %s --verbose --timing program.elf arg1 arg2\n", progname);
+	printf("  %s --stats --fuel 1000000 program.elf\n", progname);
 	printf("  %s --fuel 1000000 --memory 256 program.elf\n\n", progname);
 }
 
@@ -154,6 +237,7 @@ static EmulatorOptions parse_arguments(int argc, char* argv[])
 		{"verbose", no_argument,       0, 'v'},
 		{"silent",  no_argument,       0, 's'},
 		{"timing",  no_argument,       0, 't'},
+		{"stats",   no_argument,       0, '\x02'},
 		{"fuel",    required_argument, 0, 'f'},
 		{"memory",  required_argument, 0, 'm'},
 		{0, 0, 0, 0}
@@ -183,6 +267,9 @@ static EmulatorOptions parse_arguments(int argc, char* argv[])
 		case 'm':
 			opts.memory_max = strtoull(optarg, nullptr, 10) << 20; // Convert MiB to bytes
 			break;
+		case '\x02':
+			opts.show_bytecode_stats = true;
+			break;
 		default:
 			print_help(argv[0]);
 			exit(1);
@@ -209,6 +296,8 @@ static EmulatorOptions parse_arguments(int argc, char* argv[])
 		opts.silent = true;
 	if (getenv("TIMING") != nullptr)
 		opts.timing = true;
+	if (getenv("STATS") != nullptr)
+		opts.show_bytecode_stats = true;
 	if (getenv("FUEL") != nullptr) {
 		opts.max_instructions = strtoull(getenv("FUEL"), nullptr, 10);
 		if (opts.max_instructions == 0) {
@@ -232,6 +321,9 @@ static EmulatorOptions parse_arguments(int argc, char* argv[])
 			first_non_option++;
 		} else if (strcmp(argv[i], "-t") == 0 || strcmp(argv[i], "--timing") == 0) {
 			opts.timing = true;
+			first_non_option++;
+		} else if (strcmp(argv[i], "--stats") == 0) {
+			opts.show_bytecode_stats = true;
 			first_non_option++;
 		} else {
 			break; // First non-option argument

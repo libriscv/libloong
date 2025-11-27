@@ -101,6 +101,14 @@ namespace loongarch
 		void print(const char* data, size_t len);
 		void print(std::string_view str);
 
+		// Bytecode statistics
+		struct BytecodeStats {
+			uint8_t bytecode;
+			uint64_t count;
+			uint32_t sample_instruction; // Sample instruction bits for fallback bytecodes
+		};
+		std::vector<BytecodeStats> collect_bytecode_statistics() const;
+
 	private:
 		uint64_t m_counter = 0;
 		uint64_t m_max_instructions = 0;

@@ -21,10 +21,6 @@ namespace loongarch
 			return addr >= m_exec_begin && addr + len <= m_exec_end;
 		}
 
-		const uint8_t* exec_data(address_t offset = 0) const noexcept {
-			return reinterpret_cast<const uint8_t*>(m_pagedata_base + offset);
-		}
-
 		address_t exec_begin() const noexcept { return m_exec_begin; }
 		address_t exec_end() const noexcept { return m_exec_end; }
 
@@ -48,7 +44,6 @@ namespace loongarch
 	private:
 		address_t m_exec_begin;
 		address_t m_exec_end;
-		address_t m_pagedata_base;
 		size_t m_pages;
 		DecoderCache<W> m_decoder_cache;
 		bool m_stale = false;

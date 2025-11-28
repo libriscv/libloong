@@ -423,13 +423,12 @@ uint32_t optimize_bytecode(uint8_t& bytecode, address_type<W> pc, uint32_t instr
 		} break;
 		case LA64_BC_VFMADD_D: {
 			// VFMADD.D vd, vj, vk, va - 4R-type format
-			// Extract fields manually: vd[4:0], vj[9:5], vk[14:10], va[19:15]
-			uint32_t vd = instruction_bits & 0x1F;
-			uint32_t vj = (instruction_bits >> 5) & 0x1F;
-			uint32_t vk = (instruction_bits >> 10) & 0x1F;
-			uint32_t va = (instruction_bits >> 15) & 0x1F;
-			// Repack into optimized layout
-			return vd | (vj << 5) | (vk << 10) | (va << 15);
+			auto fi = *(FasterLA64_4R *)&instruction_bits;
+			fi.rd = original.r4.rd;
+			fi.rj = original.r4.rj;
+			fi.rk = original.r4.rk;
+			fi.ra = original.r4.ra;
+			return fi.whole;
 		} break;
 		case LA64_BC_VHADDW_D_W: {
 			// VHADDW.D.W vd, vj, vk - uses R3 format
@@ -449,13 +448,12 @@ uint32_t optimize_bytecode(uint8_t& bytecode, address_type<W> pc, uint32_t instr
 		} break;
 		case LA64_BC_FMADD_D: {
 			// FMADD.D fd, fj, fk, fa - 4R-type format
-			// Extract fields: fd[4:0], fj[9:5], fk[14:10], fa[19:15]
-			uint32_t fd = instruction_bits & 0x1F;
-			uint32_t fj = (instruction_bits >> 5) & 0x1F;
-			uint32_t fk = (instruction_bits >> 10) & 0x1F;
-			uint32_t fa = (instruction_bits >> 15) & 0x1F;
-			// Repack into optimized layout
-			return fd | (fj << 5) | (fk << 10) | (fa << 15);
+			auto fi = *(FasterLA64_4R *)&instruction_bits;
+			fi.rd = original.r4.rd;
+			fi.rj = original.r4.rj;
+			fi.rk = original.r4.rk;
+			fi.ra = original.r4.ra;
+			return fi.whole;
 		} break;
 		case LA64_BC_FLDX_D: {
 			// FLDX.D fd, rj, rk - uses R3 format

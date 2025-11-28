@@ -23,6 +23,12 @@ namespace loongarch
 	}
 
 	template <int W>
+	inline void Machine<W>::unchecked_system_call(unsigned syscall_number)
+	{
+		m_syscall_handlers[syscall_number](*this);
+	}
+
+	template <int W>
 	inline void Machine<W>::install_syscall_handler(unsigned syscall_number, syscall_t* handler)
 	{
 		if (syscall_number < m_syscall_handlers.size()) {

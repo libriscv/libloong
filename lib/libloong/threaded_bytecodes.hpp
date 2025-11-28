@@ -389,4 +389,14 @@ namespace loongarch
 		}
 	};
 
+	union FasterLA64_4R {
+		uint32_t whole;
+		struct {
+			uint8_t rd;     // bits [4:0]
+			uint8_t rj;     // bits [9:5]
+			uint8_t rk;     // bits [14:10]
+			uint8_t ra;     // bits [19:15] - 4th register operand
+		};
+	};
+
 } // namespace loongarch

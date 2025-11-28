@@ -610,16 +610,11 @@ INSTRUCTION(LA64_BC_VFADD_D, la64_vfadd_d)
 INSTRUCTION(LA64_BC_VFMADD_D, la64_vfmadd_d)
 {
 	// 4R-type format: vd = va + vj * vk
-	const uint32_t bits = DECODER().instr;
-	const uint32_t vd = bits & 0x1F;
-	const uint32_t vj = (bits >> 5) & 0x1F;
-	const uint32_t vk = (bits >> 10) & 0x1F;
-	const uint32_t va = (bits >> 15) & 0x1F;
-
-	auto& dst = REGISTERS().getvr(vd);
-	const auto& src_j = REGISTERS().getvr(vj);
-	const auto& src_k = REGISTERS().getvr(vk);
-	const auto& src_a = REGISTERS().getvr(va);
+	auto fi = *(FasterLA64_4R *)&DECODER().instr;
+	auto& dst = REGISTERS().getvr(fi.rd);
+	const auto& src_j = REGISTERS().getvr(fi.rj);
+	const auto& src_k = REGISTERS().getvr(fi.rk);
+	const auto& src_a = REGISTERS().getvr(fi.ra);
 
 	dst.df[0] = src_a.df[0] + src_j.df[0] * src_k.df[0];
 	dst.df[1] = src_a.df[1] + src_j.df[1] * src_k.df[1];
@@ -657,16 +652,12 @@ INSTRUCTION(LA64_BC_XVLD, la64_xvld)
 INSTRUCTION(LA64_BC_FMADD_D, la64_fmadd_d)
 {
 	// 4R-type format: fd = fa + fj * fk
-	const uint32_t bits = DECODER().instr;
-	const uint32_t fd = bits & 0x1F;
-	const uint32_t fj = (bits >> 5) & 0x1F;
-	const uint32_t fk = (bits >> 10) & 0x1F;
-	const uint32_t fa = (bits >> 15) & 0x1F;
+	auto fi = *(FasterLA64_4R *)&DECODER().instr;
+	const auto& vr_j = REGISTERS().getvr(fi.rj);
+	const auto& vr_k = REGISTERS().getvr(fi.rk);
+	const auto& vr_a = REGISTERS().getvr(fi.ra);
+	auto& vr_d = REGISTERS().getvr(fi.rd);
 
-	const auto& vr_j = REGISTERS().getvr(fj);
-	const auto& vr_k = REGISTERS().getvr(fk);
-	const auto& vr_a = REGISTERS().getvr(fa);
-	auto& vr_d = REGISTERS().getvr(fd);
 	vr_d.df[0] = vr_a.df[0] + vr_j.df[0] * vr_k.df[0];
 	NEXT_INSTR();
 }
@@ -719,26 +710,6 @@ INSTRUCTION(LA64_BC_BCNEZ, la64_bcnez)
 	NEXT_BLOCK(4);
 }
 
-// LA64_BC_FUNCTION: Regular non-PC-modifying instruction
-INSTRUCTION(LA64_BC_FUNCTION, execute_decoded_function)
-{
-	// Call the cached handler for this instruction
-	const auto handler = DECODER().get_handler();
-	handler(CPU(), la_instruction{DECODER().instr});
-	NEXT_INSTR();
-}
-
-// LA64_BC_FUNCBLOCK: PC-modifying instruction (branches, jumps, PC-relative)
-INSTRUCTION(LA64_BC_FUNCBLOCK, execute_function_block)
-{
-	VIEW_INSTR();
-	REGISTERS().pc = pc;
-	const auto handler = DECODER().get_handler();
-	handler(CPU(), instr);
-	pc = REGISTERS().pc;
-	NEXT_BLOCK(4);
-}
-
 // LA64_BC_SYSCALL: System call
 INSTRUCTION(LA64_BC_SYSCALL, la64_syscall)
 {
@@ -766,12 +737,9 @@ INSTRUCTION(LA64_BC_SYSCALLIMM, la64_syscall_imm)
 {
 	// Save PC for syscall handler
 	REGISTERS().pc = pc;
-	// Save instruction counter
-	MACHINE().set_instruction_counter(counter);
-	// Execute the system call (immediate syscall number)
-	MACHINE().system_call(DECODER().instr);
-	// Restore counters
-	counter = MACHINE().instruction_counter();
+	// Execute syscall from verified immediate
+	MACHINE().unchecked_system_call(DECODER().instr);
+	// Restore max counter
 	max_counter = MACHINE().max_instructions();
 
 	// Return immediately using REG_RA
@@ -1133,4 +1101,24 @@ INSTRUCTION(LA64_BC_STOP, la64_stop)
 INSTRUCTION(LA64_BC_NOP, la64_nop)
 {
 	NEXT_INSTR();
+}
+
+// LA64_BC_FUNCTION: Regular non-PC-modifying instruction
+INSTRUCTION(LA64_BC_FUNCTION, execute_decoded_function)
+{
+	// Call the cached handler for this instruction
+	const auto handler = DECODER().get_handler();
+	handler(CPU(), la_instruction{DECODER().instr});
+	NEXT_INSTR();
+}
+
+// LA64_BC_FUNCBLOCK: PC-modifying instruction (branches, jumps, PC-relative)
+INSTRUCTION(LA64_BC_FUNCBLOCK, execute_function_block)
+{
+	VIEW_INSTR();
+	REGISTERS().pc = pc;
+	const auto handler = DECODER().get_handler();
+	handler(CPU(), instr);
+	pc = REGISTERS().pc;
+	NEXT_BLOCK(4);
 }

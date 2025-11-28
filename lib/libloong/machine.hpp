@@ -47,6 +47,7 @@ namespace loongarch
 		// System call interface
 		static void install_syscall_handler(unsigned sysnum, syscall_t* handler);
 		void system_call(unsigned sysnum);
+		void unchecked_system_call(unsigned sysnum);
 		template <typename T = address_t>
 		void set_result(const T& value);
 		template <typename T = address_t>

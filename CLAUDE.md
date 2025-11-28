@@ -37,6 +37,8 @@ Execute `cxx_test` until completion without debug lines, then start executing th
 build$ ./tests/debug_test -o tests/loongarch_bins/cxx_test --call test_exception
 ```
 
+WARNING: Do _NOT_ use debug_test for benchmarks such as stream.elf and coremark.elf. They will never complete as they run through billions of instructions. Use other means.
+
 ## Adding a new bytecode
 
 A single bytecode means modifying 5 different places:
@@ -48,11 +50,15 @@ A single bytecode means modifying 5 different places:
 
 Only once all 5 steps are complete can the CLI be tested. Bytecodes should be implemented according to popularity as LoongArch has very many instructions. Any bytecode where register zero could be written to can be rewritten in the optimizer to either NOP or INVALID (bytecode==0) when rd == 0, so that a pointless check for rd != 0 is avoided in hot-path.
 
-Many instructions have slow-path instructions already decoded in la64.cpp and implemented in la_instr_impl.hpp, which can be used as a starting point. We generally don't implement any atomic instructions as bytecodes, as they just occupy instruction space.
+Many instructions have slow-path instructions already decoded in la64.cpp and implemented in la_instr_impl.hpp, which can be used as a starting point. We generally don't implement any atomic instructions as bytecodes, as they just occupy instruction space. For LASX instructions, only the most popular ones should have dedicated bytecodes. Instructions without dedicated bytecodes will still function in fast-path, but will execute through the FUNCTION bytecode which adds function call overhead.
 
 ## Instruction statistics
 
 Running programs in the CLI with --stats will execute the guest program to completion and show statistics about which instructions have been decoded into bytecodes and not. Any instruction that has the bytecode FUNCTION is using the slow-path and is not really implemented as a bytecode, rather a fallback that calls the slow-path instruction handler is used. Popular instructions need to have a dedicated optimized bytecode for good emulation performance. If an instruction is showing as both FUNCTION and a dedicated bytecode, it is guaranteed that the bytecode decoding step is not covering the instruction properly.
+
+## Building 64-bit LoongArch programs
+
+To build a guest program normal compiler arguments can be used, but one extra argument is required: `-Wl,-Ttext-segment=0x200000`. This is because memory starts at zero, and the guest needs to load within it.
 
 ## Testing long-running programs
 

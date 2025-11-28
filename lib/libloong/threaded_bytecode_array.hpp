@@ -89,10 +89,27 @@ static constexpr void *computed_opcode[] = {
 	[LA64_BC_VLDX]      = &&la64_vldx,
 	[LA64_BC_VSTX]      = &&la64_vstx,
 	[LA64_BC_VFMADD_D]  = &&la64_vfmadd_d,
+	[LA64_BC_VFNMADD_D] = &&la64_vfnmadd_d,
 	[LA64_BC_VHADDW_D_W] = &&la64_vhaddw_d_w,
 
 	// LASX (256-bit) instructions
 	[LA64_BC_XVLD]      = &&la64_xvld,
+	[LA64_BC_XVST]      = &&la64_xvst,
+	[LA64_BC_XVLDX]     = &&la64_xvldx,
+	[LA64_BC_XVSTX]     = &&la64_xvstx,
+	[LA64_BC_XVFADD_D]  = &&la64_xvfadd_d,
+	[LA64_BC_XVFMUL_D]  = &&la64_xvfmul_d,
+	[LA64_BC_XVFMADD_D] = &&la64_xvfmadd_d,
+	[LA64_BC_XVFMSUB_D] = &&la64_xvfmsub_d,
+	[LA64_BC_XVFNMADD_D] = &&la64_xvfnmadd_d,
+	[LA64_BC_XVORI_B]   = &&la64_xvori_b,
+	[LA64_BC_XVXORI_B]  = &&la64_xvxori_b,
+	[LA64_BC_XVILVL_D]  = &&la64_xvilvl_d,
+	[LA64_BC_XVILVH_D]  = &&la64_xvilvh_d,
+	[LA64_BC_XVPERMI_D] = &&la64_xvpermi_d,
+	[LA64_BC_XVPACKEV_D] = &&la64_xvpackev_d,
+	[LA64_BC_XVPACKOD_D] = &&la64_xvpackod_d,
+	[LA64_BC_XVPICKEV_D] = &&la64_xvpickev_d,
 
 	// Floating-point instructions
 	[LA64_BC_FMADD_D]   = &&la64_fmadd_d,

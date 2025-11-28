@@ -59,6 +59,7 @@ foreach(prog ${TEST_PROGRAMS})
 			OUTPUT "${LA_TEST_DIR}/${prog}"
 			COMMAND ${LOONGARCH_GCC} -static -O0 -g
 				-Wl,-Ttext-segment=0x200000
+				-mlasx
 				"${CMAKE_CURRENT_SOURCE_DIR}/programs/${prog}.c"
 				-o "${LA_TEST_DIR}/${prog}"
 			DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/programs/${prog}.c"

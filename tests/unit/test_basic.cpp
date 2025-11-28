@@ -258,3 +258,53 @@ TEST_CASE("stdio functions", "[basic][stdio]") {
 		REQUIRE(result.exit_code == 42);
 	}
 }
+
+TEST_CASE("Floating-point operations", "[basic][float]") {
+	CodeBuilder builder;
+
+	SECTION("fcmp.ceq.d - double precision equality comparison") {
+		auto binary = builder.build(R"(
+			int main() {
+				double a = 3.14159;
+				double b = 3.14159;
+				if (a == b) {
+					return 42;
+				}
+				return 0;
+			}
+		)", "fcmp_ceq_test");
+
+		auto result = run_binary(binary, 42);
+		REQUIRE(result.success);
+		REQUIRE(result.exit_code == 42);
+	}
+
+	SECTION("LASX vectorized initialization") {
+		CompilerOptions opts;
+		opts.optimization = 2;
+		opts.extra_flags = {"-mlasx"};
+
+		auto binary = builder.build(R"(
+			int main() {
+				double arr[128] __attribute__((aligned(32)));
+
+				// Initialize array - compiler should vectorize with LASX
+				for (int i = 0; i < 128; i++) {
+					arr[i] = 1.0;
+				}
+
+				// Verify all elements
+				for (int i = 0; i < 128; i++) {
+					if (arr[i] != 1.0) {
+						return 1;
+					}
+				}
+				return 0;
+			}
+		)", "lasx_vector_init", opts);
+
+		auto result = run_binary(binary, 0);
+		REQUIRE(result.success);
+		REQUIRE(result.exit_code == 0);
+	}
+}

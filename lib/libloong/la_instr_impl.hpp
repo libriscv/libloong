@@ -421,6 +421,9 @@ struct InstrImpl {
 		auto& vr = cpu.registers().getvr(instr.r3.rd);
 		vr.du[0] = cpu.memory().template read<uint64_t>(addr);
 		vr.du[1] = cpu.memory().template read<uint64_t>(addr + 8);
+		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+		vr.du[2] = 0;
+		vr.du[3] = 0;
 	}
 
 	static void VSTX(cpu_t& cpu, la_instruction instr) {
@@ -898,6 +901,9 @@ struct InstrImpl {
 			bool cmp = !std::isnan(val1) && !std::isnan(val2) && (val1 < val2);
 			dst.du[i] = cmp ? 0xFFFFFFFFFFFFFFFFULL : 0;
 		}
+		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+		dst.du[2] = 0;
+		dst.du[3] = 0;
 	}
 
 	static void FCMP_SLE_D(cpu_t& cpu, la_instruction instr) {
@@ -913,6 +919,54 @@ struct InstrImpl {
 
 		// SLE (Signed Less-or-Equal): true if both are ordered and fj <= fk
 		bool result = !std::isnan(fj_val) && !std::isnan(fk_val) && (fj_val <= fk_val);
+		cpu.registers().set_cf(cd, result ? 1 : 0);
+	}
+
+	static void FCMP_CLT_D(cpu_t& cpu, la_instruction instr) {
+		// Floating-point compare less than (ordered)
+		uint32_t cd = instr.whole & 0x7;
+		uint32_t fj = (instr.whole >> 5) & 0x1F;
+		uint32_t fk = (instr.whole >> 10) & 0x1F;
+
+		const auto& vr_j = cpu.registers().getvr(fj);
+		const auto& vr_k = cpu.registers().getvr(fk);
+		double fj_val = vr_j.df[0];
+		double fk_val = vr_k.df[0];
+
+		// CLT (Compare Less Than): true if both are ordered and fj < fk
+		bool result = !std::isnan(fj_val) && !std::isnan(fk_val) && (fj_val < fk_val);
+		cpu.registers().set_cf(cd, result ? 1 : 0);
+	}
+
+	static void FCMP_CEQ_D(cpu_t& cpu, la_instruction instr) {
+		// Floating-point compare equal (ordered)
+		uint32_t cd = instr.whole & 0x7;
+		uint32_t fj = (instr.whole >> 5) & 0x1F;
+		uint32_t fk = (instr.whole >> 10) & 0x1F;
+
+		const auto& vr_j = cpu.registers().getvr(fj);
+		const auto& vr_k = cpu.registers().getvr(fk);
+		double fj_val = vr_j.df[0];
+		double fk_val = vr_k.df[0];
+
+		// CEQ (Compare Equal): true if both are ordered and fj == fk
+		bool result = !std::isnan(fj_val) && !std::isnan(fk_val) && (fj_val == fk_val);
+		cpu.registers().set_cf(cd, result ? 1 : 0);
+	}
+
+	static void FCMP_CUNE_D(cpu_t& cpu, la_instruction instr) {
+		// Floating-point compare unordered or not equal
+		uint32_t cd = instr.whole & 0x7;
+		uint32_t fj = (instr.whole >> 5) & 0x1F;
+		uint32_t fk = (instr.whole >> 10) & 0x1F;
+
+		const auto& vr_j = cpu.registers().getvr(fj);
+		const auto& vr_k = cpu.registers().getvr(fk);
+		double fj_val = vr_j.df[0];
+		double fk_val = vr_k.df[0];
+
+		// CUNE (Compare Unordered or Not Equal): true if unordered OR not equal
+		bool result = std::isnan(fj_val) || std::isnan(fk_val) || (fj_val != fk_val);
 		cpu.registers().set_cf(cd, result ? 1 : 0);
 	}
 
@@ -935,6 +989,9 @@ struct InstrImpl {
 			bool cmp = !std::isnan(val1) && !std::isnan(val2) && (val1 <= val2);
 			dst.du[i] = cmp ? 0xFFFFFFFFFFFFFFFFULL : 0;
 		}
+		// LSX instructions zero-extend to 256 bits
+		dst.du[2] = 0;
+		dst.du[3] = 0;
 	}
 
 	static void FSEL(cpu_t& cpu, la_instruction instr) {
@@ -1253,6 +1310,9 @@ struct InstrImpl {
 		auto& vr = cpu.registers().getvr(instr.ri12.rd);
 		vr.du[0] = cpu.memory().template read<uint64_t>(addr);
 		vr.du[1] = cpu.memory().template read<uint64_t>(addr + 8);
+		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+		vr.du[2] = 0;
+		vr.du[3] = 0;
 	}
 
 	static void VST(cpu_t& cpu, la_instruction instr) {
@@ -1411,6 +1471,9 @@ struct InstrImpl {
 		for (int i = 0; i < 16; i++) {
 			dst.bu[i] = src1.bu[i] - src2.bu[i];
 		}
+		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+		dst.du[2] = 0;
+		dst.du[3] = 0;
 	}
 
 	static void VSUB_W(cpu_t& cpu, la_instruction instr) {
@@ -1428,6 +1491,11 @@ struct InstrImpl {
 		dst.wu[1] = src1.wu[1] - src2.wu[1];
 		dst.wu[2] = src1.wu[2] - src2.wu[2];
 		dst.wu[3] = src1.wu[3] - src2.wu[3];
+		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+		dst.wu[4] = 0;
+		dst.wu[5] = 0;
+		dst.wu[6] = 0;
+		dst.wu[7] = 0;
 	}
 
 	static void VHADDW_D_W(cpu_t& cpu, la_instruction instr) {
@@ -1442,8 +1510,165 @@ struct InstrImpl {
 		auto& dst = cpu.registers().getvr(vd);
 
 		// Add adjacent pairs: vj[0]+vj[1], vk[0]+vk[1]
-		dst.d[0] = (int64_t)src1.w[0] + (int64_t)src1.w[1];
-		dst.d[1] = (int64_t)src2.w[0] + (int64_t)src2.w[1];
+		const int64_t res1 = (int64_t)src1.w[0] + (int64_t)src1.w[1];
+		const int64_t res2 = (int64_t)src2.w[0] + (int64_t)src2.w[1];
+		dst.d[0] = res1;
+		dst.d[1] = res2;
+		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+		dst.d[2] = 0;
+		dst.d[3] = 0;
+	}
+
+	static void XVHADDW_D_W(cpu_t& cpu, la_instruction instr) {
+		// XVHADDW.D.W: LASX vector horizontal add with widening (word to doubleword, 256-bit)
+		// Adds adjacent pairs of 32-bit signed words from xj and produces 64-bit results
+		// Takes all 8 words from xj, produces 4 doublewords
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+
+		const auto& src_j = cpu.registers().getvr(xj);
+		const auto& src_k = cpu.registers().getvr(xk);
+
+		// Read all inputs first to handle register aliasing
+		// Takes all 8 words from xj: pairs (0,1), (2,3), (4,5), (6,7) → 4 doublewords
+		// xk is unused (or maybe used for other operand in 3-register form)
+		int64_t r0 = (int64_t)src_j.w[0] + (int64_t)src_j.w[1];
+		int64_t r1 = (int64_t)src_j.w[2] + (int64_t)src_j.w[3];
+		int64_t r2 = (int64_t)src_j.w[4] + (int64_t)src_j.w[5];
+		int64_t r3 = (int64_t)src_j.w[6] + (int64_t)src_j.w[7];
+
+		auto& dst = cpu.registers().getvr(xd);
+		dst.d[0] = r0;
+		dst.d[1] = r1;
+		dst.d[2] = r2;
+		dst.d[3] = r3;
+	}
+
+	static void XVPICKVE2GR_W(cpu_t& cpu, la_instruction instr) {
+		// XVPICKVE2GR.W: Pick LASX vector element to general register (word, sign-extended)
+		// Selects one of 8 words from a 256-bit vector and sign-extends to 64 bits
+		uint32_t rd = instr.whole & 0x1F;
+		if (rd == 0) return; // Writes to x0 are discarded
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t ui3 = (instr.whole >> 10) & 0x7; // 3-bit index for 8 words
+
+		const auto& src = cpu.registers().getvr(xj);
+		cpu.reg(rd) = static_cast<int64_t>(static_cast<int32_t>(src.wu[ui3]));
+	}
+
+	static void XVADD_D(cpu_t& cpu, la_instruction instr) {
+		// XVADD.D: LASX vector add doublewords (256-bit)
+		// Adds corresponding 64-bit doublewords from two 256-bit vectors
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+
+		const auto& src1 = cpu.registers().getvr(xj);
+		const auto& src2 = cpu.registers().getvr(xk);
+
+		// Read all inputs first to handle register aliasing
+		int64_t r0 = src1.d[0] + src2.d[0];
+		int64_t r1 = src1.d[1] + src2.d[1];
+		int64_t r2 = src1.d[2] + src2.d[2];
+		int64_t r3 = src1.d[3] + src2.d[3];
+
+		auto& dst = cpu.registers().getvr(xd);
+		dst.d[0] = r0;
+		dst.d[1] = r1;
+		dst.d[2] = r2;
+		dst.d[3] = r3;
+	}
+
+	static void XVBITSEL_V(cpu_t& cpu, la_instruction instr) {
+		// XVBITSEL.V: LASX vector bit select (256-bit, 4R-type)
+		// xd = (xk & xa) | (xj & ~xa)
+		// When mask bit is 1, take from xk; when 0, take from xj
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+		uint32_t xa = (instr.whole >> 15) & 0x1F;
+
+		const auto& src_j = cpu.registers().getvr(xj);
+		const auto& src_k = cpu.registers().getvr(xk);
+		const auto& src_a = cpu.registers().getvr(xa);
+
+		// Read all inputs first to handle aliasing
+		uint64_t r0 = (src_k.du[0] & src_a.du[0]) | (src_j.du[0] & ~src_a.du[0]);
+		uint64_t r1 = (src_k.du[1] & src_a.du[1]) | (src_j.du[1] & ~src_a.du[1]);
+		uint64_t r2 = (src_k.du[2] & src_a.du[2]) | (src_j.du[2] & ~src_a.du[2]);
+		uint64_t r3 = (src_k.du[3] & src_a.du[3]) | (src_j.du[3] & ~src_a.du[3]);
+
+		auto& dst = cpu.registers().getvr(xd);
+		dst.du[0] = r0;
+		dst.du[1] = r1;
+		dst.du[2] = r2;
+		dst.du[3] = r3;
+	}
+
+	static void XVFCMP_SLT_D(cpu_t& cpu, la_instruction instr) {
+		// XVFCMP.SLT.D: LASX vector floating-point compare signed less than (256-bit double)
+		// Compares each double-precision element and sets result mask
+		// Sets all bits to 1 when condition is TRUE, all 0s when FALSE
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+
+		const auto& src1 = cpu.registers().getvr(xj);
+		const auto& src2 = cpu.registers().getvr(xk);
+		auto& dst = cpu.registers().getvr(xd);
+
+		// For each of 4 double elements
+		for (int i = 0; i < 4; i++) {
+			double val1 = src1.df[i];
+			double val2 = src2.df[i];
+			bool cmp = !std::isnan(val1) && !std::isnan(val2) && (val1 < val2);
+			dst.du[i] = cmp ? 0xFFFFFFFFFFFFFFFFULL : 0;
+		}
+	}
+
+	static void XVFCMP_SLE_D(cpu_t& cpu, la_instruction instr) {
+		// XVFCMP.SLE.D: LASX vector floating-point compare signed less-or-equal (256-bit double)
+		// Compares each double-precision element and sets result mask
+		// Sets all bits to 1 when condition is TRUE, all 0s when FALSE
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+
+		const auto& src1 = cpu.registers().getvr(xj);
+		const auto& src2 = cpu.registers().getvr(xk);
+		auto& dst = cpu.registers().getvr(xd);
+
+		// For each of 4 double elements
+		for (int i = 0; i < 4; i++) {
+			double val1 = src1.df[i];
+			double val2 = src2.df[i];
+			bool cmp = !std::isnan(val1) && !std::isnan(val2) && (val1 <= val2);
+			dst.du[i] = cmp ? 0xFFFFFFFFFFFFFFFFULL : 0;
+		}
+	}
+
+	static void XVHADDW_Q_D(cpu_t& cpu, la_instruction instr) {
+		// XVHADDW.Q.D: LASX vector horizontal add with widening (doubleword to quadword, 256-bit)
+		// Adds adjacent pairs of 64-bit signed doublewords and produces 128-bit results
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+
+		const auto& src1 = cpu.registers().getvr(xj);
+		const auto& src2 = cpu.registers().getvr(xk);
+
+		// Read all inputs first to handle register aliasing
+		// Takes all 4 doublewords from xj: pairs (0,1), (2,3) → 2 quadwords
+		__int128 q0 = (__int128)(int64_t)src1.d[0] + (__int128)(int64_t)src1.d[1];
+		__int128 q1 = (__int128)(int64_t)src1.d[2] + (__int128)(int64_t)src1.d[3];
+
+		// Store quadwords as pairs of doublewords
+		auto& dst = cpu.registers().getvr(xd);
+		dst.d[0] = (int64_t)(q0 & 0xFFFFFFFFFFFFFFFFLL);
+		dst.d[1] = (int64_t)(q0 >> 64);
+		dst.d[2] = (int64_t)(q1 & 0xFFFFFFFFFFFFFFFFLL);
+		dst.d[3] = (int64_t)(q1 >> 64);
 	}
 
 	static void VSEQ_B(cpu_t& cpu, la_instruction instr) {
@@ -1459,6 +1684,9 @@ struct InstrImpl {
 		for (int i = 0; i < 16; i++) {
 			dst.bu[i] = (src1.bu[i] == src2.bu[i]) ? 0xFF : 0x00;
 		}
+		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+		dst.du[2] = 0;
+		dst.du[3] = 0;
 	}
 
 	static void VSLT_B(cpu_t& cpu, la_instruction instr) {
@@ -1475,6 +1703,9 @@ struct InstrImpl {
 			// Signed comparison
 			dst.bu[i] = (src1.b[i] < src2.b[i]) ? 0xFF : 0x00;
 		}
+		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+		dst.du[2] = 0;
+		dst.du[3] = 0;
 	}
 
 	static void VILVL_H(cpu_t& cpu, la_instruction instr) {
@@ -1498,6 +1729,9 @@ struct InstrImpl {
 		for (int i = 0; i < 8; i++) {
 			dst.hu[i] = result[i];
 		}
+		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+		dst.du[2] = 0;
+		dst.du[3] = 0;
 	}
 
 	static void VILVL_D(cpu_t& cpu, la_instruction instr) {
@@ -1515,6 +1749,9 @@ struct InstrImpl {
 		// For double-words (64-bit), we interleave the low element (1 element) from each source
 		dst.du[0] = src2.du[0];
 		dst.du[1] = src1.du[0];
+		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+		dst.du[2] = 0;
+		dst.du[3] = 0;
 	}
 
 	static void VILVH_D(cpu_t& cpu, la_instruction instr) {
@@ -1531,6 +1768,9 @@ struct InstrImpl {
 		// Interleave: dst[0] = src_k[1], dst[1] = src_j[1]
 		dst.du[0] = src_k.du[1];
 		dst.du[1] = src_j.du[1];
+		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+		dst.du[2] = 0;
+		dst.du[3] = 0;
 	}
 
 	static void VPICKEV_W(cpu_t& cpu, la_instruction instr) {
@@ -1549,6 +1789,11 @@ struct InstrImpl {
 		dst.wu[1] = src_k.wu[2];
 		dst.wu[2] = src_j.wu[0];
 		dst.wu[3] = src_j.wu[2];
+		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+		dst.wu[4] = 0;
+		dst.wu[5] = 0;
+		dst.wu[6] = 0;
+		dst.wu[7] = 0;
 	}
 
 	static void VNOR_V(cpu_t& cpu, la_instruction instr) {
@@ -1563,6 +1808,9 @@ struct InstrImpl {
 
 		dst.du[0] = ~(src1.du[0] | src2.du[0]);
 		dst.du[1] = ~(src1.du[1] | src2.du[1]);
+		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+		dst.du[2] = 0;
+		dst.du[3] = 0;
 	}
 
 	static void VORN_V(cpu_t& cpu, la_instruction instr) {
@@ -1577,6 +1825,9 @@ struct InstrImpl {
 
 		dst.du[0] = src1.du[0] | ~src2.du[0];
 		dst.du[1] = src1.du[1] | ~src2.du[1];
+			// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+		dst.du[2] = 0;
+		dst.du[3] = 0;
 	}
 
 	static void VAND_V(cpu_t& cpu, la_instruction instr) {
@@ -1591,6 +1842,9 @@ struct InstrImpl {
 
 		dst.du[0] = src1.du[0] & src2.du[0];
 		dst.du[1] = src1.du[1] & src2.du[1];
+			// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+		dst.du[2] = 0;
+		dst.du[3] = 0;
 	}
 
 	static void VBITREVI_D(cpu_t& cpu, la_instruction instr) {
@@ -1607,6 +1861,9 @@ struct InstrImpl {
 		uint64_t mask = 1ULL << imm;
 		dst.du[0] = src.du[0] ^ mask;
 		dst.du[1] = src.du[1] ^ mask;
+			// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+		dst.du[2] = 0;
+		dst.du[3] = 0;
 	}
 
 	static void VORI_B(cpu_t& cpu, la_instruction instr) {
@@ -1636,6 +1893,9 @@ struct InstrImpl {
 
 		dst.df[0] = src1.df[0] + src2.df[0];
 		dst.df[1] = src1.df[1] + src2.df[1];
+		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+		dst.du[2] = 0;
+		dst.du[3] = 0;
 	}
 
 	static void VFDIV_D(cpu_t& cpu, la_instruction instr) {
@@ -1650,6 +1910,9 @@ struct InstrImpl {
 
 		dst.df[0] = src1.df[0] / src2.df[0];
 		dst.df[1] = src1.df[1] / src2.df[1];
+		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+		dst.du[2] = 0;
+		dst.du[3] = 0;
 	}
 
 	static void VFMADD_D(cpu_t& cpu, la_instruction instr) {
@@ -1667,6 +1930,29 @@ struct InstrImpl {
 
 		dst.df[0] = src_a.df[0] + src_j.df[0] * src_k.df[0];
 		dst.df[1] = src_a.df[1] + src_j.df[1] * src_k.df[1];
+		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+		dst.du[2] = 0;
+		dst.du[3] = 0;
+	}
+
+	static void VFNMADD_D(cpu_t& cpu, la_instruction instr) {
+		// VFNMADD.D: Vector fused negative multiply-add (double precision, 2x64-bit)
+		// 4R-type format: vd = -(vj * vk) + va = va - vj * vk
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t vj = (instr.whole >> 5) & 0x1F;
+		uint32_t vk = (instr.whole >> 10) & 0x1F;
+		uint32_t va = (instr.whole >> 15) & 0x1F;
+
+		const auto& src_j = cpu.registers().getvr(vj);
+		const auto& src_k = cpu.registers().getvr(vk);
+		const auto& src_a = cpu.registers().getvr(va);
+		auto& dst = cpu.registers().getvr(vd);
+
+		dst.df[0] = src_a.df[0] - src_j.df[0] * src_k.df[0];
+		dst.df[1] = src_a.df[1] - src_j.df[1] * src_k.df[1];
+		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+		dst.du[2] = 0;
+		dst.du[3] = 0;
 	}
 
 	static void VOR_V(cpu_t& cpu, la_instruction instr) {
@@ -1681,6 +1967,9 @@ struct InstrImpl {
 
 		dst.du[0] = src1.du[0] | src2.du[0];
 		dst.du[1] = src1.du[1] | src2.du[1];
+			// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+		dst.du[2] = 0;
+		dst.du[3] = 0;
 	}
 
 	static void VXOR_V(cpu_t& cpu, la_instruction instr) {
@@ -1801,6 +2090,9 @@ struct InstrImpl {
 		// Replicate the selected element to both positions
 		dst.du[0] = src.du[idx];
 		dst.du[1] = src.du[idx];
+			// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+		dst.du[2] = 0;
+		dst.du[3] = 0;
 	}
 
 	static void VREPLGR2VR_B(cpu_t& cpu, la_instruction instr) {
@@ -1914,10 +2206,13 @@ struct InstrImpl {
 		const auto& src_a = cpu.registers().getvr(va);
 		auto& dst = cpu.registers().getvr(vd);
 
-		// Bit select: for each bit, if mask bit is 1, take from vk, else from vj  
+		// Bit select: for each bit, if mask bit is 1, take from vk, else from vj
 		for (int i = 0; i < 2; i++) {
 			dst.du[i] = (src_k.du[i] & src_a.du[i]) | (src_j.du[i] & ~src_a.du[i]);
 		}
+		// LSX instructions zero-extend to 256 bits
+		dst.du[2] = 0;
+		dst.du[3] = 0;
 	}
 
 	static void VMIN_BU(cpu_t& cpu, la_instruction instr) {
@@ -1982,6 +2277,27 @@ struct InstrImpl {
 		dst.du[3] = src1.du[3] ^ src2.du[3];
 	}
 
+	static void XVSUB_W(cpu_t& cpu, la_instruction instr) {
+		// XVSUB.W: LASX vector subtract word (256-bit, 8x32-bit)
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+
+		const auto& src1 = cpu.registers().getvr(xj);
+		const auto& src2 = cpu.registers().getvr(xk);
+		auto& dst = cpu.registers().getvr(xd);
+
+		// Subtract each 32-bit word (8 words in 256-bit vector)
+		dst.w[0] = src1.w[0] - src2.w[0];
+		dst.w[1] = src1.w[1] - src2.w[1];
+		dst.w[2] = src1.w[2] - src2.w[2];
+		dst.w[3] = src1.w[3] - src2.w[3];
+		dst.w[4] = src1.w[4] - src2.w[4];
+		dst.w[5] = src1.w[5] - src2.w[5];
+		dst.w[6] = src1.w[6] - src2.w[6];
+		dst.w[7] = src1.w[7] - src2.w[7];
+	}
+
 	static void XVMIN_BU(cpu_t& cpu, la_instruction instr) {
 		// XVMIN.BU xd, xj, xk
 		// Unsigned minimum of corresponding bytes (256-bit)
@@ -1993,15 +2309,10 @@ struct InstrImpl {
 		const auto& src2 = cpu.registers().getvr(xk);
 		auto& dst = cpu.registers().getvr(xd);
 
-		for (int i = 0; i < 4; i++) {
-			uint64_t result = 0;
-			for (int j = 0; j < 8; j++) {
-				uint8_t b1 = (src1.du[i] >> (j * 8)) & 0xFF;
-				uint8_t b2 = (src2.du[i] >> (j * 8)) & 0xFF;
-				uint8_t min_val = (b1 < b2) ? b1 : b2;
-				result |= (uint64_t)min_val << (j * 8);
-			}
-			dst.du[i] = result;
+		for (int i = 0; i < 32; i++) {
+			const uint8_t b1 = src1.bu[i];
+			const uint8_t b2 = src2.bu[i];
+			dst.bu[i] = (b1 < b2) ? b1 : b2;
 		}
 	}
 
@@ -2016,15 +2327,10 @@ struct InstrImpl {
 		const auto& src2 = cpu.registers().getvr(xk);
 		auto& dst = cpu.registers().getvr(xd);
 
-		for (int i = 0; i < 4; i++) {
-			uint64_t result = 0;
-			for (int j = 0; j < 8; j++) {
-				uint8_t b1 = (src1.du[i] >> (j * 8)) & 0xFF;
-				uint8_t b2 = (src2.du[i] >> (j * 8)) & 0xFF;
-				uint8_t max_val = (b1 > b2) ? b1 : b2;
-				result |= (uint64_t)max_val << (j * 8);
-			}
-			dst.du[i] = result;
+		for (int i = 0; i < 32; i++) {
+			const uint8_t b1 = src1.bu[i];
+			const uint8_t b2 = src2.bu[i];
+			dst.bu[i] = (b1 > b2) ? b1 : b2;
 		}
 	}
 
@@ -2165,6 +2471,380 @@ struct InstrImpl {
 		dst.du[1] = tmp[lo_sel * 2 + 1];
 		dst.du[2] = tmp[hi_sel * 2];
 		dst.du[3] = tmp[hi_sel * 2 + 1];
+	}
+
+	static void XVLDX(cpu_t& cpu, la_instruction instr) {
+		// XVLDX xd, rj, rk
+		// Vector indexed load (LASX 256-bit)
+		auto addr = cpu.reg(instr.r3.rj) + cpu.reg(instr.r3.rk);
+		auto& vr = cpu.registers().getvr(instr.r3.rd);
+		vr.du[0] = cpu.memory().template read<uint64_t>(addr);
+		vr.du[1] = cpu.memory().template read<uint64_t>(addr + 8);
+		vr.du[2] = cpu.memory().template read<uint64_t>(addr + 16);
+		vr.du[3] = cpu.memory().template read<uint64_t>(addr + 24);
+	}
+
+	static void XVSTX(cpu_t& cpu, la_instruction instr) {
+		// XVSTX xd, rj, rk
+		// Vector indexed store (LASX 256-bit)
+		auto addr = cpu.reg(instr.r3.rj) + cpu.reg(instr.r3.rk);
+		const auto& vr = cpu.registers().getvr(instr.r3.rd);
+		cpu.memory().template write<uint64_t>(addr, vr.du[0]);
+		cpu.memory().template write<uint64_t>(addr + 8, vr.du[1]);
+		cpu.memory().template write<uint64_t>(addr + 16, vr.du[2]);
+		cpu.memory().template write<uint64_t>(addr + 24, vr.du[3]);
+	}
+
+	static void XVFADD_D(cpu_t& cpu, la_instruction instr) {
+		// XVFADD.D: LASX vector floating-point add (double precision, 4x64-bit)
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+
+		const auto& src1 = cpu.registers().getvr(xj);
+		const auto& src2 = cpu.registers().getvr(xk);
+		auto& dst = cpu.registers().getvr(xd);
+
+		dst.df[0] = src1.df[0] + src2.df[0];
+		dst.df[1] = src1.df[1] + src2.df[1];
+		dst.df[2] = src1.df[2] + src2.df[2];
+		dst.df[3] = src1.df[3] + src2.df[3];
+	}
+
+	static void XVFMUL_D(cpu_t& cpu, la_instruction instr) {
+		// XVFMUL.D: LASX vector floating-point multiply (double precision, 4x64-bit)
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+
+		const auto& src1 = cpu.registers().getvr(xj);
+		const auto& src2 = cpu.registers().getvr(xk);
+		auto& dst = cpu.registers().getvr(xd);
+
+		dst.df[0] = src1.df[0] * src2.df[0];
+		dst.df[1] = src1.df[1] * src2.df[1];
+		dst.df[2] = src1.df[2] * src2.df[2];
+		dst.df[3] = src1.df[3] * src2.df[3];
+	}
+
+	static void XVFDIV_D(cpu_t& cpu, la_instruction instr) {
+		// XVFDIV.D: LASX vector floating-point divide (double precision, 4x64-bit)
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+
+		const auto& src1 = cpu.registers().getvr(xj);
+		const auto& src2 = cpu.registers().getvr(xk);
+		auto& dst = cpu.registers().getvr(xd);
+
+		dst.df[0] = src1.df[0] / src2.df[0];
+		dst.df[1] = src1.df[1] / src2.df[1];
+		dst.df[2] = src1.df[2] / src2.df[2];
+		dst.df[3] = src1.df[3] / src2.df[3];
+	}
+
+	static void XVFMADD_D(cpu_t& cpu, la_instruction instr) {
+		// XVFMADD.D: LASX vector fused multiply-add (double precision, 4x64-bit)
+		// 4R-type format: xd = xa + xj * xk
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+		uint32_t xa = (instr.whole >> 15) & 0x1F;
+
+		const auto& src_j = cpu.registers().getvr(xj);
+		const auto& src_k = cpu.registers().getvr(xk);
+		const auto& src_a = cpu.registers().getvr(xa);
+		auto& dst = cpu.registers().getvr(xd);
+
+		dst.df[0] = src_a.df[0] + src_j.df[0] * src_k.df[0];
+		dst.df[1] = src_a.df[1] + src_j.df[1] * src_k.df[1];
+		dst.df[2] = src_a.df[2] + src_j.df[2] * src_k.df[2];
+		dst.df[3] = src_a.df[3] + src_j.df[3] * src_k.df[3];
+	}
+
+	static void XVFMSUB_D(cpu_t& cpu, la_instruction instr) {
+		// XVFMSUB.D: LASX vector fused multiply-subtract (double precision, 4x64-bit)
+		// 4R-type format: xd = xa - xj * xk
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+		uint32_t xa = (instr.whole >> 15) & 0x1F;
+
+		const auto& src_j = cpu.registers().getvr(xj);
+		const auto& src_k = cpu.registers().getvr(xk);
+		const auto& src_a = cpu.registers().getvr(xa);
+		auto& dst = cpu.registers().getvr(xd);
+
+		dst.df[0] = src_a.df[0] - src_j.df[0] * src_k.df[0];
+		dst.df[1] = src_a.df[1] - src_j.df[1] * src_k.df[1];
+		dst.df[2] = src_a.df[2] - src_j.df[2] * src_k.df[2];
+		dst.df[3] = src_a.df[3] - src_j.df[3] * src_k.df[3];
+	}
+
+	static void XVFNMADD_D(cpu_t& cpu, la_instruction instr) {
+		// XVFNMADD.D: LASX vector fused negative multiply-add (double precision, 4x64-bit)
+		// 4R-type format: xd = -(xj * xk) + xa = xa - xj * xk
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+		uint32_t xa = (instr.whole >> 15) & 0x1F;
+
+		const auto& src_j = cpu.registers().getvr(xj);
+		const auto& src_k = cpu.registers().getvr(xk);
+		const auto& src_a = cpu.registers().getvr(xa);
+		auto& dst = cpu.registers().getvr(xd);
+
+		dst.df[0] = src_a.df[0] - src_j.df[0] * src_k.df[0];
+		dst.df[1] = src_a.df[1] - src_j.df[1] * src_k.df[1];
+		dst.df[2] = src_a.df[2] - src_j.df[2] * src_k.df[2];
+		dst.df[3] = src_a.df[3] - src_j.df[3] * src_k.df[3];
+	}
+
+	static void XVORI_B(cpu_t& cpu, la_instruction instr) {
+		// XVORI.B xd, xj, ui8
+		// Bitwise OR each byte of xj with immediate, store in xd
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t imm8 = (instr.whole >> 10) & 0xFF;
+
+		const auto& src = cpu.registers().getvr(xj);
+		auto& dst = cpu.registers().getvr(xd);
+
+		// OR each byte with the immediate value
+		uint64_t imm_broadcast = 0x0101010101010101ULL * imm8;
+		dst.du[0] = src.du[0] | imm_broadcast;
+		dst.du[1] = src.du[1] | imm_broadcast;
+		dst.du[2] = src.du[2] | imm_broadcast;
+		dst.du[3] = src.du[3] | imm_broadcast;
+	}
+
+	static void XVXORI_B(cpu_t& cpu, la_instruction instr) {
+		// XVXORI.B xd, xj, ui8
+		// Bitwise XOR each byte of xj with immediate, store in xd
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t imm8 = (instr.whole >> 10) & 0xFF;
+
+		const auto& src = cpu.registers().getvr(xj);
+		auto& dst = cpu.registers().getvr(xd);
+
+		// XOR each byte with the immediate value
+		uint64_t imm_broadcast = 0x0101010101010101ULL * imm8;
+		dst.du[0] = src.du[0] ^ imm_broadcast;
+		dst.du[1] = src.du[1] ^ imm_broadcast;
+		dst.du[2] = src.du[2] ^ imm_broadcast;
+		dst.du[3] = src.du[3] ^ imm_broadcast;
+	}
+
+	static void XVILVL_D(cpu_t& cpu, la_instruction instr) {
+		// XVILVL.D: LASX vector interleave low double-word (256-bit)
+		// Interleaves the low 128-bit double-words from two 256-bit vectors
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+
+		const auto& src_j = cpu.registers().getvr(xj);
+		const auto& src_k = cpu.registers().getvr(xk);
+		auto& dst = cpu.registers().getvr(xd);
+
+		// Interleave: dst[0] = src_k[0], dst[1] = src_j[0], dst[2] = src_k[1], dst[3] = src_j[1]
+		// For LASX (256-bit), we interleave the low 2 double-words (128-bit) from each source
+		dst.du[0] = src_k.du[0];
+		dst.du[1] = src_j.du[0];
+		dst.du[2] = src_k.du[1];
+		dst.du[3] = src_j.du[1];
+	}
+
+	static void XVILVH_D(cpu_t& cpu, la_instruction instr) {
+		// XVILVH.D: LASX vector interleave high double-word (256-bit)
+		// Interleaves the high 128-bit double-words from two 256-bit vectors
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+
+		const auto& src_j = cpu.registers().getvr(xj);
+		const auto& src_k = cpu.registers().getvr(xk);
+		auto& dst = cpu.registers().getvr(xd);
+
+		// Interleave: dst[0] = src_k[2], dst[1] = src_j[2], dst[2] = src_k[3], dst[3] = src_j[3]
+		// For LASX (256-bit), we interleave the high 2 double-words (128-bit) from each source
+		dst.du[0] = src_k.du[2];
+		dst.du[1] = src_j.du[2];
+		dst.du[2] = src_k.du[3];
+		dst.du[3] = src_j.du[3];
+	}
+
+	static void XVPERMI_D(cpu_t& cpu, la_instruction instr) {
+		// XVPERMI.D: LASX vector permute double-word (256-bit)
+		// Permutes 4 double-words based on 8-bit immediate
+		// Each 2 bits of imm8 selects source element for corresponding dst element
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t imm8 = (instr.whole >> 10) & 0xFF;
+
+		const auto& src = cpu.registers().getvr(xj);
+		auto& dst = cpu.registers().getvr(xd);
+
+		// Extract 2-bit selectors for each element
+		uint32_t sel0 = (imm8 >> 0) & 0x3;
+		uint32_t sel1 = (imm8 >> 2) & 0x3;
+		uint32_t sel2 = (imm8 >> 4) & 0x3;
+		uint32_t sel3 = (imm8 >> 6) & 0x3;
+
+		// Need to save source in case xd == xj
+		uint64_t temp[4] = { src.du[0], src.du[1], src.du[2], src.du[3] };
+
+		// Permute elements
+		dst.du[0] = temp[sel0];
+		dst.du[1] = temp[sel1];
+		dst.du[2] = temp[sel2];
+		dst.du[3] = temp[sel3];
+	}
+
+	static void XVPACKEV_D(cpu_t& cpu, la_instruction instr) {
+		// XVPACKEV.D: LASX vector pack even double-word (256-bit)
+		// Packs even-numbered elements (0, 2) from each source
+		// dst[0] = xj[0], dst[1] = xk[0], dst[2] = xj[2], dst[3] = xk[2]
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+
+		const auto& src_j = cpu.registers().getvr(xj);
+		const auto& src_k = cpu.registers().getvr(xk);
+		auto& dst = cpu.registers().getvr(xd);
+
+		// Pack even elements (0 and 2) from both sources
+		dst.du[0] = src_j.du[0];
+		dst.du[1] = src_k.du[0];
+		dst.du[2] = src_j.du[2];
+		dst.du[3] = src_k.du[2];
+	}
+
+	static void XVPACKOD_D(cpu_t& cpu, la_instruction instr) {
+		// XVPACKOD.D: LASX vector pack odd double-word (256-bit)
+		// Packs odd-numbered elements (1, 3) from each source
+		// dst[0] = xj[1], dst[1] = xk[1], dst[2] = xj[3], dst[3] = xk[3]
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+
+		const auto& src_j = cpu.registers().getvr(xj);
+		const auto& src_k = cpu.registers().getvr(xk);
+		auto& dst = cpu.registers().getvr(xd);
+
+		// Pack odd elements (1 and 3) from both sources
+		dst.du[0] = src_j.du[1];
+		dst.du[1] = src_k.du[1];
+		dst.du[2] = src_j.du[3];
+		dst.du[3] = src_k.du[3];
+	}
+
+	static void XVPICKEV_D(cpu_t& cpu, la_instruction instr) {
+		// XVPICKEV.D: LASX vector pick even double-word (256-bit)
+		// Picks even elements from both sources in a different pattern than PACKEV
+		// dst[0] = xj[0], dst[1] = xj[2], dst[2] = xk[0], dst[3] = xk[2]
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+
+		const auto& src_j = cpu.registers().getvr(xj);
+		const auto& src_k = cpu.registers().getvr(xk);
+		auto& dst = cpu.registers().getvr(xd);
+
+		// Pick even elements (0 and 2) from both sources
+		dst.du[0] = src_j.du[0];
+		dst.du[1] = src_j.du[2];
+		dst.du[2] = src_k.du[0];
+		dst.du[3] = src_k.du[2];
+	}
+
+	static void XVPICKEV_W(cpu_t& cpu, la_instruction instr) {
+		// XVPICKEV.W: LASX vector pick even word (256-bit)
+		// Picks even-indexed words from both sources
+		// dst[0] = xj[0], dst[1] = xj[2], dst[2] = xj[4], dst[3] = xj[6]
+		// dst[4] = xk[0], dst[5] = xk[2], dst[6] = xk[4], dst[7] = xk[6]
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+
+		const auto& src_j = cpu.registers().getvr(xj);
+		const auto& src_k = cpu.registers().getvr(xk);
+		auto& dst = cpu.registers().getvr(xd);
+
+		// Pick even words (indices 0, 2, 4, 6) from both sources
+		dst.w[0] = src_j.w[0];
+		dst.w[1] = src_j.w[2];
+		dst.w[2] = src_j.w[4];
+		dst.w[3] = src_j.w[6];
+		dst.w[4] = src_k.w[0];
+		dst.w[5] = src_k.w[2];
+		dst.w[6] = src_k.w[4];
+		dst.w[7] = src_k.w[6];
+	}
+
+	static void XVPICKOD_D(cpu_t& cpu, la_instruction instr) {
+		// XVPICKOD.D: LASX vector pick odd double-word (256-bit)
+		// Picks odd elements from both sources
+		// dst[0] = xj[1], dst[1] = xj[3], dst[2] = xk[1], dst[3] = xk[3]
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+
+		const auto& src_j = cpu.registers().getvr(xj);
+		const auto& src_k = cpu.registers().getvr(xk);
+		auto& dst = cpu.registers().getvr(xd);
+
+		// Pick odd elements (1 and 3) from both sources
+		dst.du[0] = src_j.du[1];
+		dst.du[1] = src_j.du[3];
+		dst.du[2] = src_k.du[1];
+		dst.du[3] = src_k.du[3];
+	}
+
+	static void XVLDI(cpu_t& cpu, la_instruction instr) {
+		// XVLDI xd, imm13
+		// LASX load immediate - loads immediate pattern into 256-bit vector
+		// Format: bits[4:0] = xd, bits[17:5] = imm13
+		// imm13 = [mode:3][value:10] where mode determines the pattern
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t imm13 = (instr.whole >> 5) & 0x1FFF;
+
+		// Extract mode (top 3 bits) and value (bottom 10 bits)
+		uint32_t mode = (imm13 >> 10) & 0x7;
+		int32_t value = imm13 & 0x3FF;
+		// Sign extend 10-bit value
+		if (value & 0x200) value |= 0xFFFFFC00;
+
+		auto& dst = cpu.registers().getvr(xd);
+
+		// Mode 0-3: replicate byte/half-word/word/double-word
+		if (mode == 0) {
+			// Mode 0: replicate byte (8-bit)
+			uint8_t byte_val = value & 0xFF;
+			uint64_t pattern = 0;
+			for (int i = 0; i < 8; i++) {
+				pattern |= (uint64_t)byte_val << (i * 8);
+			}
+			dst.du[0] = dst.du[1] = dst.du[2] = dst.du[3] = pattern;
+		} else if (mode == 1) {
+			// Mode 1: replicate half-word (16-bit)
+			uint16_t hword_val = value & 0xFFFF;
+			uint64_t pattern = ((uint64_t)hword_val) | ((uint64_t)hword_val << 16) |
+			                   ((uint64_t)hword_val << 32) | ((uint64_t)hword_val << 48);
+			dst.du[0] = dst.du[1] = dst.du[2] = dst.du[3] = pattern;
+		} else if (mode == 2) {
+			// Mode 2: replicate word (32-bit)
+			uint32_t word_val = value;
+			uint64_t pattern = ((uint64_t)word_val) | ((uint64_t)word_val << 32);
+			dst.du[0] = dst.du[1] = dst.du[2] = dst.du[3] = pattern;
+		} else if (mode == 3) {
+			// Mode 3: replicate double-word (64-bit)
+			uint64_t dword_val = value;
+			dst.du[0] = dst.du[1] = dst.du[2] = dst.du[3] = dword_val;
+		} else {
+			// Modes 4-7: reserved or special patterns, default to zero
+			dst.du[0] = dst.du[1] = dst.du[2] = dst.du[3] = 0;
+		}
 	}
 
 	static void UNIMPLEMENTED(cpu_t& cpu, la_instruction instr) {

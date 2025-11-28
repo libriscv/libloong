@@ -2,7 +2,7 @@ build_program() {
 	local src_file="$1"
 	local output_file="$2"
 	LINKER_ARGS="-Wl,-Ttext-segment=0x200000"
-	loongarch64-linux-gnu-gcc-14 -O2 -gdwarf-4 -static -no-pie "$src_file" $LINKER_ARGS -o "$output_file"
+	loongarch64-linux-gnu-gcc-14 -O2 -gdwarf-4 -static -mlasx "$src_file" $LINKER_ARGS -o "$output_file"
 }
 
 build_program hello_world.c hello_world.elf

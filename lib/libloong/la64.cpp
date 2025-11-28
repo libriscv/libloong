@@ -214,6 +214,14 @@ namespace loongarch
 	// LASX (256-bit) Instructions
 	INSTRUCTION(XVREPLGR2VR_B);
 	INSTRUCTION(XVXOR_V);
+	INSTRUCTION(XVADD_D);
+	INSTRUCTION(XVSUB_W);
+	INSTRUCTION(XVPICKVE2GR_W);
+	INSTRUCTION(XVHADDW_D_W);
+	INSTRUCTION(XVHADDW_Q_D);
+	INSTRUCTION(XVBITSEL_V);
+	INSTRUCTION(XVFCMP_SLT_D);
+	INSTRUCTION(XVFCMP_SLE_D);
 	INSTRUCTION(XVMIN_BU);
 	INSTRUCTION(XVMAX_BU);
 	INSTRUCTION(XVMSKNZ_B);
@@ -222,6 +230,25 @@ namespace loongarch
 	INSTRUCTION(XVSEQ_B);
 	INSTRUCTION(XVSETEQZ_V);
 	INSTRUCTION(XVPERMI_Q);
+	INSTRUCTION(XVLDX);
+	INSTRUCTION(XVSTX);
+	INSTRUCTION(XVFADD_D);
+	INSTRUCTION(XVFMUL_D);
+	INSTRUCTION(XVFDIV_D);
+	INSTRUCTION(XVFMADD_D);
+	INSTRUCTION(XVFMSUB_D);
+	INSTRUCTION(XVFNMADD_D);
+	INSTRUCTION(XVORI_B);
+	INSTRUCTION(XVXORI_B);
+	INSTRUCTION(XVILVL_D);
+	INSTRUCTION(XVILVH_D);
+	INSTRUCTION(XVPERMI_D);
+	INSTRUCTION(XVPACKEV_D);
+	INSTRUCTION(XVPACKOD_D);
+	INSTRUCTION(XVPICKEV_D);
+	INSTRUCTION(XVPICKEV_W);
+	INSTRUCTION(XVPICKOD_D);
+	INSTRUCTION(XVLDI);
 
 	// Additional LSX Instructions
 	INSTRUCTION(VSETANYEQZ_B);
@@ -258,6 +285,7 @@ namespace loongarch
 	INSTRUCTION(VLDX);
 	INSTRUCTION(VSTX);
 	INSTRUCTION(VFMADD_D);
+	INSTRUCTION(VFNMADD_D);
 	INSTRUCTION(VOR_V);
 	INSTRUCTION(VXOR_V);
 
@@ -282,6 +310,9 @@ namespace loongarch
 	INSTRUCTION(MOVFCSR2GR);
 	INSTRUCTION(FCMP_COR_D);
 	INSTRUCTION(FCMP_CULE_D);
+	INSTRUCTION(FCMP_CEQ_D);
+	INSTRUCTION(FCMP_CLT_D);
+	INSTRUCTION(FCMP_CUNE_D);
 	INSTRUCTION(FCMP_SLT_D);
 	INSTRUCTION(FCMP_SLE_D);
 	INSTRUCTION(VFCMP_SLT_D);
@@ -487,38 +518,60 @@ namespace loongarch
 				// VFMADD.D: Vector FMA (bits[31:20] = 0x092)
 				uint32_t op12 = (instr.whole >> 20) & 0xFFF;
 				if (op12 == 0x092) return DECODED_INSTR(VFMADD_D);
+				// VFNMADD.D: Vector FNMA (bits[31:20] = 0x082)
+				if (op12 == 0x082) return DECODED_INSTR(VFNMADD_D);
+				// XVFMADD.D: LASX vector FMA (bits[31:20] = 0x0A2)
+				if (op12 == 0x0A2) return DECODED_INSTR(XVFMADD_D);
 			}
 			break;
 
 		case 0x03: // VSHUF.B (4R-type vector shuffle) and FCMP instructions
-			// VSHUF.B: bits[31:20] = 0x00D5
-			if ((instr.whole >> 20) == 0x00D5) return DECODED_INSTR(VSHUF_B);
-			// VBITSEL.V: bits[31:20] = 0x0D1
-			if ((instr.whole >> 20) == 0x0D1) return DECODED_INSTR(VBITSEL_V);
+		// XVFNMADD.D: LASX vector FNMA (bits[31:21] = 0x069, bit[20] = 1)
+		// XVBITSEL.V: LASX bit select (bits[31:21] = 0x069, bit[20] = 0)
+		if ((instr.whole >> 21) == 0x069) {
+			uint32_t bit20 = (instr.whole >> 20) & 1;
+			if (bit20 == 1) return DECODED_INSTR(XVFNMADD_D);
+			if (bit20 == 0) return DECODED_INSTR(XVBITSEL_V);
+		}
+		// VSHUF.B: bits[31:20] = 0x00D5
+		if ((instr.whole >> 20) == 0x00D5) return DECODED_INSTR(VSHUF_B);
+		// VBITSEL.V: bits[31:20] = 0x0D1
+		if ((instr.whole >> 20) == 0x0D1) return DECODED_INSTR(VBITSEL_V);
+		// FSEL: FP conditional select - bits[31:18] = 0x0340
+		if (((instr.whole >> 18) & 0x3FFF) == 0x0340) return DECODED_INSTR(FSEL);
 
-			// FSEL: FP conditional select - bits[31:18] = 0x0340
-			if (((instr.whole >> 18) & 0x3FFF) == 0x0340) return DECODED_INSTR(FSEL);
-
-			// FCMP instructions: bits[31:22] = 0x030, bits[19:15] = condition code
-			{
-				uint32_t op10 = (instr.whole >> 22) & 0x3FF;
-				if (op10 == 0x030) {
-					uint32_t cond = (instr.whole >> 15) & 0x1F;
-					if (cond == 0x14) return DECODED_INSTR(FCMP_COR_D);
-					if (cond == 0x0E) return DECODED_INSTR(FCMP_CULE_D);
-					if (cond == 0x03) return DECODED_INSTR(FCMP_SLT_D);
-					if (cond == 0x07) return DECODED_INSTR(FCMP_SLE_D);
-				}
+		// FCMP instructions: bits[31:22] = 0x030, bits[19:15] = condition code
+		{
+			uint32_t op10 = (instr.whole >> 22) & 0x3FF;
+			if (op10 == 0x030) {
+				uint32_t cond = (instr.whole >> 15) & 0x1F;
+				if (cond == 0x14) return DECODED_INSTR(FCMP_COR_D);
+				if (cond == 0x0E) return DECODED_INSTR(FCMP_CULE_D);
+				if (cond == 0x02) return DECODED_INSTR(FCMP_CEQ_D);
+				if (cond == 0x03) return DECODED_INSTR(FCMP_SLT_D);
+				if (cond == 0x04) return DECODED_INSTR(FCMP_CLT_D);
+				if (cond == 0x07) return DECODED_INSTR(FCMP_SLE_D);
+				if (cond == 0x18) return DECODED_INSTR(FCMP_CUNE_D);
 			}
-			// VFCMP instructions: bits[31:21] = 0x063, bits[20:15] = condition code
-			{
-				uint32_t op11 = (instr.whole >> 21) & 0x7FF;
-				if (op11 == 0x063) {
-					uint32_t cond = (instr.whole >> 15) & 0x3F;
-					if (cond == 0x03) return DECODED_INSTR(VFCMP_SLT_D);
-					if (cond == 0x07) return DECODED_INSTR(VFCMP_SLE_D);
-				}
+		}
+		// VFCMP instructions: bits[31:21] = 0x063, bits[20:15] = condition code
+		{
+			uint32_t op11 = (instr.whole >> 21) & 0x7FF;
+			if (op11 == 0x063) {
+				uint32_t cond = (instr.whole >> 15) & 0x3F;
+				if (cond == 0x03) return DECODED_INSTR(VFCMP_SLT_D);
+				if (cond == 0x07) return DECODED_INSTR(VFCMP_SLE_D);
 			}
+		}
+		// XVFCMP instructions: bits[31:21] = 0x065, bits[20:15] = condition code (LASX)
+		{
+			uint32_t op11 = (instr.whole >> 21) & 0x7FF;
+			if (op11 == 0x065) {
+				uint32_t cond = (instr.whole >> 15) & 0x3F;
+				if (cond == 0x03) return DECODED_INSTR(XVFCMP_SLT_D);
+				if (cond == 0x07) return DECODED_INSTR(XVFCMP_SLE_D);
+			}
+		}
 			break;
 		case 0x05: // LU12I.W (0x14000000) / LU32I.D (0x16000000)
 			// Need to check bits[31:25] to distinguish:
@@ -635,6 +688,10 @@ namespace loongarch
 			if ((instr.whole & 0xFFFC0000) == 0x38400000) return DECODED_INSTR(VLDX);
 			// VSTX: Vector indexed store (LSX 128-bit)
 			if ((instr.whole & 0xFFFC0000) == 0x38440000) return DECODED_INSTR(VSTX);
+			// XVLDX: Vector indexed load (LASX 256-bit)
+			if ((instr.whole & 0xFFFC0000) == 0x38480000) return DECODED_INSTR(XVLDX);
+			// XVSTX: Vector indexed store (LASX 256-bit)
+			if ((instr.whole & 0xFFFC0000) == 0x384C0000) return DECODED_INSTR(XVSTX);
 
 			// Atomic instructions: bits [31:20] = 0x386
 			// Empirical encoding: bits[19:16] encode both operation and ordering
@@ -839,6 +896,10 @@ namespace loongarch
 					uint32_t subop = (instr.whole >> 10) & 0x3F;
 					if (subop == 0x00) return DECODED_INSTR(XVREPLGR2VR_B);
 				}
+				// XVLDI: LASX load immediate - bits[31:22] = 0x1df (0x77e00000 >> 22)
+				if ((instr.whole >> 22) == 0x1df) {
+					return DECODED_INSTR(XVLDI);
+				}
 				// XVPICKVE.W: 0x7703Dxxx (bits[31:16] = 0x7703, bits[15:10] = 0x34)
 				if (top16 == 0x7703) {
 					uint32_t subop = (instr.whole >> 10) & 0x3F;
@@ -852,6 +913,26 @@ namespace loongarch
 				if ((instr.whole >> 15) == 0xEA4E) {
 					return DECODED_INSTR(XVXOR_V);
 				}
+				// XVADD.D: LASX vector add doublewords - bits[31:15] = 0xE817
+				// Opcode: 0x740b8000 >> 15 = 0xE817
+				if ((instr.whole >> 15) == 0xE817) {
+					return DECODED_INSTR(XVADD_D);
+				}
+				// XVSUB.W: LASX vector subtract words - bits[31:15] = 0xE81A
+				// Opcode: 0x740d0000 >> 15 = 0xE81A
+				if ((instr.whole >> 15) == 0xE81A) {
+					return DECODED_INSTR(XVSUB_W);
+				}
+				// XVHADDW.D.W: LASX vector horizontal add with widening - bits[31:15] = 0xE8AA
+				// Opcode: 0x74551000 >> 15 = 0xE8AA
+				if ((instr.whole >> 15) == 0xE8AA) {
+					return DECODED_INSTR(XVHADDW_D_W);
+				}
+				// XVHADDW.Q.D: LASX vector horizontal add with widening - bits[31:15] = 0xE8AB
+				// Opcode: 0x74559080 >> 15 = 0xE8AB
+				if ((instr.whole >> 15) == 0xE8AB) {
+					return DECODED_INSTR(XVHADDW_Q_D);
+				}
 				// XVMIN.BU: bits[31:15] = 0xE8EC
 				if ((instr.whole >> 15) == 0xE8EC) {
 					return DECODED_INSTR(XVMIN_BU);
@@ -860,10 +941,54 @@ namespace loongarch
 				if ((instr.whole >> 15) == 0xE8ED) {
 					return DECODED_INSTR(XVMAX_BU);
 				}
+				// XVPICKVE2GR.W: bits[31:18] = 0x1DBB (0x76EFxxxx)
+				// Pick word element from LASX vector to general register
+				if ((instr.whole >> 18) == 0x1DBB) {
+					return DECODED_INSTR(XVPICKVE2GR_W);
+				}
 				// XVPERMI.Q: bits[31:15] = 0xEE82
 				if ((instr.whole >> 15) == 0xEE82) {
 					return DECODED_INSTR(XVPERMI_Q);
 				}
+				// XVFADD.D: LASX vector floating-point add (double) - bits[31:15] = 0xEA62
+				// Opcode: 0x75310000 >> 15 = 0xEA62
+				if ((instr.whole >> 15) == 0xEA62) return DECODED_INSTR(XVFADD_D);
+				// XVFMUL.D: LASX vector floating-point multiply (double) - bits[31:15] = 0xEA72
+				// Opcode: 0x75390000 >> 15 = 0xEA72
+				if ((instr.whole >> 15) == 0xEA72) return DECODED_INSTR(XVFMUL_D);
+				// XVFDIV.D: LASX vector floating-point divide (double) - bits[31:15] = 0xEA76
+				// Opcode: 0x753b2000 >> 15 = 0xEA76
+				if ((instr.whole >> 15) == 0xEA76) return DECODED_INSTR(XVFDIV_D);
+				// XVORI.B: LASX vector OR immediate byte - bits[31:15] = 0xEFA8
+				// Opcode: 0x77d40000 >> 15 = 0xEFA8
+				if ((instr.whole >> 15) == 0xEFA8) return DECODED_INSTR(XVORI_B);
+				// XVXORI.B: LASX vector XOR immediate byte - bits[31:15] = 0xEFD9
+				// Opcode: 0x77ec0000 >> 15 = 0xEFD9
+				if ((instr.whole >> 15) == 0xEFD9) return DECODED_INSTR(XVXORI_B);
+				// XVILVL.D: LASX vector interleave low double-word - bits[31:15] = 0xEA37
+				// Opcode: 0x751b8000 >> 15 = 0xEA37
+				if ((instr.whole >> 15) == 0xEA37) return DECODED_INSTR(XVILVL_D);
+				// XVILVH.D: LASX vector interleave high double-word - bits[31:15] = 0xEA3F
+				// Opcode: 0x751f8000 >> 15 = 0xEA3F
+				if ((instr.whole >> 15) == 0xEA3F) return DECODED_INSTR(XVILVH_D);
+				// XVPERMI.D: LASX vector permute double-word - bits[31:18] = 0x1dc1
+				// Opcode: 0x7707e000 >> 18 = 0x1dc1
+				if ((instr.whole >> 18) == 0x1dc1) return DECODED_INSTR(XVPERMI_D);
+				// XVPACKEV.D: LASX vector pack even double-word - bits[31:15] = 0xea66
+				// Opcode: 0x75330000 >> 15 = 0xea66
+				if ((instr.whole >> 15) == 0xea66) return DECODED_INSTR(XVPACKEV_D);
+				// XVPACKOD.D: LASX vector pack odd double-word - bits[31:15] = 0xee33
+				// Opcode: 0x77198000 >> 15 = 0xee33
+				if ((instr.whole >> 15) == 0xee33) return DECODED_INSTR(XVPACKOD_D);
+				// XVPICKEV.D: LASX vector pick even double-word - bits[31:15] = 0xee07
+				// Opcode: 0x7703c000 >> 15 = 0xee07
+				if ((instr.whole >> 15) == 0xee07) return DECODED_INSTR(XVPICKEV_D);
+				// XVPICKEV.W: LASX vector pick even word - bits[31:15] = 0xea3e
+				// Opcode: 0x751f0000 >> 15 = 0xea3e
+				if ((instr.whole >> 15) == 0xea3e) return DECODED_INSTR(XVPICKEV_W);
+				// XVPICKOD.D: LASX vector pick odd double-word - bits[31:15] = 0xee0f
+				// Opcode: 0x77078000 >> 15 = 0xee0f
+				if ((instr.whole >> 15) == 0xee0f) return DECODED_INSTR(XVPICKOD_D);
 			}
 			break;
 		}

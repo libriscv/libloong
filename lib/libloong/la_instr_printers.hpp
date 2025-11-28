@@ -959,6 +959,27 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		return snprintf(buf, len, "fcmp.sle.d $fcc%u, $fa%u, $fa%u", cd, fj, fk);
 	}
 
+	static int FCMP_CLT_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t cd = instr.whole & 0x7;
+		uint32_t fj = (instr.whole >> 5) & 0x1F;
+		uint32_t fk = (instr.whole >> 10) & 0x1F;
+		return snprintf(buf, len, "fcmp.clt.d $fcc%u, $fa%u, $fa%u", cd, fj, fk);
+	}
+
+	static int FCMP_CEQ_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t cd = instr.whole & 0x7;
+		uint32_t fj = (instr.whole >> 5) & 0x1F;
+		uint32_t fk = (instr.whole >> 10) & 0x1F;
+		return snprintf(buf, len, "fcmp.ceq.d $fcc%u, $fa%u, $fa%u", cd, fj, fk);
+	}
+
+	static int FCMP_CUNE_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t cd = instr.whole & 0x7;
+		uint32_t fj = (instr.whole >> 5) & 0x1F;
+		uint32_t fk = (instr.whole >> 10) & 0x1F;
+		return snprintf(buf, len, "fcmp.cune.d $fcc%u, $fa%u, $fa%u", cd, fj, fk);
+	}
+
 	static int VFCMP_SLE_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		uint32_t vd = instr.whole & 0x1F;
 		uint32_t vj = (instr.whole >> 5) & 0x1F;
@@ -1236,11 +1257,70 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		return snprintf(buf, len, "vhaddw.d.w $vr%u, $vr%u, $vr%u", vd, vj, vk);
 	}
 
+	static int XVHADDW_D_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+		return snprintf(buf, len, "xvhaddw.d.w $xr%u, $xr%u, $xr%u", xd, xj, xk);
+	}
+
+	static int XVPICKVE2GR_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t rd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t ui3 = (instr.whole >> 10) & 0x7;
+		return snprintf(buf, len, "xvpickve2gr.w %s, $xr%u, %u", reg_name(rd), xj, ui3);
+	}
+
+	static int XVADD_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+		return snprintf(buf, len, "xvadd.d $xr%u, $xr%u, $xr%u", xd, xj, xk);
+	}
+
+	static int XVBITSEL_V(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+		uint32_t xa = (instr.whole >> 15) & 0x1F;
+		return snprintf(buf, len, "xvbitsel.v $xr%u, $xr%u, $xr%u, $xr%u", xd, xj, xk, xa);
+	}
+
+	static int XVFCMP_SLT_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+		return snprintf(buf, len, "xvfcmp.slt.d $xr%u, $xr%u, $xr%u", xd, xj, xk);
+	}
+
+	static int XVFCMP_SLE_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+		return snprintf(buf, len, "xvfcmp.sle.d $xr%u, $xr%u, $xr%u", xd, xj, xk);
+	}
+
+	static int XVHADDW_Q_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+		return snprintf(buf, len, "xvhaddw.q.d $xr%u, $xr%u, $xr%u", xd, xj, xk);
+	}
+
 	static int VFMADD_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		uint32_t vd = instr.whole & 0x1F;
 		uint32_t vj = (instr.whole >> 5) & 0x1F;
 		uint32_t vk = (instr.whole >> 10) & 0x1F;
-		return snprintf(buf, len, "vfmadd.d $vr%u, $vr%u, $vr%u", vd, vj, vk);
+		uint32_t va = (instr.whole >> 15) & 0x1F;
+		return snprintf(buf, len, "vfmadd.d $vr%u, $vr%u, $vr%u, $vr%u", vd, vj, vk, va);
+	}
+
+	static int VFNMADD_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t vj = (instr.whole >> 5) & 0x1F;
+		uint32_t vk = (instr.whole >> 10) & 0x1F;
+		uint32_t va = (instr.whole >> 15) & 0x1F;
+		return snprintf(buf, len, "vfnmadd.d $vr%u, $vr%u, $vr%u, $vr%u", vd, vj, vk, va);
 	}
 
 	static int VOR_V(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
@@ -1322,6 +1402,13 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		return snprintf(buf, len, "xvxor.v $xr%u, $xr%u, $xr%u", xd, xj, xk);
 	}
 
+	static int XVSUB_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+		return snprintf(buf, len, "xvsub.w $xr%u, $xr%u, $xr%u", xd, xj, xk);
+	}
+
 	static int XVMIN_BU(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		uint32_t xd = instr.whole & 0x1F;
 		uint32_t xj = (instr.whole >> 5) & 0x1F;
@@ -1373,6 +1460,137 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		uint32_t xj = (instr.whole >> 5) & 0x1F;
 		uint32_t imm = (instr.whole >> 10) & 0xFF;
 		return snprintf(buf, len, "xvpermi.q $xr%u, $xr%u, 0x%x", xd, xj, imm);
+	}
+
+	static int XVLDX(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		return snprintf(buf, len, "xvldx $xr%u, %s, %s",
+			instr.r3.rd, reg_name(instr.r3.rj), reg_name(instr.r3.rk));
+	}
+
+	static int XVSTX(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		return snprintf(buf, len, "xvstx $xr%u, %s, %s",
+			instr.r3.rd, reg_name(instr.r3.rj), reg_name(instr.r3.rk));
+	}
+
+	static int XVFADD_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+		return snprintf(buf, len, "xvfadd.d $xr%u, $xr%u, $xr%u", xd, xj, xk);
+	}
+
+	static int XVFMUL_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+		return snprintf(buf, len, "xvfmul.d $xr%u, $xr%u, $xr%u", xd, xj, xk);
+	}
+
+	static int XVFDIV_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+		return snprintf(buf, len, "xvfdiv.d $xr%u, $xr%u, $xr%u", xd, xj, xk);
+	}
+
+	static int XVFMADD_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+		uint32_t xa = (instr.whole >> 15) & 0x1F;
+		return snprintf(buf, len, "xvfmadd.d $xr%u, $xr%u, $xr%u, $xr%u", xd, xj, xk, xa);
+	}
+
+	static int XVFMSUB_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+		uint32_t xa = (instr.whole >> 15) & 0x1F;
+		return snprintf(buf, len, "xvfmsub.d $xr%u, $xr%u, $xr%u, $xr%u", xd, xj, xk, xa);
+	}
+
+	static int XVFNMADD_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+		uint32_t xa = (instr.whole >> 15) & 0x1F;
+		return snprintf(buf, len, "xvfnmadd.d $xr%u, $xr%u, $xr%u, $xr%u", xd, xj, xk, xa);
+	}
+
+	static int XVORI_B(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t imm8 = (instr.whole >> 10) & 0xFF;
+		return snprintf(buf, len, "xvori.b $xr%u, $xr%u, 0x%x", xd, xj, imm8);
+	}
+
+	static int XVXORI_B(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t imm8 = (instr.whole >> 10) & 0xFF;
+		return snprintf(buf, len, "xvxori.b $xr%u, $xr%u, 0x%x", xd, xj, imm8);
+	}
+
+	static int XVILVL_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+		return snprintf(buf, len, "xvilvl.d $xr%u, $xr%u, $xr%u", xd, xj, xk);
+	}
+
+	static int XVILVH_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+		return snprintf(buf, len, "xvilvh.d $xr%u, $xr%u, $xr%u", xd, xj, xk);
+	}
+
+	static int XVPERMI_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t imm8 = (instr.whole >> 10) & 0xFF;
+		return snprintf(buf, len, "xvpermi.d $xr%u, $xr%u, 0x%x", xd, xj, imm8);
+	}
+
+	static int XVPACKEV_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+		return snprintf(buf, len, "xvpackev.d $xr%u, $xr%u, $xr%u", xd, xj, xk);
+	}
+
+	static int XVPACKOD_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+		return snprintf(buf, len, "xvpackod.d $xr%u, $xr%u, $xr%u", xd, xj, xk);
+	}
+
+	static int XVPICKEV_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+		return snprintf(buf, len, "xvpickev.d $xr%u, $xr%u, $xr%u", xd, xj, xk);
+	}
+
+	static int XVPICKEV_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+		return snprintf(buf, len, "xvpickev.w $xr%u, $xr%u, $xr%u", xd, xj, xk);
+	}
+
+	static int XVPICKOD_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+		return snprintf(buf, len, "xvpickod.d $xr%u, $xr%u, $xr%u", xd, xj, xk);
+	}
+
+	static int XVLDI(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t imm13 = (instr.whole >> 5) & 0x1FFF;
+		return snprintf(buf, len, "xvldi $xr%u, %d", xd, (int)(int16_t)(imm13 << 3) >> 3);
 	}
 
 };

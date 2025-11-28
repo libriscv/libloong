@@ -96,10 +96,27 @@ namespace loongarch
 		LA64_BC_VLDX,              // Vector indexed load 128-bit (4 in stream)
 		LA64_BC_VSTX,              // Vector indexed store 128-bit (2 in stream)
 		LA64_BC_VFMADD_D,          // Vector fused multiply-add double
+		LA64_BC_VFNMADD_D,         // Vector fused negative multiply-add double
 		LA64_BC_VHADDW_D_W,        // Vector horizontal add with widening (word to doubleword)
 
 		// LASX (256-bit) instructions
 		LA64_BC_XVLD,              // Vector load 256-bit LASX
+		LA64_BC_XVST,              // Vector store 256-bit LASX
+		LA64_BC_XVLDX,             // Vector indexed load 256-bit LASX
+		LA64_BC_XVSTX,             // Vector indexed store 256-bit LASX
+		LA64_BC_XVFADD_D,          // LASX vector floating-point add double
+		LA64_BC_XVFMUL_D,          // LASX vector floating-point multiply double
+		LA64_BC_XVFMADD_D,         // LASX vector fused multiply-add double
+		LA64_BC_XVFMSUB_D,         // LASX vector fused multiply-subtract double
+		LA64_BC_XVFNMADD_D,        // LASX vector fused negative multiply-add double
+		LA64_BC_XVORI_B,           // LASX vector OR immediate byte
+		LA64_BC_XVXORI_B,          // LASX vector XOR immediate byte
+		LA64_BC_XVILVL_D,          // LASX vector interleave low double-word
+		LA64_BC_XVILVH_D,          // LASX vector interleave high double-word
+		LA64_BC_XVPERMI_D,         // LASX vector permute double-word
+		LA64_BC_XVPACKEV_D,        // LASX vector pack even double-word
+		LA64_BC_XVPACKOD_D,        // LASX vector pack odd double-word
+		LA64_BC_XVPICKEV_D,        // LASX vector pick even double-word
 
 		// Floating-point instructions
 		LA64_BC_FMADD_D,           // Fused multiply-add double
@@ -222,8 +239,25 @@ namespace loongarch
 		case LA64_BC_VLDX: return "VLDX";
 		case LA64_BC_VSTX: return "VSTX";
 		case LA64_BC_VFMADD_D: return "VFMADD.D";
+		case LA64_BC_VFNMADD_D: return "VFNMADD.D";
 		case LA64_BC_VHADDW_D_W: return "VHADDW.D.W";
 		case LA64_BC_XVLD: return "XVLD";
+		case LA64_BC_XVST: return "XVST";
+		case LA64_BC_XVLDX: return "XVLDX";
+		case LA64_BC_XVSTX: return "XVSTX";
+		case LA64_BC_XVFADD_D: return "XVFADD.D";
+		case LA64_BC_XVFMUL_D: return "XVFMUL.D";
+		case LA64_BC_XVFMADD_D: return "XVFMADD.D";
+		case LA64_BC_XVFMSUB_D: return "XVFMSUB.D";
+		case LA64_BC_XVFNMADD_D: return "XVFNMADD.D";
+		case LA64_BC_XVORI_B: return "XVORI.B";
+		case LA64_BC_XVXORI_B: return "XVXORI.B";
+		case LA64_BC_XVILVL_D: return "XVILVL.D";
+		case LA64_BC_XVILVH_D: return "XVILVH.D";
+		case LA64_BC_XVPERMI_D: return "XVPERMI.D";
+		case LA64_BC_XVPACKEV_D: return "XVPACKEV.D";
+		case LA64_BC_XVPACKOD_D: return "XVPACKOD.D";
+		case LA64_BC_XVPICKEV_D: return "XVPICKEV.D";
 		case LA64_BC_FMADD_D: return "FMADD.D";
 		case LA64_BC_FLDX_D: return "FLDX.D";
 		case LA64_BC_FSTX_D: return "FSTX.D";

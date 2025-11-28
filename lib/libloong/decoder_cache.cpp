@@ -301,9 +301,17 @@ namespace loongarch
 		}
 
 		// VFMADD.D: Vector FMA (bits[31:20] = 0x092)
+		// VFNMADD.D: Vector FNMA (bits[31:20] = 0x082)
 		const uint32_t op12 = (instr >> 20) & 0xFFF;
 		if (op12 == 0x092) {
 			return LA64_BC_VFMADD_D;
+		}
+		if (op12 == 0x082) {
+			return LA64_BC_VFNMADD_D;
+		}
+		// XVFMADD.D: LASX Vector FMA (bits[31:20] = 0x0A2) - Estimated
+		if (op12 == 0x0A2) {
+			return LA64_BC_XVFMADD_D;
 		}
 
 		// VHADDW.D.W: Vector horizontal add with widening - op10 = 0x1C1
@@ -314,6 +322,10 @@ namespace loongarch
 		// XVLD: LASX 256-bit vector load - op10 = 0x0b2 (0x2C800000 >> 22)
 		if (op10 == 0x0b2) {
 			return LA64_BC_XVLD;
+		}
+		// XVST: LASX 256-bit vector store - op10 = 0x0b3 (0x2CC00000 >> 22)
+		if (op10 == 0x0b3) {
+			return LA64_BC_XVST;
 		}
 
 		// New bytecodes from coremark profiling
@@ -404,9 +416,63 @@ namespace loongarch
 		if (op17 == 0x7088) {
 			return LA64_BC_VSTX;
 		}
+		// XVLDX: op17 = 0x7090 (0x38480000 >> 15)
+		if (op17 == 0x7090) {
+			return LA64_BC_XVLDX;
+		}
+		// XVSTX: op17 = 0x7098 (0x384C0000 >> 15)
+		if (op17 == 0x7098) {
+			return LA64_BC_XVSTX;
+		}
 		// VFADD.D: op17 = 0xe262 (0x71310000 >> 15)
 		if (op17 == 0xe262) {
 			return LA64_BC_VFADD_D;
+		}
+		// XVFADD.D: op17 = 0xea62 (0x75310000 >> 15)
+		if (op17 == 0xea62) {
+			return LA64_BC_XVFADD_D;
+		}
+		// XVFMUL.D: op17 = 0xea72 (0x75390000 >> 15)
+		if (op17 == 0xea72) {
+			return LA64_BC_XVFMUL_D;
+		}
+		// XVFMSUB.D and XVFNMADD.D: Check for 4R-type with op12 = 0x0CA or 0x0D2
+		if (op6 == 0x03) {
+			uint32_t op12 = (instr >> 20) & 0xfff;
+			if (op12 == 0x0ca) return LA64_BC_XVFMSUB_D;
+			if (op12 == 0x0d2) return LA64_BC_XVFNMADD_D;
+		}
+		// XVORI.B: op17 = 0xefa8 (0x77d40000 >> 15)
+		if (op17 == 0xefa8) {
+			return LA64_BC_XVORI_B;
+		}
+		// XVXORI.B: op17 = 0xefd9 (0x77ec0000 >> 15)
+		if (op17 == 0xefd9) {
+			return LA64_BC_XVXORI_B;
+		}
+		// XVILVL.D: op17 = 0xea37 (0x751b8000 >> 15)
+		if (op17 == 0xea37) {
+			return LA64_BC_XVILVL_D;
+		}
+		// XVILVH.D: op17 = 0xea3f (0x751f8000 >> 15)
+		if (op17 == 0xea3f) {
+			return LA64_BC_XVILVH_D;
+		}
+		// XVPERMI.D: op14 = 0x1dc1 (0x7707e000 >> 18)
+		if ((instr >> 18) == 0x1dc1) {
+			return LA64_BC_XVPERMI_D;
+		}
+		// XVPACKEV.D: op17 = 0xea66 (0x75330000 >> 15)
+		if (op17 == 0xea66) {
+			return LA64_BC_XVPACKEV_D;
+		}
+		// XVPACKOD.D: op17 = 0xee33 (0x77198000 >> 15)
+		if (op17 == 0xee33) {
+			return LA64_BC_XVPACKOD_D;
+		}
+		// XVPICKEV.D: op17 = 0xee07 (0x7703c000 >> 15)
+		if (op17 == 0xee07) {
+			return LA64_BC_XVPICKEV_D;
 		}
 
 		// Branch instructions

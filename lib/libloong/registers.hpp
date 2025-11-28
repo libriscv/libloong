@@ -38,6 +38,9 @@ namespace loongarch
 		auto& getvr(uint32_t idx) noexcept { return m_vr[idx]; }
 		const auto& getvr(uint32_t idx) const noexcept { return m_vr[idx]; }
 
+		auto& getvr128low(uint32_t idx) noexcept { return m_vr[idx].lsx_low; }
+		const auto& getvr128low(uint32_t idx) const noexcept { return m_vr[idx].lsx_low; }
+
 		// LASX vector registers (256-bit)
 		// These share the low 32- and 64-bits with floating-point registers
 		// as well as the low 128-bits with LSX vector registers.
@@ -52,21 +55,23 @@ namespace loongarch
 			uint64_t du[4];
 			float    f[8];
 			double   df[4];
+			std::array<uint64_t, 2> lsx_low;  // Low 128 bits for LSX compatibility
 		};
 
-	// Floating-point condition flags (FCC)
-	uint8_t cf(uint32_t idx) const noexcept { return (m_fcc >> idx) & 1; }
-	void set_cf(uint32_t idx, uint8_t value) noexcept {
-		if (value) {
-			m_fcc |= (1u << idx);
-		} else {
-			m_fcc &= ~(1u << idx);
+		// Floating-point condition flags (FCC)
+		uint8_t cf(uint32_t idx) const noexcept { return (m_fcc >> idx) & 1; }
+		void set_cf(uint32_t idx, uint8_t value) noexcept {
+			if (value) {
+				m_fcc |= (1u << idx);
+			} else {
+				m_fcc &= ~(1u << idx);
+			}
 		}
-	}
 
-	// Floating-point control and status register (FCSR) access
-	uint32_t fcsr() const noexcept { return m_fcsr.whole; }
-	void set_fcsr(uint32_t value) noexcept { m_fcsr.whole = value; }		// Reset registers
+		// Floating-point control and status register (FCSR) access
+		uint32_t fcsr() const noexcept { return m_fcsr.whole; }
+		void set_fcsr(uint32_t value) noexcept { m_fcsr.whole = value; }		// Reset registers
+
 		void reset() {
 			this->pc = 0;
 			std::memset(m_regs.data(), 0, m_regs.size() * sizeof(register_t));

@@ -557,6 +557,9 @@ INSTRUCTION(LA64_BC_VLD, la64_vld)
 	auto& vr = REGISTERS().getvr(fi.rd);
 	vr.du[0] = MACHINE().memory.template read<uint64_t>(addr);
 	vr.du[1] = MACHINE().memory.template read<uint64_t>(addr + 8);
+	// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+	vr.du[2] = 0;
+	vr.du[3] = 0;
 	NEXT_INSTR();
 }
 
@@ -565,9 +568,8 @@ INSTRUCTION(LA64_BC_VST, la64_vst)
 {
 	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
 	const auto addr = REG(fi.rj) + fi.imm;
-	const auto& vr = REGISTERS().getvr(fi.rd);
-	MACHINE().memory.template write<uint64_t>(addr, vr.du[0]);
-	MACHINE().memory.template write<uint64_t>(addr + 8, vr.du[1]);
+	const auto& vr = REGISTERS().getvr128low(fi.rd);
+	MACHINE().memory.template write<remove_cvref_t<decltype(vr)>>(addr, vr);
 	NEXT_INSTR();
 }
 
@@ -579,6 +581,9 @@ INSTRUCTION(LA64_BC_VLDX, la64_vldx)
 	auto& vr = REGISTERS().getvr(fi.rd);
 	vr.du[0] = MACHINE().memory.template read<uint64_t>(addr);
 	vr.du[1] = MACHINE().memory.template read<uint64_t>(addr + 8);
+	// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+	vr.du[2] = 0;
+	vr.du[3] = 0;
 	NEXT_INSTR();
 }
 
@@ -587,9 +592,8 @@ INSTRUCTION(LA64_BC_VSTX, la64_vstx)
 {
 	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
 	const auto addr = REG(fi.rj) + REG(fi.rk);
-	const auto& vr = REGISTERS().getvr(fi.rd);
-	MACHINE().memory.template write<uint64_t>(addr, vr.du[0]);
-	MACHINE().memory.template write<uint64_t>(addr + 8, vr.du[1]);
+	const auto& vr = REGISTERS().getvr128low(fi.rd);
+	MACHINE().memory.template write<remove_cvref_t<decltype(vr)>>(addr, vr);
 	NEXT_INSTR();
 }
 
@@ -603,6 +607,9 @@ INSTRUCTION(LA64_BC_VFADD_D, la64_vfadd_d)
 	// VFADD.D operates on 2 double-precision elements
 	vrd.df[0] = vrj.df[0] + vrk.df[0];
 	vrd.df[1] = vrj.df[1] + vrk.df[1];
+	// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+	vrd.du[2] = 0;
+	vrd.du[3] = 0;
 	NEXT_INSTR();
 }
 
@@ -618,6 +625,27 @@ INSTRUCTION(LA64_BC_VFMADD_D, la64_vfmadd_d)
 
 	dst.df[0] = src_a.df[0] + src_j.df[0] * src_k.df[0];
 	dst.df[1] = src_a.df[1] + src_j.df[1] * src_k.df[1];
+	// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+	dst.du[2] = 0;
+	dst.du[3] = 0;
+	NEXT_INSTR();
+}
+
+// LA64_BC_VFNMADD_D: Vector fused negative multiply-add double
+INSTRUCTION(LA64_BC_VFNMADD_D, la64_vfnmadd_d)
+{
+	// 4R-type format: vd = -(vj * vk) + va = va - vj * vk
+	auto fi = *(FasterLA64_4R *)&DECODER().instr;
+	auto& dst = REGISTERS().getvr(fi.rd);
+	const auto& src_j = REGISTERS().getvr(fi.rj);
+	const auto& src_k = REGISTERS().getvr(fi.rk);
+	const auto& src_a = REGISTERS().getvr(fi.ra);
+
+	dst.df[0] = src_a.df[0] - src_j.df[0] * src_k.df[0];
+	dst.df[1] = src_a.df[1] - src_j.df[1] * src_k.df[1];
+	// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+	dst.du[2] = 0;
+	dst.du[3] = 0;
 	NEXT_INSTR();
 }
 
@@ -630,8 +658,13 @@ INSTRUCTION(LA64_BC_VHADDW_D_W, la64_vhaddw_d_w)
 	const auto& src2 = REGISTERS().getvr(fi.rk);
 
 	// Add adjacent pairs: vj[0]+vj[1], vk[0]+vk[1]
-	dst.d[0] = (int64_t)src1.w[0] + (int64_t)src1.w[1];
-	dst.d[1] = (int64_t)src2.w[0] + (int64_t)src2.w[1];
+	const int64_t res1 = (int64_t)(int32_t)src1.w[0] + (int64_t)(int32_t)src1.w[1];
+	const int64_t res2 = (int64_t)(int32_t)src2.w[0] + (int64_t)(int32_t)src2.w[1];
+	dst.d[0] = res1;
+	dst.d[1] = res2;
+	// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+	dst.d[2] = 0;
+	dst.d[3] = 0;
 	NEXT_INSTR();
 }
 
@@ -641,10 +674,253 @@ INSTRUCTION(LA64_BC_XVLD, la64_xvld)
 	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
 	const auto addr = REG(fi.rj) + fi.imm;
 	auto& vr = REGISTERS().getvr(fi.rd);
-	vr.du[0] = MACHINE().memory.template read<uint64_t>(addr);
-	vr.du[1] = MACHINE().memory.template read<uint64_t>(addr + 8);
-	vr.du[2] = MACHINE().memory.template read<uint64_t>(addr + 16);
-	vr.du[3] = MACHINE().memory.template read<uint64_t>(addr + 24);
+	vr = MACHINE().memory.template read<remove_cvref_t<decltype(vr)>>(addr);
+	NEXT_INSTR();
+}
+
+// LA64_BC_XVST: LASX 256-bit vector store
+INSTRUCTION(LA64_BC_XVST, la64_xvst)
+{
+	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
+	const auto addr = REG(fi.rj) + fi.imm;
+	const auto& vr = REGISTERS().getvr(fi.rd);
+	MACHINE().memory.template write<remove_cvref_t<decltype(vr)>>(addr, vr);
+	NEXT_INSTR();
+}
+
+// LA64_BC_XVLDX: LASX 256-bit vector indexed load (xd = mem[rj + rk])
+INSTRUCTION(LA64_BC_XVLDX, la64_xvldx)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	const auto addr = REG(fi.rj) + REG(fi.rk);
+	auto& vr = REGISTERS().getvr(fi.rd);
+	vr = MACHINE().memory.template read<remove_cvref_t<decltype(vr)>>(addr);
+	NEXT_INSTR();
+}
+
+// LA64_BC_XVSTX: LASX 256-bit vector indexed store (mem[rj + rk] = xd)
+INSTRUCTION(LA64_BC_XVSTX, la64_xvstx)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	const auto addr = REG(fi.rj) + REG(fi.rk);
+	const auto& vr = REGISTERS().getvr(fi.rd);
+	MACHINE().memory.template write<remove_cvref_t<decltype(vr)>>(addr, vr);
+	NEXT_INSTR();
+}
+
+// LA64_BC_XVFADD_D: LASX floating-point add (4x double precision)
+INSTRUCTION(LA64_BC_XVFADD_D, la64_xvfadd_d)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	const auto& vr_j = REGISTERS().getvr(fi.rj);
+	const auto& vr_k = REGISTERS().getvr(fi.rk);
+	auto& vr_d = REGISTERS().getvr(fi.rd);
+	vr_d.df[0] = vr_j.df[0] + vr_k.df[0];
+	vr_d.df[1] = vr_j.df[1] + vr_k.df[1];
+	vr_d.df[2] = vr_j.df[2] + vr_k.df[2];
+	vr_d.df[3] = vr_j.df[3] + vr_k.df[3];
+	NEXT_INSTR();
+}
+
+// LA64_BC_XVFMUL_D: LASX floating-point multiply (4x double precision)
+INSTRUCTION(LA64_BC_XVFMUL_D, la64_xvfmul_d)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	const auto& vr_j = REGISTERS().getvr(fi.rj);
+	const auto& vr_k = REGISTERS().getvr(fi.rk);
+	auto& vr_d = REGISTERS().getvr(fi.rd);
+	vr_d.df[0] = vr_j.df[0] * vr_k.df[0];
+	vr_d.df[1] = vr_j.df[1] * vr_k.df[1];
+	vr_d.df[2] = vr_j.df[2] * vr_k.df[2];
+	vr_d.df[3] = vr_j.df[3] * vr_k.df[3];
+	NEXT_INSTR();
+}
+
+// LA64_BC_XVFMADD_D: LASX fused multiply-add (4x double precision)
+INSTRUCTION(LA64_BC_XVFMADD_D, la64_xvfmadd_d)
+{
+	// 4R-type format: xd = xa + xj * xk
+	auto fi = *(FasterLA64_4R *)&DECODER().instr;
+	const auto& vr_j = REGISTERS().getvr(fi.rj);
+	const auto& vr_k = REGISTERS().getvr(fi.rk);
+	const auto& vr_a = REGISTERS().getvr(fi.ra);
+	auto& vr_d = REGISTERS().getvr(fi.rd);
+	vr_d.df[0] = vr_a.df[0] + vr_j.df[0] * vr_k.df[0];
+	vr_d.df[1] = vr_a.df[1] + vr_j.df[1] * vr_k.df[1];
+	vr_d.df[2] = vr_a.df[2] + vr_j.df[2] * vr_k.df[2];
+	vr_d.df[3] = vr_a.df[3] + vr_j.df[3] * vr_k.df[3];
+	NEXT_INSTR();
+}
+
+// LA64_BC_XVFMSUB_D: LASX fused multiply-subtract (4x double precision)
+INSTRUCTION(LA64_BC_XVFMSUB_D, la64_xvfmsub_d)
+{
+	// 4R-type format: xd = xa - xj * xk
+	auto fi = *(FasterLA64_4R *)&DECODER().instr;
+	const auto& vr_j = REGISTERS().getvr(fi.rj);
+	const auto& vr_k = REGISTERS().getvr(fi.rk);
+	const auto& vr_a = REGISTERS().getvr(fi.ra);
+	auto& vr_d = REGISTERS().getvr(fi.rd);
+	vr_d.df[0] = vr_a.df[0] - vr_j.df[0] * vr_k.df[0];
+	vr_d.df[1] = vr_a.df[1] - vr_j.df[1] * vr_k.df[1];
+	vr_d.df[2] = vr_a.df[2] - vr_j.df[2] * vr_k.df[2];
+	vr_d.df[3] = vr_a.df[3] - vr_j.df[3] * vr_k.df[3];
+	NEXT_INSTR();
+}
+
+// LA64_BC_XVFNMADD_D: LASX fused negative multiply-add (4x double precision)
+INSTRUCTION(LA64_BC_XVFNMADD_D, la64_xvfnmadd_d)
+{
+	// 4R-type format: xd = -(xj * xk) + xa = xa - xj * xk
+	auto fi = *(FasterLA64_4R *)&DECODER().instr;
+	const auto& vr_j = REGISTERS().getvr(fi.rj);
+	const auto& vr_k = REGISTERS().getvr(fi.rk);
+	const auto& vr_a = REGISTERS().getvr(fi.ra);
+	auto& vr_d = REGISTERS().getvr(fi.rd);
+	vr_d.df[0] = vr_a.df[0] - vr_j.df[0] * vr_k.df[0];
+	vr_d.df[1] = vr_a.df[1] - vr_j.df[1] * vr_k.df[1];
+	vr_d.df[2] = vr_a.df[2] - vr_j.df[2] * vr_k.df[2];
+	vr_d.df[3] = vr_a.df[3] - vr_j.df[3] * vr_k.df[3];
+	NEXT_INSTR();
+}
+
+// LA64_BC_XVORI_B: LASX vector OR immediate byte
+INSTRUCTION(LA64_BC_XVORI_B, la64_xvori_b)
+{
+	la_instruction instr{DECODER().instr};
+	uint32_t xd = instr.ri8.rd;
+	uint32_t xj = instr.ri8.rj;
+	uint32_t imm8 = instr.ri8.imm;
+
+	const auto& vr_j = REGISTERS().getvr(xj);
+	auto& vr_d = REGISTERS().getvr(xd);
+	// OR each byte with the immediate value
+	uint64_t imm_broadcast = 0x0101010101010101ULL * imm8;
+	vr_d.du[0] = vr_j.du[0] | imm_broadcast;
+	vr_d.du[1] = vr_j.du[1] | imm_broadcast;
+	vr_d.du[2] = vr_j.du[2] | imm_broadcast;
+	vr_d.du[3] = vr_j.du[3] | imm_broadcast;
+	NEXT_INSTR();
+}
+
+// LA64_BC_XVXORI_B: LASX vector XOR immediate byte
+INSTRUCTION(LA64_BC_XVXORI_B, la64_xvxori_b)
+{
+	la_instruction instr{DECODER().instr};
+	uint32_t xd = instr.ri8.rd;
+	uint32_t xj = instr.ri8.rj;
+	uint32_t imm8 = instr.ri8.imm;
+
+	const auto& vr_j = REGISTERS().getvr(xj);
+	auto& vr_d = REGISTERS().getvr(xd);
+	// XOR each byte with the immediate value
+	uint64_t imm_broadcast = 0x0101010101010101ULL * imm8;
+	vr_d.du[0] = vr_j.du[0] ^ imm_broadcast;
+	vr_d.du[1] = vr_j.du[1] ^ imm_broadcast;
+	vr_d.du[2] = vr_j.du[2] ^ imm_broadcast;
+	vr_d.du[3] = vr_j.du[3] ^ imm_broadcast;
+	NEXT_INSTR();
+}
+
+// LA64_BC_XVILVL_D: LASX vector interleave low double-word
+INSTRUCTION(LA64_BC_XVILVL_D, la64_xvilvl_d)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	const auto& vr_j = REGISTERS().getvr(fi.rj);
+	const auto& vr_k = REGISTERS().getvr(fi.rk);
+	auto& vr_d = REGISTERS().getvr(fi.rd);
+	// Interleave low 128-bit: dst[0] = src_k[0], dst[1] = src_j[0], dst[2] = src_k[1], dst[3] = src_j[1]
+	vr_d.du[0] = vr_k.du[0];
+	vr_d.du[1] = vr_j.du[0];
+	vr_d.du[2] = vr_k.du[1];
+	vr_d.du[3] = vr_j.du[1];
+	NEXT_INSTR();
+}
+
+// LA64_BC_XVILVH_D: LASX vector interleave high double-word
+INSTRUCTION(LA64_BC_XVILVH_D, la64_xvilvh_d)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	const auto& vr_j = REGISTERS().getvr(fi.rj);
+	const auto& vr_k = REGISTERS().getvr(fi.rk);
+	auto& vr_d = REGISTERS().getvr(fi.rd);
+	// Interleave high 128-bit: dst[0] = src_k[2], dst[1] = src_j[2], dst[2] = src_k[3], dst[3] = src_j[3]
+	vr_d.du[0] = vr_k.du[2];
+	vr_d.du[1] = vr_j.du[2];
+	vr_d.du[2] = vr_k.du[3];
+	vr_d.du[3] = vr_j.du[3];
+	NEXT_INSTR();
+}
+
+// LA64_BC_XVPERMI_D: LASX vector permute double-word
+INSTRUCTION(LA64_BC_XVPERMI_D, la64_xvpermi_d)
+{
+	uint32_t xd = DECODER().instr & 0x1F;
+	uint32_t xj = (DECODER().instr >> 5) & 0x1F;
+	uint32_t imm8 = (DECODER().instr >> 10) & 0xFF;
+
+	const auto& src = REGISTERS().getvr(xj);
+	auto& dst = REGISTERS().getvr(xd);
+
+	// Extract 2-bit selectors for each element
+	uint32_t sel0 = (imm8 >> 0) & 0x3;
+	uint32_t sel1 = (imm8 >> 2) & 0x3;
+	uint32_t sel2 = (imm8 >> 4) & 0x3;
+	uint32_t sel3 = (imm8 >> 6) & 0x3;
+
+	// Need to save source in case xd == xj
+	uint64_t temp[4] = { src.du[0], src.du[1], src.du[2], src.du[3] };
+
+	// Permute elements
+	dst.du[0] = temp[sel0];
+	dst.du[1] = temp[sel1];
+	dst.du[2] = temp[sel2];
+	dst.du[3] = temp[sel3];
+	NEXT_INSTR();
+}
+
+// LA64_BC_XVPACKEV_D: LASX vector pack even double-word
+INSTRUCTION(LA64_BC_XVPACKEV_D, la64_xvpackev_d)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	const auto& vr_j = REGISTERS().getvr(fi.rj);
+	const auto& vr_k = REGISTERS().getvr(fi.rk);
+	auto& vr_d = REGISTERS().getvr(fi.rd);
+	// Pack even elements (0 and 2) from both sources
+	vr_d.du[0] = vr_j.du[0];
+	vr_d.du[1] = vr_k.du[0];
+	vr_d.du[2] = vr_j.du[2];
+	vr_d.du[3] = vr_k.du[2];
+	NEXT_INSTR();
+}
+
+// LA64_BC_XVPACKOD_D: LASX vector pack odd double-word
+INSTRUCTION(LA64_BC_XVPACKOD_D, la64_xvpackod_d)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	const auto& vr_j = REGISTERS().getvr(fi.rj);
+	const auto& vr_k = REGISTERS().getvr(fi.rk);
+	auto& vr_d = REGISTERS().getvr(fi.rd);
+	// Pack odd elements (1 and 3) from both sources
+	vr_d.du[0] = vr_j.du[1];
+	vr_d.du[1] = vr_k.du[1];
+	vr_d.du[2] = vr_j.du[3];
+	vr_d.du[3] = vr_k.du[3];
+	NEXT_INSTR();
+}
+
+// LA64_BC_XVPICKEV_D: LASX vector pick even double-word
+INSTRUCTION(LA64_BC_XVPICKEV_D, la64_xvpickev_d)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	const auto& vr_j = REGISTERS().getvr(fi.rj);
+	const auto& vr_k = REGISTERS().getvr(fi.rk);
+	auto& vr_d = REGISTERS().getvr(fi.rd);
+	// Pick even elements: dst[0]=xj[0], dst[1]=xj[2], dst[2]=xk[0], dst[3]=xk[2]
+	vr_d.du[0] = vr_j.du[0];
+	vr_d.du[1] = vr_j.du[2];
+	vr_d.du[2] = vr_k.du[0];
+	vr_d.du[3] = vr_k.du[2];
 	NEXT_INSTR();
 }
 
@@ -876,9 +1152,6 @@ INSTRUCTION(LA64_BC_FMUL_D, la64_fmul_d)
 	vr_d.df[0] = vr_j.df[0] * vr_k.df[0];
 	NEXT_INSTR();
 }
-
-
-// ============ New Bytecodes from coremark profiling ============
 
 // LA64_BC_SRLI_W: Shift right logical immediate word
 INSTRUCTION(LA64_BC_SRLI_W, la64_srli_w)

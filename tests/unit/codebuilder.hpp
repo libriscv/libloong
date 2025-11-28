@@ -104,10 +104,11 @@ public:
 
 		// Execute compiler
 		std::string command = cmd.str();
-		std::string output = exec(command);
+		int exit_code = 0;
+		std::string output = exec(command, &exit_code);
 
 		// Check if compilation succeeded
-		if (!std::filesystem::exists(output_path)) {
+		if (exit_code != 0 || !std::filesystem::exists(output_path)) {
 			throw std::runtime_error(
 				"Compilation failed for " + name + ":\n" +
 				"Command: " + command + "\n" +
@@ -183,10 +184,11 @@ public:
 
 		// Execute compiler
 		std::string command = cmd.str();
-		std::string output = exec(command);
+		int exit_code = 0;
+		std::string output = exec(command, &exit_code);
 
 		// Check if compilation succeeded
-		if (!std::filesystem::exists(output_path)) {
+		if (exit_code != 0 || !std::filesystem::exists(output_path)) {
 			throw std::runtime_error(
 				"C++ compilation failed for " + name + ":\n" +
 				"Command: " + command + "\n" +
@@ -207,7 +209,7 @@ private:
 		return system(cmd.c_str()) == 0;
 	}
 
-	std::string exec(const std::string& cmd) {
+	std::string exec(const std::string& cmd, int* exit_code = nullptr) {
 		std::array<char, 128> buffer;
 		std::string result;
 
@@ -220,7 +222,10 @@ private:
 			result += buffer.data();
 		}
 
-		pclose(pipe);
+		int status = pclose(pipe);
+		if (exit_code) {
+			*exit_code = WEXITSTATUS(status);
+		}
 		return result;
 	}
 

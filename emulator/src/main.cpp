@@ -19,6 +19,7 @@ struct EmulatorOptions {
 	uint64_t max_instructions = UINT64_MAX;
 	uint64_t memory_max = 512ull * 1024 * 1024; // 512 MB
 	bool verbose = false;
+	bool precise = false;
 	bool timing = false;
 	bool silent = false;
 	bool show_bytecode_stats = false;
@@ -154,7 +155,11 @@ static int run_program(const std::vector<uint8_t>& binary, const EmulatorOptions
 		const auto t0 = std::chrono::high_resolution_clock::now();
 
 		// Run the program
-		if (opts.max_instructions == UINT64_MAX) {
+		if (opts.precise) {
+			machine.set_max_instructions(opts.max_instructions);
+			machine.set_instruction_counter(0);
+			machine.cpu.simulate_precise();
+		} else if (opts.max_instructions == UINT64_MAX) {
 			machine.cpu.simulate_inaccurate(machine.cpu.pc());
 		} else {
 			machine.simulate(opts.max_instructions);
@@ -216,6 +221,7 @@ static void print_help(const char* progname)
 	printf("  -h, --help              Show this help message\n");
 	printf("  -v, --verbose           Enable verbose output (loader & syscalls)\n");
 	printf("  -s, --silent            Suppress all output except errors\n");
+	printf("      --precise           Use precise simulation mode (slower)\n");
 	printf("  -t, --timing            Show execution timing and instruction count\n");
 	printf("      --stats             Show bytecode usage statistics after execution\n");
 	printf("  -f, --fuel <num>        Maximum instructions to execute (default: 2000000000)\n");
@@ -227,6 +233,8 @@ static void print_help(const char* progname)
 	printf("  %s --verbose --timing program.elf arg1 arg2\n", progname);
 	printf("  %s --stats --fuel 1000000 program.elf\n", progname);
 	printf("  %s --fuel 1000000 --memory 256 program.elf\n\n", progname);
+	printf("Check if fast-path differs from slow-path (precise):\n");
+	printf("  %s --precise program.elf\n\n", progname);
 }
 
 static EmulatorOptions parse_arguments(int argc, char* argv[])
@@ -237,6 +245,7 @@ static EmulatorOptions parse_arguments(int argc, char* argv[])
 	static const struct option long_options[] = {
 		{"help",    no_argument,       0, 'h'},
 		{"verbose", no_argument,       0, 'v'},
+		{"precise", no_argument,       0, '\x03'},
 		{"silent",  no_argument,       0, 's'},
 		{"timing",  no_argument,       0, 't'},
 		{"stats",   no_argument,       0, '\x02'},
@@ -271,6 +280,9 @@ static EmulatorOptions parse_arguments(int argc, char* argv[])
 			break;
 		case '\x02':
 			opts.show_bytecode_stats = true;
+			break;
+		case '\x03':
+			opts.precise = true;
 			break;
 		default:
 			print_help(argv[0]);

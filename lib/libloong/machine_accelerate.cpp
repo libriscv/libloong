@@ -23,7 +23,7 @@ static inline void patch(Machine<W>& machine, const std::vector<std::string> sym
 		const auto addr = machine.address_of(sym);
 		if (addr != 0) {
 			if constexpr (VERBOSE_PATCHING) {
-				printf("Patching accelerated syscall for %s at 0x%016" PRIx64 "\n",
+				printf("Patching accelerated syscall for %s at 0x%" PRIx64 "\n",
 					sym.c_str(), static_cast<uint64_t>(addr));
 			}
 			// Patch the function prologue to invoke the syscall
@@ -166,10 +166,10 @@ void Machine<W>::setup_accelerated_syscalls()
 	});
 
 	// Iterate the symbol table and patch known functions
-	patch<W>(*this, {"__memcpy_lsx", "__memcpy_lasx", "__memcpy_aligned"}, SYS_native_memcpy);
-	patch<W>(*this, {"__memset_lsx", "__memset_lasx", "__memset_aligned"}, SYS_native_memset);
+	patch<W>(*this, {"__memcpy_lsx", "__memcpy_lasx", "__memcpy_aligned", "__memcpy_unaligned"}, SYS_native_memcpy);
+	patch<W>(*this, {"__memset_lsx", "__memset_lasx", "__memset_aligned", "__memset_unaligned"}, SYS_native_memset);
 	patch<W>(*this, {"__memcmp_lsx", "__memcmp_lasx", "__memcmp_aligned"}, SYS_native_memcmp);
-	patch<W>(*this, {"__memmove_lsx", "__memmove_lasx", "__memmove_aligned"}, SYS_native_memmove);
+	patch<W>(*this, {"__memmove_lsx", "__memmove_lasx", "__memmove_aligned", "__memmove_unaligned"}, SYS_native_memmove);
 	patch<W>(*this, {"__memchr_lsx", "__memchr_lasx", "__memchr_aligned"}, SYS_native_memchr);
 	patch<W>(*this, {"__strlen_lsx", "__strlen_lasx", "__strlen_aligned"}, SYS_native_strlen);
 	patch<W>(*this, {"__strnlen_lsx", "__strnlen_lasx", "__strnlen_aligned"}, SYS_native_strnlen);

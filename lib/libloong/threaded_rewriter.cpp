@@ -430,6 +430,15 @@ uint32_t optimize_bytecode(uint8_t& bytecode, address_type<W> pc, uint32_t instr
 			fi.ra = original.r4.ra;
 			return fi.whole;
 		} break;
+		case LA64_BC_VFNMADD_D: {
+			// VFNMADD.D vd, vj, vk, va - 4R-type format
+			auto fi = *(FasterLA64_4R *)&instruction_bits;
+			fi.rd = original.r4.rd;
+			fi.rj = original.r4.rj;
+			fi.rk = original.r4.rk;
+			fi.ra = original.r4.ra;
+			return fi.whole;
+		} break;
 		case LA64_BC_VHADDW_D_W: {
 			// VHADDW.D.W vd, vj, vk - uses R3 format
 			auto fi = *(FasterLA64_R3 *)&instruction_bits;
@@ -444,6 +453,122 @@ uint32_t optimize_bytecode(uint8_t& bytecode, address_type<W> pc, uint32_t instr
 			fi.rd = original.ri12.rd;
 			fi.rj = original.ri12.rj;
 			fi.set_imm(original.ri12.imm);
+			return fi.whole;
+		} break;
+		case LA64_BC_XVST: {
+			// XVST xd, rj, si12 - uses RI12 format
+			auto fi = *(FasterLA64_RI12 *)&instruction_bits;
+			fi.rd = original.ri12.rd;
+			fi.rj = original.ri12.rj;
+			fi.set_imm(original.ri12.imm);
+			return fi.whole;
+		} break;
+		case LA64_BC_XVLDX: {
+			// XVLDX xd, rj, rk - uses R3 format
+			auto fi = *(FasterLA64_R3 *)&instruction_bits;
+			fi.rd = original.r3.rd;
+			fi.rj = original.r3.rj;
+			fi.rk = original.r3.rk;
+			return fi.whole;
+		} break;
+		case LA64_BC_XVSTX: {
+			// XVSTX xd, rj, rk - uses R3 format
+			auto fi = *(FasterLA64_R3 *)&instruction_bits;
+			fi.rd = original.r3.rd;
+			fi.rj = original.r3.rj;
+			fi.rk = original.r3.rk;
+			return fi.whole;
+		} break;
+		case LA64_BC_XVFADD_D: {
+			// XVFADD.D xd, xj, xk - uses R3 format
+			auto fi = *(FasterLA64_R3 *)&instruction_bits;
+			fi.rd = original.r3.rd;
+			fi.rj = original.r3.rj;
+			fi.rk = original.r3.rk;
+			return fi.whole;
+		} break;
+		case LA64_BC_XVFMUL_D: {
+			// XVFMUL.D xd, xj, xk - uses R3 format
+			auto fi = *(FasterLA64_R3 *)&instruction_bits;
+			fi.rd = original.r3.rd;
+			fi.rj = original.r3.rj;
+			fi.rk = original.r3.rk;
+			return fi.whole;
+		} break;
+		case LA64_BC_XVFMADD_D: {
+			// XVFMADD.D xd, xj, xk, xa - uses 4R format
+			auto fi = *(FasterLA64_4R *)&instruction_bits;
+			fi.rd = original.r4.rd;
+			fi.rj = original.r4.rj;
+			fi.rk = original.r4.rk;
+			fi.ra = original.r4.ra;
+			return fi.whole;
+		} break;
+		case LA64_BC_XVFMSUB_D: {
+			// XVFMSUB.D xd, xj, xk, xa - uses 4R format
+			auto fi = *(FasterLA64_4R *)&instruction_bits;
+			fi.rd = original.r4.rd;
+			fi.rj = original.r4.rj;
+			fi.rk = original.r4.rk;
+			fi.ra = original.r4.ra;
+			return fi.whole;
+		} break;
+		case LA64_BC_XVFNMADD_D: {
+			// XVFNMADD.D xd, xj, xk, xa - uses 4R format
+			auto fi = *(FasterLA64_4R *)&instruction_bits;
+			fi.rd = original.r4.rd;
+			fi.rj = original.r4.rj;
+			fi.rk = original.r4.rk;
+			fi.ra = original.r4.ra;
+			return fi.whole;
+		} break;
+		case LA64_BC_XVORI_B:
+			// XVORI.B xd, xj, ui8 - no optimization needed
+			return instruction_bits;
+		case LA64_BC_XVXORI_B:
+			// XVXORI.B xd, xj, ui8 - no optimization needed
+			return instruction_bits;
+		case LA64_BC_XVILVL_D: {
+			// XVILVL.D xd, xj, xk - uses R3 format
+			auto fi = *(FasterLA64_R3 *)&instruction_bits;
+			fi.rd = original.r3.rd;
+			fi.rj = original.r3.rj;
+			fi.rk = original.r3.rk;
+			return fi.whole;
+		} break;
+		case LA64_BC_XVILVH_D: {
+			// XVILVH.D xd, xj, xk - uses R3 format
+			auto fi = *(FasterLA64_R3 *)&instruction_bits;
+			fi.rd = original.r3.rd;
+			fi.rj = original.r3.rj;
+			fi.rk = original.r3.rk;
+			return fi.whole;
+		} break;
+		case LA64_BC_XVPERMI_D:
+			// XVPERMI.D xd, xj, ui8 - no optimization needed
+			return instruction_bits;
+		case LA64_BC_XVPACKEV_D: {
+			// XVPACKEV.D xd, xj, xk - uses R3 format
+			auto fi = *(FasterLA64_R3 *)&instruction_bits;
+			fi.rd = original.r3.rd;
+			fi.rj = original.r3.rj;
+			fi.rk = original.r3.rk;
+			return fi.whole;
+		} break;
+		case LA64_BC_XVPACKOD_D: {
+			// XVPACKOD.D xd, xj, xk - uses R3 format
+			auto fi = *(FasterLA64_R3 *)&instruction_bits;
+			fi.rd = original.r3.rd;
+			fi.rj = original.r3.rj;
+			fi.rk = original.r3.rk;
+			return fi.whole;
+		} break;
+		case LA64_BC_XVPICKEV_D: {
+			// XVPICKEV.D xd, xj, xk - uses R3 format
+			auto fi = *(FasterLA64_R3 *)&instruction_bits;
+			fi.rd = original.r3.rd;
+			fi.rj = original.r3.rj;
+			fi.rk = original.r3.rk;
 			return fi.whole;
 		} break;
 		case LA64_BC_FMADD_D: {

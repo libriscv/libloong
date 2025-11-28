@@ -510,18 +510,19 @@ namespace loongarch
 
 		case 0x02: // Fused multiply-add/sub instructions (4R-type)
 			{
-				// FMSUB.D: bits[31:15] can be 0x010D9 or 0x010DA (both are valid encodings)
-				uint32_t op17_4r = (instr.whole >> 15) & 0x1FFFF;
-				if (op17_4r == 0x010D9 || op17_4r == 0x010DA) return DECODED_INSTR(FMSUB_D);
-				// FMADD.D: bits[31:15] can be 0x01040, 0x01059, or 0x0105d (multiple valid encodings)
-				if (op17_4r == 0x01040 || op17_4r == 0x01059 || op17_4r == 0x0105d) return DECODED_INSTR(FMADD_D);
+				// For 4R-type instructions, check bits[31:20] for the opcode
+				uint32_t op12_4r = (instr.whole >> 20) & 0xFFF;
+				// FMADD.D: bits[31:20] = 0x082
+				if (op12_4r == 0x082) {
+					return DECODED_INSTR(FMADD_D);
+				}
+				// FMSUB.D: bits[31:20] = 0x086
+				if (op12_4r == 0x086) return DECODED_INSTR(FMSUB_D);
 				// VFMADD.D: Vector FMA (bits[31:20] = 0x092)
-				uint32_t op12 = (instr.whole >> 20) & 0xFFF;
-				if (op12 == 0x092) return DECODED_INSTR(VFMADD_D);
-				// VFNMADD.D: Vector FNMA (bits[31:20] = 0x082)
-				if (op12 == 0x082) return DECODED_INSTR(VFNMADD_D);
+				if (op12_4r == 0x092) return DECODED_INSTR(VFMADD_D);
+				// NOTE: VFNMADD.D is handled in case 0x03 or has a different encoding
 				// XVFMADD.D: LASX vector FMA (bits[31:20] = 0x0A2)
-				if (op12 == 0x0A2) return DECODED_INSTR(XVFMADD_D);
+				if (op12_4r == 0x0A2) return DECODED_INSTR(XVFMADD_D);
 			}
 			break;
 

@@ -307,4 +307,57 @@ TEST_CASE("Floating-point operations", "[basic][float]") {
 		REQUIRE(result.success);
 		REQUIRE(result.exit_code == 0);
 	}
+
+	SECTION("LASX vector add, mul and fmadd") {
+		CompilerOptions opts;
+		opts.optimization = 2;
+		opts.extra_flags = {"-mlasx"};
+
+		auto binary = builder.build(R"(
+			int main() {
+				volatile double arr[128] __attribute__((aligned(32)));
+				volatile double arr2[128] __attribute__((aligned(32)));
+				volatile double result[128] __attribute__((aligned(32)));
+
+				// Initialize array - compiler should vectorize with LASX
+				for (int i = 0; i < 128; i++) {
+					arr[i] = 1.0;
+					arr2[i] = 1.0;
+				}
+
+				// Vectorized addition: result[i] = arr[i] + arr[i]
+				for (int i = 0; i < 128; i++) {
+					result[i] = arr[i] + arr[i];
+				}
+				asm("" ::: "memory");  // Prevent optimization away
+				for (int i = 0; i < 128; i++) {
+					if (result[i] != 2.0)
+						return 1;
+				}
+				// Vectorized multiplication: result[i] = arr[i] * 3.0
+				for (int i = 0; i < 128; i++) {
+					result[i] = arr[i] * 3.0;
+				}
+				asm("" ::: "memory");  // Prevent optimization away
+				for (int i = 0; i < 128; i++) {
+					if (result[i] != 3.0)
+						return 1;
+				}
+				// Vectorized fused multiply-add: result[i] = arr[i] * 4.0 + 2.0
+				for (int i = 0; i < 128; i++) {
+					result[i] = arr[i] * 4.0 + arr2[i];
+				}
+				asm("" ::: "memory");  // Prevent optimization away
+				for (int i = 0; i < 128; i++) {
+					if (result[i] != 5.0)
+						return 1;
+				}
+				return 0;
+			}
+		)", "lasx_vector_add_mul_fmadd", opts);
+
+		auto result = run_binary(binary, 0);
+		REQUIRE(result.success);
+		REQUIRE(result.exit_code == 0);
+	}
 }

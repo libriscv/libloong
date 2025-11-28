@@ -293,22 +293,18 @@ namespace loongarch
 			return LA64_BC_FSTX_D;
 		}
 
-		// FMADD.D: 4R-type format, check bits[31:15] for different encodings
-		// Based on la64.cpp: bits[31:15] can be 0x01040, 0x01059, or 0x0105d
-		const uint32_t op17_4r = (instr >> 15) & 0x1FFFF;
-		if (op17_4r == 0x01040 || op17_4r == 0x01059 || op17_4r == 0x0105d) {
+		// 4R-type format instructions: check bits[31:20] for opcode
+		const uint32_t op12 = (instr >> 20) & 0xFFF;
+		// FMADD.D: Scalar floating-point FMA (bits[31:20] = 0x082)
+		if (op12 == 0x082) {
 			return LA64_BC_FMADD_D;
 		}
-
 		// VFMADD.D: Vector FMA (bits[31:20] = 0x092)
-		// VFNMADD.D: Vector FNMA (bits[31:20] = 0x082)
-		const uint32_t op12 = (instr >> 20) & 0xFFF;
 		if (op12 == 0x092) {
 			return LA64_BC_VFMADD_D;
 		}
-		if (op12 == 0x082) {
-			return LA64_BC_VFNMADD_D;
-		}
+		// NOTE: VFNMADD.D is NOT 0x082! That conflicts with FMADD.D.
+		// VFNMADD.D encoding needs to be verified from LoongArch manual.
 		// XVFMADD.D: LASX Vector FMA (bits[31:20] = 0x0A2) - Estimated
 		if (op12 == 0x0A2) {
 			return LA64_BC_XVFMADD_D;

@@ -427,18 +427,14 @@ INSTRUCTION(LA64_BC_LU32I_D, la64_lu32i_d)
 // LA64_BC_B: Unconditional branch
 INSTRUCTION(LA64_BC_B, la64_b)
 {
-	VIEW_INSTR();
-	auto offset = InstructionHelpers<W>::sign_extend_26(instr.i26.offs()) << 2;
-	PERFORM_BRANCH(offset);
+	PERFORM_BRANCH((int32_t)DECODER().instr);
 }
 
 // LA64_BC_BL: Branch and link
 INSTRUCTION(LA64_BC_BL, la64_bl)
 {
-	VIEW_INSTR();
 	REG(REG_RA) = pc + 4;
-	auto offset = InstructionHelpers<W>::sign_extend_26(instr.i26.offs()) << 2;
-	PERFORM_BRANCH(offset);
+	PERFORM_BRANCH((int32_t)DECODER().instr);
 }
 
 // LA64_BC_BEQZ: Branch if equal to zero

@@ -22,6 +22,18 @@ uint32_t DecodedExecuteSegment<W>::optimize_bytecode(uint8_t& bytecode, address_
 
 	switch (bytecode) {
 		// Bytecodes with optimized field access
+		case LA64_BC_B:
+		case LA64_BC_BL: {
+			const auto offset = InstructionHelpers<W>::sign_extend_26(original.i26.offs()) << 2;
+			// This is a local branch, so it better be within the segment
+			if (this->is_within(pc + offset)) {
+				// The offset is the optimized instruction
+				return (int32_t)offset;
+			} else {
+				bytecode = LA64_BC_INVALID;
+				return original.whole;
+			}
+		} break;
 		case LA64_BC_LD_D: {
 			auto fi = *(FasterLA64_RI12 *)&instruction_bits;
 			fi.rd = original.ri12.rd;

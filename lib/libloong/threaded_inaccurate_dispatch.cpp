@@ -24,13 +24,7 @@
 	pc += decoder->block_bytes; \
 	EXECUTE_INSTR();
 #define PERFORM_BRANCH(offset)           \
-	pc += offset;                        \
-	if (LA_LIKELY(counter < max_counter)) { \
-		decoder += offset >> DecoderCache<W>::SHIFT; \
-		pc += decoder->block_bytes;      \
-		EXECUTE_INSTR();                 \
-	}                                    \
-	goto check_jump;
+	NEXT_BLOCK_UNCHECKED(offset);
 
 namespace loongarch
 {

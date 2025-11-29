@@ -4,6 +4,7 @@
 #include "elf.hpp"
 #include <cstring>
 #include <algorithm>
+#define OVER_ALLOCATE_SIZE 64 /* Avoid SIMD bounds-check */
 
 #ifdef __unix__
 #include <sys/mman.h>
@@ -44,7 +45,7 @@ void Memory<W>::allocate_arena(size_t size)
 {
 	if (this->m_arena) free_arena();
 #ifdef __unix__
-	this->m_arena = static_cast<uint8_t*>(mmap(nullptr, size,
+	this->m_arena = static_cast<uint8_t*>(mmap(nullptr, size + OVER_ALLOCATE_SIZE,
 		PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0));
 	if (this->m_arena == MAP_FAILED) {
 		this->m_arena = nullptr;
@@ -52,7 +53,7 @@ void Memory<W>::allocate_arena(size_t size)
 	}
 #else
 	try {
-		this->m_arena = new uint8_t[size]();
+		this->m_arena = new uint8_t[size + OVER_ALLOCATE_SIZE]();
 	} catch (const std::bad_alloc&) {
 		this->m_arena = nullptr;
 		throw MachineException(OUT_OF_MEMORY, "Failed to allocate memory arena");
@@ -82,7 +83,7 @@ void Memory<W>::free_arena()
 {
 	if (!this->m_arena) return;
 #ifdef __unix__
-	munmap(this->m_arena, this->m_arena_size);
+	munmap(this->m_arena, this->m_arena_size + OVER_ALLOCATE_SIZE);
 #else
 	delete[] this->m_arena;
 #endif

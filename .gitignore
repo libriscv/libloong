@@ -35,6 +35,8 @@ packages/
 *.bak
 core
 vgcore.*
+*.profraw
+.fuzz_inputs/
 
 # Ninja
 .ninja_deps

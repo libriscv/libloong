@@ -139,8 +139,8 @@ INSTRUCTION(LA64_BC_PCADDI, la64_pcaddi)
 	VIEW_INSTR();
 	const int32_t si20 = InstructionHelpers<W>::sign_extend_20(instr.ri20.imm);
 	const int64_t offset = (si20 << 2);
-	REG(instr.ri20.rd) = pc + offset;
-	NEXT_BLOCK_UNCHECKED(4);
+	REG(instr.ri20.rd) = RECONSTRUCT_PC() + offset;
+	NEXT_INSTR();
 }
 
 // LA64_BC_PCALAU12I: PC-aligned add upper immediate (rd = (PC & ~0xFFF) + (imm20 << 12))
@@ -148,8 +148,8 @@ INSTRUCTION(LA64_BC_PCALAU12I, la64_pcalau12i)
 {
 	VIEW_INSTR();
 	const int64_t offset = (int32_t)(instr.ri20.imm << 12);
-	REG(instr.ri20.rd) = (pc & ~address_t(0xFFF)) + offset;
-	NEXT_BLOCK_UNCHECKED(4);
+	REG(instr.ri20.rd) = (RECONSTRUCT_PC() & ~address_t(0xFFF)) + offset;
+	NEXT_INSTR();
 }
 
 // LA64_BC_LDPTR_D: Load pointer doubleword (rd = mem[rj + sign_ext(imm14 << 2)])
@@ -996,8 +996,8 @@ INSTRUCTION(LA64_BC_PCADDU12I, la64_pcaddu12i)
 	VIEW_INSTR();
 	const int64_t si20 = InstructionHelpers<W>::sign_extend_20(instr.ri20.imm);
 	const int64_t offset = si20 << 12;
-	REG(instr.ri20.rd) = pc + offset;
-	NEXT_BLOCK_UNCHECKED(4);
+	REG(instr.ri20.rd) = RECONSTRUCT_PC() + offset;
+	NEXT_INSTR();
 }
 
 // LA64_BC_ANDN: AND NOT

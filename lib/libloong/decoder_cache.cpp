@@ -16,10 +16,6 @@ namespace loongarch
 		const uint32_t op6 = (instr >> 26) & 0x3F;
 
 		switch (op6) {
-		// PC-relative instructions (need current PC value)
-		case 0x06: // PCADDI (0x18) / PCALAU12I (0x1A)
-		case 0x07: // PCADDU12I (0x1C000000)
-		// Branches and jumps
 		case 0x10: // BEQZ (0x40000000)
 		case 0x11: // BNEZ (0x44000000)
 		case 0x12: // BCEQZ/BCNEZ (0x48000xxx)

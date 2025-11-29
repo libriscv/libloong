@@ -200,7 +200,6 @@ uint32_t DecodedExecuteSegment<W>::optimize_bytecode(uint8_t& bytecode, address_
 			fi.rd = original.ri14.rd;
 			fi.rj = original.ri14.rj;
 			fi.set_imm(original.ri14.imm);
-			NOP_IF_RD_ZERO(fi.rd, bytecode);
 			return fi.whole;
 		} break;
 		case LA64_BC_STPTR_W: {
@@ -208,7 +207,6 @@ uint32_t DecodedExecuteSegment<W>::optimize_bytecode(uint8_t& bytecode, address_
 			fi.rd = original.ri14.rd;
 			fi.rj = original.ri14.rj;
 			fi.set_imm(original.ri14.imm);
-			NOP_IF_RD_ZERO(fi.rd, bytecode);
 			return fi.whole;
 		} break;
 		case LA64_BC_LD_B: {
@@ -272,7 +270,6 @@ uint32_t DecodedExecuteSegment<W>::optimize_bytecode(uint8_t& bytecode, address_
 			fi.rd = original.r3.rd;
 			fi.rj = original.r3.rj;
 			fi.rk = original.r3.rk;
-			NOP_IF_RD_ZERO(fi.rd, bytecode);
 			return fi.whole;
 		} break;
 		case LA64_BC_BSTRPICK_W: {
@@ -305,7 +302,6 @@ uint32_t DecodedExecuteSegment<W>::optimize_bytecode(uint8_t& bytecode, address_
 			fi.rd = original.r3.rd;
 			fi.rj = original.r3.rj;
 			fi.rk = original.r3.rk;
-			NOP_IF_RD_ZERO(fi.rd, bytecode);
 			return fi.whole;
 		} break;
 		case LA64_BC_XOR: {

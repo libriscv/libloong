@@ -7,6 +7,7 @@
 #define REGISTERS() (m_regs)
 #define MACHINE()   (machine())
 #define REG(x)      (reg(x))
+#define RECONSTRUCT_PC() (pc - DECODER().block_bytes)
 #define INSTRUCTION(bc, lbl) lbl:
 #define VIEW_INSTR() auto instr = la_instruction{decoder->instr};
 #define EXECUTE_INSTR() \

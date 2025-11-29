@@ -99,7 +99,7 @@ uint32_t optimize_bytecode(uint8_t& bytecode, address_type<W> pc, uint32_t instr
 			auto fi = *(FasterLA64_RI12 *)&instruction_bits;
 			fi.rd = original.ri12.rd;
 			fi.rj = original.ri12.rj;
-			fi.set_imm(original.ri12.imm);
+			fi.imm = original.ri12.imm;
 			return fi.whole;
 		} break;
 		case LA64_BC_SLLI_W: {

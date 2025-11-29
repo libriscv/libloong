@@ -220,8 +220,7 @@ namespace loongarch
 	INSTRUCTION(XVHADDW_D_W);
 	INSTRUCTION(XVHADDW_Q_D);
 	INSTRUCTION(XVBITSEL_V);
-	INSTRUCTION(XVFCMP_SLT_D);
-	INSTRUCTION(XVFCMP_SLE_D);
+	INSTRUCTION(XVFCMP_COND_D);
 	INSTRUCTION(XVMIN_BU);
 	INSTRUCTION(XVMAX_BU);
 	INSTRUCTION(XVMSKNZ_B);
@@ -312,8 +311,7 @@ namespace loongarch
 	INSTRUCTION(MOVCF2FR);
 	INSTRUCTION(MOVGR2CF);
 	INSTRUCTION(MOVCF2GR);
-	INSTRUCTION(VFCMP_SLT_D);
-	INSTRUCTION(VFCMP_SLE_D);
+	INSTRUCTION(VFCMP_COND_D);
 	INSTRUCTION(FSEL);
 	INSTRUCTION(FABS_D);
 	INSTRUCTION(FNEG_D);
@@ -556,18 +554,14 @@ namespace loongarch
 		{
 			uint32_t op11 = (instr.whole >> 21) & 0x7FF;
 			if (op11 == 0x063) {
-				uint32_t cond = (instr.whole >> 15) & 0x3F;
-				if (cond == 0x03) return DECODED_INSTR(VFCMP_SLT_D);
-				if (cond == 0x07) return DECODED_INSTR(VFCMP_SLE_D);
+				return DECODED_INSTR(VFCMP_COND_D);
 			}
 		}
 		// XVFCMP instructions: bits[31:21] = 0x065, bits[20:15] = condition code (LASX)
 		{
 			uint32_t op11 = (instr.whole >> 21) & 0x7FF;
 			if (op11 == 0x065) {
-				uint32_t cond = (instr.whole >> 15) & 0x3F;
-				if (cond == 0x03) return DECODED_INSTR(XVFCMP_SLT_D);
-				if (cond == 0x07) return DECODED_INSTR(XVFCMP_SLE_D);
+				return DECODED_INSTR(XVFCMP_COND_D);
 			}
 		}
 			break;

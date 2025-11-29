@@ -67,6 +67,7 @@ namespace loongarch
 		address_t data_start() const noexcept { return m_data_start; }
 		address_t arena_size() const noexcept { return m_arena_size; }
 		void allocate_custom_arena(size_t size, address_t rodata_start, address_t data_start);
+		void copy_into_arena_unsafe(address_t dest, const void* src, size_t len);
 
 		// Heap (brk) management
 		address_t heap_address() const noexcept { return m_heap_address; }

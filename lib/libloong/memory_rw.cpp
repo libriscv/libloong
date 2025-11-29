@@ -10,8 +10,7 @@ namespace loongarch
 			throw MachineException(PROTECTION_FAULT, "Write to read-only memory", dest);
 		}
 
-		const size_t offset = dest - m_rodata_start;
-		std::memcpy(&m_arena[offset], src, len);
+		std::memcpy(&m_arena[dest], src, len);
 	}
 
 	template <int W>
@@ -21,8 +20,7 @@ namespace loongarch
 			throw MachineException(PROTECTION_FAULT, "Read from unmapped memory", src);
 		}
 
-		const size_t offset = src - m_rodata_start;
-		std::memcpy(dest, &m_arena[offset], len);
+		std::memcpy(dest, &m_arena[src], len);
 	}
 
 	template <int W>
@@ -32,8 +30,7 @@ namespace loongarch
 			throw MachineException(PROTECTION_FAULT, "Write to read-only memory", addr);
 		}
 
-		const size_t offset = addr - m_rodata_start;
-		std::memset(&m_arena[offset], value, len);
+		std::memset(&m_arena[addr], value, len);
 	}
 
 	template <int W>
@@ -46,13 +43,22 @@ namespace loongarch
 			throw MachineException(PROTECTION_FAULT, "Read from unmapped memory", addr2);
 		}
 
-		return std::memcmp(&m_arena[addr1 - m_rodata_start], &m_arena[addr2 - m_rodata_start], len);
+		return std::memcmp(&m_arena[addr1], &m_arena[addr2], len);
 	}
 
 	template <int W>
 	void Memory<W>::protection_fault(address_t addr, const char* message)
 	{
 		throw MachineException(PROTECTION_FAULT, message, addr);
+	}
+
+	template <int W>
+	void Memory<W>::copy_into_arena_unsafe(address_t dest, const void* src, size_t len)
+	{
+		if (LA_UNLIKELY(dest + len >= m_arena_size)) {
+			throw MachineException(PROTECTION_FAULT, "Write to out-of-bounds memory", dest);
+		}
+		std::memcpy(&m_arena[dest], src, len);
 	}
 
 // Template instantiations

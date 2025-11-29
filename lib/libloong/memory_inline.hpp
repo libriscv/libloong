@@ -12,8 +12,7 @@ inline T Memory<W>::read(address_t addr) const
 		protection_fault(addr, "Read from unmapped memory");
 	}
 
-	const size_t offset = addr - m_rodata_start;
-	return *reinterpret_cast<const T*>(&m_arena[offset]);
+	return *reinterpret_cast<const T*>(&m_arena[addr]);
 }
 
 template <int W>
@@ -24,8 +23,7 @@ inline void Memory<W>::write(address_t addr, T value)
 		protection_fault(addr, "Write to read-only memory");
 	}
 
-	const size_t offset = addr - m_rodata_start;
-	*reinterpret_cast<T*>(&m_arena[offset]) = value;
+	*reinterpret_cast<T*>(&m_arena[addr]) = value;
 }
 
 template <int W>
@@ -36,8 +34,7 @@ inline const T* Memory<W>::memarray(address_t addr, size_t count) const
 		throw MachineException(PROTECTION_FAULT, "Read from unmapped memory", addr);
 	}
 
-	const size_t offset = addr - m_rodata_start;
-	return reinterpret_cast<const T*>(&m_arena[offset]);
+	return reinterpret_cast<const T*>(&m_arena[addr]);
 }
 
 template <int W>
@@ -48,8 +45,7 @@ inline T* Memory<W>::writable_memarray(address_t addr, size_t count)
 		throw MachineException(PROTECTION_FAULT, "Write to read-only memory", addr);
 	}
 
-	const size_t offset = addr - m_rodata_start;
-	return reinterpret_cast<T*>(&m_arena[offset]);
+	return reinterpret_cast<T*>(&m_arena[addr]);
 }
 
 } // loongarch

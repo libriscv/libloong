@@ -22,6 +22,34 @@ static inline const char* reg_name(uint32_t r) {
 	return r < 32 ? reg_names[r] : "?";
 }
 
+static inline const char* cond_names(uint32_t cond) {
+	switch (cond) {
+	case 0x0:  return "caf";  // Always False (quiet)
+	case 0x1:  return "saf";  // Always False (signaling)
+	case 0x2:  return "clt";  // Less Than (quiet)
+	case 0x3:  return "slt";  // Less Than (signaling)
+	case 0x4:  return "ceq";  // Equal (quiet)
+	case 0x5:  return "seq";  // Equal (signaling)
+	case 0x6:  return "cle";  // Less or Equal (quiet)
+	case 0x7:  return "sle";  // Less or Equal (signaling)
+	case 0x8:  return "cun";  // Unordered (quiet)
+	case 0x9:  return "sun";  // Unordered (signaling)
+	case 0xA:  return "cult"; // Unordered or Less Than (quiet)
+	case 0xB:  return "sult"; // Unordered or Less Than (signaling)
+	case 0xC:  return "cueq"; // Unordered or Equal (quiet)
+	case 0xD:  return "sueq"; // Unordered or Equal (signaling)
+	case 0xE:  return "cule"; // Unordered or Less or Equal (quiet)
+	case 0xF:  return "sule"; // Unordered or Less or Equal (signaling)
+	case 0x10: return "cne";  // Not Equal (quiet)
+	case 0x11: return "sne";  // Not Equal (signaling)
+	case 0x14: return "cor";  // Ordered (quiet)
+	case 0x15: return "sor";  // Ordered (signaling)
+	case 0x18: return "cune"; // Unordered or Not Equal (quiet)
+	case 0x19: return "sune"; // Unordered or Not Equal (signaling)
+	default:   return "unknown";
+	}
+}
+
 // Template instruction printers shared between LA32 and LA64
 template <int W>
 struct InstrPrinters {
@@ -948,18 +976,13 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		return snprintf(buf, len, "movcf2gr %s, $fcc%u", reg_name(rd), cj);
 	}
 
-	static int VFCMP_SLT_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int VFCMP_COND_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		uint32_t vd = instr.whole & 0x1F;
 		uint32_t vj = (instr.whole >> 5) & 0x1F;
 		uint32_t vk = (instr.whole >> 10) & 0x1F;
-		return snprintf(buf, len, "vfcmp.slt.d $vr%u, $vr%u, $vr%u", vd, vj, vk);
-	}
-
-	static int VFCMP_SLE_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
-		return snprintf(buf, len, "vfcmp.sle.d $vr%u, $vr%u, $vr%u", vd, vj, vk);
+		uint32_t cond = (instr.whole >> 15) & 0x1F;
+		const char* mnemonic = cond_names(cond);
+		return snprintf(buf, len, "vfcmp.%s.d $vr%u, $vr%u, $vr%u", mnemonic, vd, vj, vk);
 	}
 
 	static int FCMP_COND_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
@@ -967,37 +990,7 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		uint32_t fj = (instr.whole >> 5) & 0x1F;
 		uint32_t fk = (instr.whole >> 10) & 0x1F;
 		const uint32_t cond = (instr.whole >> 15) & 0x1F;
-
-		// Map condition codes to mnemonics according to LoongArch manual Table 9
-		const char* mnemonic;
-		switch (cond) {
-			case 0x0:  mnemonic = "caf";  break;  // Always False (quiet)
-			case 0x1:  mnemonic = "saf";  break;  // Always False (signaling)
-			case 0x2:  mnemonic = "clt";  break;  // Less Than (quiet)
-			case 0x3:  mnemonic = "slt";  break;  // Less Than (signaling)
-			case 0x4:  mnemonic = "ceq";  break;  // Equal (quiet)
-			case 0x5:  mnemonic = "seq";  break;  // Equal (signaling)
-			case 0x6:  mnemonic = "cle";  break;  // Less or Equal (quiet)
-			case 0x7:  mnemonic = "sle";  break;  // Less or Equal (signaling)
-			case 0x8:  mnemonic = "cun";  break;  // Unordered (quiet)
-			case 0x9:  mnemonic = "sun";  break;  // Unordered (signaling)
-			case 0xA:  mnemonic = "cult"; break;  // Unordered or Less Than (quiet)
-			case 0xB:  mnemonic = "sult"; break;  // Unordered or Less Than (signaling)
-			case 0xC:  mnemonic = "cueq"; break;  // Unordered or Equal (quiet)
-			case 0xD:  mnemonic = "sueq"; break;  // Unordered or Equal (signaling)
-			case 0xE:  mnemonic = "cule"; break;  // Unordered or Less or Equal (quiet)
-			case 0xF:  mnemonic = "sule"; break;  // Unordered or Less or Equal (signaling)
-			case 0x10: mnemonic = "cne";  break;  // Not Equal (quiet)
-			case 0x11: mnemonic = "sne";  break;  // Not Equal (signaling)
-			case 0x14: mnemonic = "cor";  break;  // Ordered (quiet)
-			case 0x15: mnemonic = "sor";  break;  // Ordered (signaling)
-			case 0x18: mnemonic = "cune"; break;  // Unordered or Not Equal (quiet)
-			case 0x19: mnemonic = "sune"; break;  // Unordered or Not Equal (signaling)
-			default:
-				// Unknown condition code
-				return snprintf(buf, len, "fcmp.0x%x.d $fcc%u, $fa%u, $fa%u", cond, cd, fj, fk);
-		}
-
+		const char* mnemonic = cond_names(cond);
 		return snprintf(buf, len, "fcmp.%s.d $fcc%u, $fa%u, $fa%u", mnemonic, cd, fj, fk);
 	}
 
@@ -1300,18 +1293,13 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		return snprintf(buf, len, "xvbitsel.v $xr%u, $xr%u, $xr%u, $xr%u", xd, xj, xk, xa);
 	}
 
-	static int XVFCMP_SLT_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int XVFCMP_COND_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		uint32_t xd = instr.whole & 0x1F;
 		uint32_t xj = (instr.whole >> 5) & 0x1F;
 		uint32_t xk = (instr.whole >> 10) & 0x1F;
-		return snprintf(buf, len, "xvfcmp.slt.d $xr%u, $xr%u, $xr%u", xd, xj, xk);
-	}
-
-	static int XVFCMP_SLE_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t xd = instr.whole & 0x1F;
-		uint32_t xj = (instr.whole >> 5) & 0x1F;
-		uint32_t xk = (instr.whole >> 10) & 0x1F;
-		return snprintf(buf, len, "xvfcmp.sle.d $xr%u, $xr%u, $xr%u", xd, xj, xk);
+		uint32_t cond = (instr.whole >> 15) & 0x1F;
+		const char* mnemonic = cond_names(cond);
+		return snprintf(buf, len, "xvfcmp.%s.d $xr%u, $xr%u, $xr%u", mnemonic, xd, xj, xk);
 	}
 
 	static int XVHADDW_Q_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {

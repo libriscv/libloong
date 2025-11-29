@@ -7,7 +7,7 @@
 namespace loongarch
 {
 	// LoongArch register names
-	static constexpr const char* la_regname(uint32_t reg) {
+	static constexpr inline const char* la_regname(uint32_t reg) {
 		constexpr const char* regnames[] = {
 			"zero", "ra", "tp", "sp", "a0", "a1", "a2", "a3",
 			"a4", "a5", "a6", "a7", "t0", "t1", "t2", "t3",
@@ -129,6 +129,10 @@ namespace loongarch
 		REG_S6   = 29, // Saved register 6
 		REG_S7   = 30, // Saved register 7
 		REG_S8   = 31, // Saved register 8
+
+		REG_FA0  = 0,  // Floating-point argument/return value 0
+		REG_FA1  = 1,  // Floating-point argument/return value 1
+		REG_FS0  = 24, // Floating-point saved register 0
 	};
 
 } // namespace loongarch

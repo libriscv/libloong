@@ -75,7 +75,8 @@ namespace loongarch
 		// Instruction execution
 		void execute(format_t instr);
 		static const instruction_t& decode(format_t instr);
-		format_t read_next_instruction() const;
+		format_t read_current_instruction() const;
+		void init_slowpath_execute_area(const void* data, address_t begin, address_t length);
 
 		// Execute segments
 		DecodedExecuteSegment<W>& init_execute_area(const void* data, address_t begin, address_t length);

@@ -85,8 +85,7 @@ INSTRUCTION(LA64_BC_SUB_D, la64_sub_d)
 INSTRUCTION(LA64_BC_ORI, la64_ori)
 {
 	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
-	// ORI uses zero-extended immediate (mask to 12 bits)
-	REG(fi.rd) = REG(fi.rj) | (fi.imm & 0xFFF);
+	REG(fi.rd) = REG(fi.rj) | fi.imm;
 	NEXT_INSTR();
 }
 

@@ -107,7 +107,7 @@ void Memory<W>::binary_loader(const MachineOptions<W>& options)
 			m_binary.data() + ehdr->phoff + i * sizeof(Elf::ProgramHeader));
 
 		if (phdr->type == Elf::PT_LOAD && phdr->filesz > 0) {
-			const size_t offset = phdr->vaddr - m_rodata_start;
+			const size_t offset = phdr->vaddr;
 			if (offset + phdr->filesz > m_arena_size || offset + phdr->filesz < offset) {
 				throw MachineException(INVALID_PROGRAM, "ELF segment exceeds memory arena", phdr->vaddr);
 			}

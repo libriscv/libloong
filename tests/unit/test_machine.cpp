@@ -160,9 +160,6 @@ TEST_CASE("Instruction counting", "[machine][performance]") {
 		REQUIRE(result.instructions_executed < 200000);  // Sanity check (libc overhead)
 	}
 
-	// TODO: This test is flaky - the machine may complete successfully even with low instruction limits
-	// Need to investigate instruction counting behavior
-	/*
 	SECTION("Instruction limit") {
 		auto binary = builder.build(R"(
 			volatile int x = 0;
@@ -183,7 +180,6 @@ TEST_CASE("Instruction counting", "[machine][performance]") {
 		// Either it fails, or doesn't complete successfully
 		REQUIRE_FALSE(result.success);
 	}
-	*/
 }
 
 TEST_CASE("Symbol lookup", "[machine][symbols]") {

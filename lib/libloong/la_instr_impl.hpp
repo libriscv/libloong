@@ -888,25 +888,27 @@ struct InstrImpl {
 		bool result = false;
 
 		switch (cond) {
-			case 0x02: // CEQ - Equal (ordered)
-				result = !is_unordered && (fj_val == fk_val);
-				break;
+			case 0x02: // CLT - (Quiet) Less Than (ordered)
 			case 0x03: // SLT - Signaling Less Than (ordered)
 				result = !is_unordered && (fj_val < fk_val);
 				break;
-			case 0x04: // CLT - (Quiet) Less Than (ordered)
-				result = !is_unordered && (fj_val < fk_val);
+			case 0x04: // CEQ - Equal (ordered)
+			case 0x05: // SEQ - Signaling Equal (ordered)
+				result = !is_unordered && (fj_val == fk_val);
 				break;
+			case 0x06: // CLE - (Quiet) Less or Equal (ordered)
 			case 0x07: // SLE - Signaling Less or Equal (ordered)
 				result = !is_unordered && (fj_val <= fk_val);
 				break;
 			case 0x0E: // CULE - (Quiet) Unordered or Less or Equal
+			case 0x0F: // SULE - Signaling Unordered or Less or Equal
 				result = is_unordered || (fj_val <= fk_val);
 				break;
 			case 0x14: // COR - (Quiet) Ordered
 				result = !is_unordered;
 				break;
 			case 0x18: // CUNE - (Quiet) Unordered or Not Equal
+			case 0x19: // SUNE - Signaling Unordered or Not Equal
 				result = is_unordered || (fj_val != fk_val);
 				break;
 			default:
@@ -918,13 +920,13 @@ struct InstrImpl {
 		cpu.registers().set_cf(cd, result ? 1 : 0);
 	}
 
-	static void VFCMP_SLT_D(cpu_t& cpu, la_instruction instr) {
-		// Vector floating-point compare signed less than (double)
+	static void VFCMP_COND_D(cpu_t& cpu, la_instruction instr) {
+		// Vector floating-point compare (double)
 		// Compares each double-precision element and sets result mask
-		// LoongArch semantics: sets all bits to 1 when condition is TRUE, all 0s when FALSE
 		uint32_t vd = instr.whole & 0x1F;
 		uint32_t vj = (instr.whole >> 5) & 0x1F;
 		uint32_t vk = (instr.whole >> 10) & 0x1F;
+		uint32_t cond = (instr.whole >> 15) & 0x1F;
 
 		const auto& src1 = cpu.registers().getvr(vj);
 		const auto& src2 = cpu.registers().getvr(vk);
@@ -934,34 +936,61 @@ struct InstrImpl {
 		for (int i = 0; i < 2; i++) {
 			double val1 = src1.df[i];
 			double val2 = src2.df[i];
-			bool cmp = !std::isnan(val1) && !std::isnan(val2) && (val1 < val2);
-			dst.du[i] = cmp ? 0xFFFFFFFFFFFFFFFFULL : 0;
+			switch (cond) {
+				case 0x02: // CLT - (Quiet) Less Than (ordered)
+				case 0x03: // SLT - Signaling Less Than (ordered)
+					if (std::isnan(val1) || std::isnan(val2)) {
+						dst.du[i] = 0;
+					} else {
+						dst.du[i] = (val1 < val2) ? 0xFFFFFFFFFFFFFFFFULL : 0;
+					}
+					break;
+				case 0x04: // CEQ - Equal (ordered)
+				case 0x05: // SEQ - Signaling Equal (ordered)
+					if (std::isnan(val1) || std::isnan(val2)) {
+						dst.du[i] = 0;
+					} else {
+						dst.du[i] = (val1 == val2) ? 0xFFFFFFFFFFFFFFFFULL : 0;
+					}
+					break;
+				case 0x06: // CLE - (Quiet) Less or Equal (ordered)
+				case 0x07: // SLE - Signaling Less or Equal (ordered)
+					if (std::isnan(val1) || std::isnan(val2)) {
+						dst.du[i] = 0;
+					} else {
+						dst.du[i] = (val1 <= val2) ? 0xFFFFFFFFFFFFFFFF : 0;
+					}
+					break;
+				case 0x0E: // CULE - (Quiet) Unordered or Less or Equal
+				case 0x0F: // SULE - Signaling Unordered or Less or Equal
+					if (std::isnan(val1) || std::isnan(val2)) {
+						dst.du[i] = 0xFFFFFFFFFFFFFFFFULL;
+					} else {
+						dst.du[i] = (val1 <= val2) ? 0xFFFFFFFFFFFFFFFF : 0;
+					}
+					break;
+				case 0x14: // COR - (Quiet) Ordered
+					if (std::isnan(val1) || std::isnan(val2)) {
+						dst.du[i] = 0;
+					} else {
+						dst.du[i] = 0xFFFFFFFFFFFFFFFFULL;
+					}
+					break;
+				case 0x18: // CUNE - (Quiet) Unordered or Not Equal
+				case 0x19: // SUNE - Signaling Unordered or Not Equal
+					if (std::isnan(val1) || std::isnan(val2)) {
+						dst.du[i] = 0xFFFFFFFFFFFFFFFFULL;
+					} else {
+						dst.du[i] = (val1 != val2) ? 0xFFFFFFFFFFFFFFFF : 0;
+					}
+					break;
+				default:
+					// For simplicity, only implement less-than condition here
+					dst.du[i] = 0;
+					break;
+			}
 		}
 		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
-		dst.du[2] = 0;
-		dst.du[3] = 0;
-	}
-
-	static void VFCMP_SLE_D(cpu_t& cpu, la_instruction instr) {
-		// Vector floating-point compare signed less-or-equal (double)
-		// Compares each double-precision element and sets result mask
-		// LoongArch semantics: sets all bits to 1 when condition is TRUE, all 0s when FALSE
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
-
-		const auto& src1 = cpu.registers().getvr(vj);
-		const auto& src2 = cpu.registers().getvr(vk);
-		auto& dst = cpu.registers().getvr(vd);
-
-		// For each double element: if src1[i] <= src2[i] is TRUE, set to all 1s; if FALSE, set to 0
-		for (int i = 0; i < 2; i++) {
-			double val1 = src1.df[i];
-			double val2 = src2.df[i];
-			bool cmp = !std::isnan(val1) && !std::isnan(val2) && (val1 <= val2);
-			dst.du[i] = cmp ? 0xFFFFFFFFFFFFFFFFULL : 0;
-		}
-		// LSX instructions zero-extend to 256 bits
 		dst.du[2] = 0;
 		dst.du[3] = 0;
 	}
@@ -1578,13 +1607,13 @@ struct InstrImpl {
 		dst.du[3] = r3;
 	}
 
-	static void XVFCMP_SLT_D(cpu_t& cpu, la_instruction instr) {
-		// XVFCMP.SLT.D: LASX vector floating-point compare signed less than (256-bit double)
+	static void XVFCMP_COND_D(cpu_t& cpu, la_instruction instr) {
+		// XVFCMP.COND.D: LASX vector floating-point compare (256-bit double)
 		// Compares each double-precision element and sets result mask
-		// Sets all bits to 1 when condition is TRUE, all 0s when FALSE
 		uint32_t xd = instr.whole & 0x1F;
 		uint32_t xj = (instr.whole >> 5) & 0x1F;
 		uint32_t xk = (instr.whole >> 10) & 0x1F;
+		uint32_t cond = (instr.whole >> 15) & 0x1F;
 
 		const auto& src1 = cpu.registers().getvr(xj);
 		const auto& src2 = cpu.registers().getvr(xk);
@@ -1594,29 +1623,59 @@ struct InstrImpl {
 		for (int i = 0; i < 4; i++) {
 			double val1 = src1.df[i];
 			double val2 = src2.df[i];
-			bool cmp = !std::isnan(val1) && !std::isnan(val2) && (val1 < val2);
-			dst.du[i] = cmp ? 0xFFFFFFFFFFFFFFFFULL : 0;
-		}
-	}
-
-	static void XVFCMP_SLE_D(cpu_t& cpu, la_instruction instr) {
-		// XVFCMP.SLE.D: LASX vector floating-point compare signed less-or-equal (256-bit double)
-		// Compares each double-precision element and sets result mask
-		// Sets all bits to 1 when condition is TRUE, all 0s when FALSE
-		uint32_t xd = instr.whole & 0x1F;
-		uint32_t xj = (instr.whole >> 5) & 0x1F;
-		uint32_t xk = (instr.whole >> 10) & 0x1F;
-
-		const auto& src1 = cpu.registers().getvr(xj);
-		const auto& src2 = cpu.registers().getvr(xk);
-		auto& dst = cpu.registers().getvr(xd);
-
-		// For each of 4 double elements
-		for (int i = 0; i < 4; i++) {
-			double val1 = src1.df[i];
-			double val2 = src2.df[i];
-			bool cmp = !std::isnan(val1) && !std::isnan(val2) && (val1 <= val2);
-			dst.du[i] = cmp ? 0xFFFFFFFFFFFFFFFFULL : 0;
+			bool cmp = false;
+			switch (cond) {
+				case 0x02: // CLT - (Quiet) Less Than (ordered)
+				case 0x03: // SLT - Signaling Less Than (ordered)
+					if (std::isnan(val1) || std::isnan(val2)) {
+						dst.du[i] = 0;
+					} else {
+						dst.du[i] = (val1 < val2) ? 0xFFFFFFFFFFFFFFFFULL : 0;
+					}
+					break;
+				case 0x04: // CEQ - Equal (ordered)
+				case 0x05: // SEQ - Signaling Equal (ordered)
+					if (std::isnan(val1) || std::isnan(val2)) {
+						dst.du[i] = 0;
+					} else {
+						dst.du[i] = (val1 == val2) ? 0xFFFFFFFFFFFFFFFFULL : 0;
+					}
+					break;
+				case 0x06: // CLE - (Quiet) Less or Equal (ordered)
+				case 0x07: // SLE - Signaling Less or Equal (ordered)
+					if (std::isnan(val1) || std::isnan(val2)) {
+						dst.du[i] = 0;
+					} else {
+						dst.du[i] = (val1 <= val2) ? 0xFFFFFFFFFFFFFFFF : 0;
+					}
+					break;
+				case 0x0E: // CULE - (Quiet) Unordered or Less or Equal
+				case 0x0F: // SULE - Signaling Unordered or Less or Equal
+					if (std::isnan(val1) || std::isnan(val2)) {
+						dst.du[i] = 0xFFFFFFFFFFFFFFFFULL;
+					} else {
+						dst.du[i] = (val1 <= val2) ? 0xFFFFFFFFFFFFFFFF : 0;
+					}
+					break;
+				case 0x14: // COR - (Quiet) Ordered
+					if (std::isnan(val1) || std::isnan(val2)) {
+						dst.du[i] = 0;
+					} else {
+						dst.du[i] = 0xFFFFFFFFFFFFFFFFULL;
+					}
+					break;
+				case 0x18: // CUNE - (Quiet) Unordered or Not Equal
+				case 0x19: // SUNE - Signaling Unordered or Not Equal
+					if (std::isnan(val1) || std::isnan(val2)) {
+						dst.du[i] = 0xFFFFFFFFFFFFFFFFULL;
+					} else {
+						dst.du[i] = (val1 != val2) ? 0xFFFFFFFFFFFFFFFF : 0;
+					}
+					break;
+				default:
+					dst.du[i] = 0;
+					break;
+			}
 		}
 	}
 

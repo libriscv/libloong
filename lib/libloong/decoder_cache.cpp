@@ -107,6 +107,11 @@ namespace loongarch
 		}
 		// ORI: op10 = 0x00E (0x03800000)
 		if (op10 == 0x00E) {
+			// If imm is 0, this is a MOVE instruction
+			const uint32_t imm = instr & 0xFFF;
+			if (imm == 0) {
+				return LA64_BC_MOVE;
+			}
 			return LA64_BC_ORI;
 		}
 		// SLLI.W: op17 = 0x00081 (0x00408000)

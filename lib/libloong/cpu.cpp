@@ -58,7 +58,7 @@ namespace loongarch
 	}
 
 	template <int W>
-	typename CPU<W>::format_t CPU<W>::read_next_instruction() const
+	typename CPU<W>::format_t CPU<W>::read_current_instruction() const
 	{
 		return memory().template read<uint32_t>(pc());
 	}
@@ -113,11 +113,20 @@ namespace loongarch
 	}
 
 	template <int W>
+	void CPU<W>::init_slowpath_execute_area(const void* data, address_t begin, address_t length)
+	{
+		// Slow-path decodes by reading from guest memory.
+		// Write directly into guest memory, bypassing permissions
+		// and checks, since this is the host setting up the area.
+		machine().memory.copy_into_arena_unsafe(begin, data, length);
+		registers().pc = begin;
+	}
+
+	template <int W>
 	std::string CPU<W>::current_instruction_to_string() const
 	{
 		try {
-			auto instr = read_next_instruction();
-			return to_string(instr);
+			return to_string(read_current_instruction());
 		} catch (...) {
 			return "Invalid instruction";
 		}
@@ -136,7 +145,7 @@ namespace loongarch
 	template <int W>
 	void CPU<W>::step_one(bool use_instruction_counter)
 	{
-		auto instr = read_next_instruction();
+		auto instr = read_current_instruction();
 		execute(instr);
 		increment_pc(4);
 		if (use_instruction_counter) {
@@ -152,12 +161,32 @@ namespace loongarch
 		}
 	}
 
-	// Template instantiations
+	template <int W>
+	std::string Registers<W>::to_string() const
+	{
+		char buffer[4096];
+		size_t offset = 0;
+
+		offset += snprintf(buffer + offset, sizeof(buffer) - offset,
+		                   "PC: 0x%0*lx\n", W / 4, long(pc));
+		for (size_t i = 0; i < 32; i += 4) {
+			offset += snprintf(buffer + offset, sizeof(buffer) - offset,
+			                   "%-5s: 0x%0*lx  %-5s: 0x%0*lx  %-5s: 0x%0*lx  %-5s: 0x%0*lx\n",
+			                   la_regname(i + 0), W / 4, long(get(i + 0)),
+			                   la_regname(i + 1), W / 4, long(get(i + 1)),
+			                   la_regname(i + 2), W / 4, long(get(i + 2)),
+			                   la_regname(i + 3), W / 4, long(get(i + 3)));
+		}
+
+		return std::string(buffer);
+	}
+
 #ifdef LA_32
 	template struct CPU<LA32>;
+	template struct Registers<LA32>;
 #endif
 #ifdef LA_64
 	template struct CPU<LA64>;
+	template struct Registers<LA64>;
 #endif
-
-} // namespace loongarch
+} // loongarch

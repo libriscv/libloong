@@ -294,7 +294,9 @@ std::shared_ptr<DecodedExecuteSegment<W>> Memory<W>::exec_segment_for(address_t 
 template <int W>
 void Memory<W>::evict_execute_segments()
 {
+	machine().cpu.set_execute_segment(*CPU<W>::empty_execute_segment());
 	m_exec.clear();
+	m_main_exec_segment.reset();
 }
 
 template <int W>
@@ -308,7 +310,6 @@ void Memory<W>::reset()
 #endif
 	}
 	evict_execute_segments();
-	m_main_exec_segment.reset();
 }
 
 template <int W>

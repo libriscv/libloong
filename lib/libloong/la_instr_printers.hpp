@@ -924,6 +924,30 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		return snprintf(buf, len, "movfcsr2gr %s, $fcsr%u", reg_name(rd), fcsr_idx);
 	}
 
+	static int MOVFR2CF(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t cd = instr.whole & 0x7;
+		uint32_t fj = (instr.whole >> 5) & 0x1F;
+		return snprintf(buf, len, "movfr2cf $fcc%u, $fa%u", cd, fj);
+	}
+
+	static int MOVCF2FR(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t fd = instr.whole & 0x1F;
+		uint32_t cj = (instr.whole >> 5) & 0x7;
+		return snprintf(buf, len, "movcf2fr $fa%u, $fcc%u", fd, cj);
+	}
+
+	static int MOVGR2CF(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t cd = instr.whole & 0x7;
+		uint32_t rj = (instr.whole >> 5) & 0x1F;
+		return snprintf(buf, len, "movgr2cf $fcc%u, %s", cd, reg_name(rj));
+	}
+
+	static int MOVCF2GR(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t rd = instr.whole & 0x1F;
+		uint32_t cj = (instr.whole >> 5) & 0x7;
+		return snprintf(buf, len, "movcf2gr %s, $fcc%u", reg_name(rd), cj);
+	}
+
 	static int VFCMP_SLT_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		uint32_t vd = instr.whole & 0x1F;
 		uint32_t vj = (instr.whole >> 5) & 0x1F;

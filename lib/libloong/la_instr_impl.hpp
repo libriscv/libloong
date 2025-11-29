@@ -834,6 +834,43 @@ struct InstrImpl {
 		cpu.reg(rd) = cpu.registers().fcsr();
 	}
 
+	static void MOVFR2CF(cpu_t& cpu, la_instruction instr) {
+		// Move lowest bit of FPR to condition flag
+		// Format: movfr2cf cd, fj
+		uint32_t cd = instr.whole & 0x7;         // FCC register index (3 bits)
+		uint32_t fj = (instr.whole >> 5) & 0x1F; // Source FP register
+		const auto& vr = cpu.registers().getvr(fj);
+		uint8_t bit = vr.du[0] & 1;  // Get lowest bit
+		cpu.registers().set_cf(cd, bit);
+	}
+
+	static void MOVCF2FR(cpu_t& cpu, la_instruction instr) {
+		// Move condition flag to lowest bit of FPR
+		// Format: movcf2fr fd, cj
+		uint32_t fd = instr.whole & 0x1F;        // Destination FP register
+		uint32_t cj = (instr.whole >> 5) & 0x7;  // Source FCC register (3 bits)
+		auto& vr = cpu.registers().getvr(fd);
+		vr.du[0] = cpu.registers().cf(cj);  // Write condition flag to lowest bit
+	}
+
+	static void MOVGR2CF(cpu_t& cpu, la_instruction instr) {
+		// Move lowest bit of GPR to condition flag
+		// Format: movgr2cf cd, rj
+		uint32_t cd = instr.whole & 0x7;         // FCC register index (3 bits)
+		uint32_t rj = (instr.whole >> 5) & 0x1F; // Source general register
+		uint8_t bit = cpu.reg(rj) & 1;  // Get lowest bit
+		cpu.registers().set_cf(cd, bit);
+	}
+
+	static void MOVCF2GR(cpu_t& cpu, la_instruction instr) {
+		// Move condition flag to lowest bit of GPR, clear other bits
+		// Format: movcf2gr rd, cj
+		uint32_t rd = instr.whole & 0x1F;        // Destination general register
+		if (rd == 0) return; // Writes to x0 are discarded
+		uint32_t cj = (instr.whole >> 5) & 0x7;  // Source FCC register (3 bits)
+		cpu.reg(rd) = cpu.registers().cf(cj);  // Write condition flag, zero-extended
+	}
+
 	static void FCMP_COND_D(cpu_t& cpu, la_instruction instr) {
 		// Floating-point compare with condition (double precision)
 		// Format: fcmp.cond.d cc, fj, fk

@@ -308,6 +308,10 @@ namespace loongarch
 	INSTRUCTION(MOVFR2GR_D);
 	INSTRUCTION(MOVGR2FR_D);
 	INSTRUCTION(MOVFCSR2GR);
+	INSTRUCTION(MOVFR2CF);
+	INSTRUCTION(MOVCF2FR);
+	INSTRUCTION(MOVGR2CF);
+	INSTRUCTION(MOVCF2GR);
 	INSTRUCTION(VFCMP_SLT_D);
 	INSTRUCTION(VFCMP_SLE_D);
 	INSTRUCTION(FSEL);
@@ -467,6 +471,14 @@ namespace loongarch
 				if (op22_val == 0x452A) return DECODED_INSTR(MOVGR2FR_D);
 				// MOVFCSR2GR: bits[31:10] = 0x4532
 				if (op22_val == 0x4532) return DECODED_INSTR(MOVFCSR2GR);
+				// MOVFR2CF: bits[31:10] = 0x4534
+				if (op22_val == 0x4534) return DECODED_INSTR(MOVFR2CF);
+				// MOVCF2FR: bits[31:10] = 0x4535
+				if (op22_val == 0x4535) return DECODED_INSTR(MOVCF2FR);
+				// MOVGR2CF: bits[31:10] = 0x4536
+				if (op22_val == 0x4536) return DECODED_INSTR(MOVGR2CF);
+				// MOVCF2GR: bits[31:10] = 0x4537
+				if (op22_val == 0x4537) return DECODED_INSTR(MOVCF2GR);
 				// FABS.D: bits[31:10] = 0x4502
 				if (op22_val == 0x4502) return DECODED_INSTR(FABS_D);
 				// FNEG.D: bits[31:10] = 0x4506

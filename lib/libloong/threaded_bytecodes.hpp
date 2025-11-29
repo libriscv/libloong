@@ -407,4 +407,34 @@ namespace loongarch
 		};
 	};
 
+	// Optimized format for conditional branches with 21-bit offset (BEQZ, BNEZ, BCEQZ, BCNEZ)
+	union FasterLA64_RI21_Branch {
+		uint32_t whole;
+		struct {
+			uint8_t rj;      // bits [4:0] - register to test (or condition flag for BC*)
+			uint8_t padding; // bits [12:5] - unused, available for future use
+			int16_t offset;  // bits [28:13] - pre-computed offset (sign-extended, already << 2)
+		};
+		void set_offset(int32_t offs) {
+			// The offset has already been << 2 in the optimizer
+			// Store it as a 16-bit value (will be valid if within segment)
+			this->offset = (int16_t)offs;
+		}
+	};
+
+	// Optimized format for comparison branches with 16-bit offset (BEQ, BNE, BLT, BGE, BLTU, BGEU)
+	union FasterLA64_RI16_Branch {
+		uint32_t whole;
+		struct {
+			uint8_t rd;      // bits [4:0] - first register
+			uint8_t rj;      // bits [9:5] - second register
+			int16_t offset;  // bits [25:10] - pre-computed offset (sign-extended, already << 2)
+		};
+		void set_offset(int32_t offs) {
+			// The offset has already been << 2 in the optimizer
+			// Store it as a 16-bit value (will be valid if within segment)
+			this->offset = (int16_t)offs;
+		}
+	};
+
 } // namespace loongarch

@@ -440,10 +440,9 @@ INSTRUCTION(LA64_BC_BL, la64_bl)
 // LA64_BC_BEQZ: Branch if equal to zero
 INSTRUCTION(LA64_BC_BEQZ, la64_beqz)
 {
-	VIEW_INSTR();
-	if (REG(instr.ri12.rj) == 0) {
-		auto offset = InstructionHelpers<W>::sign_extend_12(instr.ri12.imm) << 2;
-		PERFORM_BRANCH(offset);
+	auto fi = *(FasterLA64_RI21_Branch *)&DECODER().instr;
+	if (REG(fi.rj) == 0) {
+		PERFORM_BRANCH(fi.offset);
 	}
 	NEXT_BLOCK_UNCHECKED(4);
 }
@@ -451,10 +450,9 @@ INSTRUCTION(LA64_BC_BEQZ, la64_beqz)
 // LA64_BC_BNEZ: Branch if not equal to zero
 INSTRUCTION(LA64_BC_BNEZ, la64_bnez)
 {
-	VIEW_INSTR();
-	if (REG(instr.ri12.rj) != 0) {
-		auto offset = InstructionHelpers<W>::sign_extend_12(instr.ri12.imm) << 2;
-		PERFORM_BRANCH(offset);
+	auto fi = *(FasterLA64_RI21_Branch *)&DECODER().instr;
+	if (REG(fi.rj) != 0) {
+		PERFORM_BRANCH(fi.offset);
 	}
 	NEXT_BLOCK_UNCHECKED(4);
 }
@@ -462,10 +460,9 @@ INSTRUCTION(LA64_BC_BNEZ, la64_bnez)
 // LA64_BC_BEQ: Branch if equal
 INSTRUCTION(LA64_BC_BEQ, la64_beq)
 {
-	VIEW_INSTR();
-	if (REG(instr.ri16.rj) == REG(instr.ri16.rd)) {
-		auto offset = InstructionHelpers<W>::sign_extend_16(instr.ri16.imm) << 2;
-		PERFORM_BRANCH(offset);
+	auto fi = *(FasterLA64_RI16_Branch *)&DECODER().instr;
+	if (REG(fi.rj) == REG(fi.rd)) {
+		PERFORM_BRANCH(fi.offset);
 	}
 	NEXT_BLOCK_UNCHECKED(4);
 }
@@ -473,10 +470,9 @@ INSTRUCTION(LA64_BC_BEQ, la64_beq)
 // LA64_BC_BNE: Branch if not equal
 INSTRUCTION(LA64_BC_BNE, la64_bne)
 {
-	VIEW_INSTR();
-	if (REG(instr.ri16.rj) != REG(instr.ri16.rd)) {
-		auto offset = InstructionHelpers<W>::sign_extend_16(instr.ri16.imm) << 2;
-		PERFORM_BRANCH(offset);
+	auto fi = *(FasterLA64_RI16_Branch *)&DECODER().instr;
+	if (REG(fi.rj) != REG(fi.rd)) {
+		PERFORM_BRANCH(fi.offset);
 	}
 	NEXT_BLOCK_UNCHECKED(4);
 }
@@ -484,10 +480,9 @@ INSTRUCTION(LA64_BC_BNE, la64_bne)
 // LA64_BC_BLT: Branch if less than
 INSTRUCTION(LA64_BC_BLT, la64_blt)
 {
-	VIEW_INSTR();
-	if ((saddress_t)REG(instr.ri16.rj) < (saddress_t)REG(instr.ri16.rd)) {
-		auto offset = InstructionHelpers<W>::sign_extend_16(instr.ri16.imm) << 2;
-		PERFORM_BRANCH(offset);
+	auto fi = *(FasterLA64_RI16_Branch *)&DECODER().instr;
+	if ((saddress_t)REG(fi.rj) < (saddress_t)REG(fi.rd)) {
+		PERFORM_BRANCH(fi.offset);
 	}
 	NEXT_BLOCK_UNCHECKED(4);
 }
@@ -495,10 +490,9 @@ INSTRUCTION(LA64_BC_BLT, la64_blt)
 // LA64_BC_BGE: Branch if greater than or equal
 INSTRUCTION(LA64_BC_BGE, la64_bge)
 {
-	VIEW_INSTR();
-	if ((saddress_t)REG(instr.ri16.rj) >= (saddress_t)REG(instr.ri16.rd)) {
-		auto offset = InstructionHelpers<W>::sign_extend_16(instr.ri16.imm) << 2;
-		PERFORM_BRANCH(offset);
+	auto fi = *(FasterLA64_RI16_Branch *)&DECODER().instr;
+	if ((saddress_t)REG(fi.rj) >= (saddress_t)REG(fi.rd)) {
+		PERFORM_BRANCH(fi.offset);
 	}
 	NEXT_BLOCK_UNCHECKED(4);
 }
@@ -506,10 +500,9 @@ INSTRUCTION(LA64_BC_BGE, la64_bge)
 // LA64_BC_BLTU: Branch if less than unsigned
 INSTRUCTION(LA64_BC_BLTU, la64_bltu)
 {
-	VIEW_INSTR();
-	if (REG(instr.ri16.rj) < REG(instr.ri16.rd)) {
-		auto offset = InstructionHelpers<W>::sign_extend_16(instr.ri16.imm) << 2;
-		PERFORM_BRANCH(offset);
+	auto fi = *(FasterLA64_RI16_Branch *)&DECODER().instr;
+	if (REG(fi.rj) < REG(fi.rd)) {
+		PERFORM_BRANCH(fi.offset);
 	}
 	NEXT_BLOCK_UNCHECKED(4);
 }
@@ -517,10 +510,9 @@ INSTRUCTION(LA64_BC_BLTU, la64_bltu)
 // LA64_BC_BGEU: Branch if greater than or equal unsigned
 INSTRUCTION(LA64_BC_BGEU, la64_bgeu)
 {
-	VIEW_INSTR();
-	if (REG(instr.ri16.rj) >= REG(instr.ri16.rd)) {
-		auto offset = InstructionHelpers<W>::sign_extend_16(instr.ri16.imm) << 2;
-		PERFORM_BRANCH(offset);
+	auto fi = *(FasterLA64_RI16_Branch *)&DECODER().instr;
+	if (REG(fi.rj) >= REG(fi.rd)) {
+		PERFORM_BRANCH(fi.offset);
 	}
 	NEXT_BLOCK_UNCHECKED(4);
 }
@@ -723,13 +715,9 @@ INSTRUCTION(LA64_BC_FSTX_D, la64_fstx_d)
 // LA64_BC_BCEQZ: Branch if condition flag equals zero
 INSTRUCTION(LA64_BC_BCEQZ, la64_bceqz)
 {
-	VIEW_INSTR();
-	const uint32_t cj = (instr.whole >> 5) & 0x7;
-	int32_t offset = ((instr.whole >> 10) & 0xFFFF) << 2;
-	// Sign extend 18-bit offset
-	offset = (offset << (32 - 18)) >> (32 - 18);
-	if (REGISTERS().cf(cj) == 0) {
-		PERFORM_BRANCH(offset);
+	auto fi = *(FasterLA64_RI21_Branch *)&DECODER().instr;
+	if (REGISTERS().cf(fi.rj) == 0) {
+		PERFORM_BRANCH(fi.offset);
 	}
 	NEXT_BLOCK_UNCHECKED(4);
 }
@@ -737,13 +725,9 @@ INSTRUCTION(LA64_BC_BCEQZ, la64_bceqz)
 // LA64_BC_BCNEZ: Branch if condition flag not equal to zero
 INSTRUCTION(LA64_BC_BCNEZ, la64_bcnez)
 {
-	VIEW_INSTR();
-	const uint32_t cj = (instr.whole >> 5) & 0x7;
-	int32_t offset = ((instr.whole >> 10) & 0xFFFF) << 2;
-	// Sign extend 18-bit offset
-	offset = (offset << (32 - 18)) >> (32 - 18);
-	if (REGISTERS().cf(cj) != 0) {
-		PERFORM_BRANCH(offset);
+	auto fi = *(FasterLA64_RI21_Branch *)&DECODER().instr;
+	if (REGISTERS().cf(fi.rj) != 0) {
+		PERFORM_BRANCH(fi.offset);
 	}
 	NEXT_BLOCK_UNCHECKED(4);
 }

@@ -34,6 +34,26 @@ uint32_t DecodedExecuteSegment<W>::optimize_bytecode(uint8_t& bytecode, address_
 				return original.whole;
 			}
 		} break;
+		case LA64_BC_BEQ:
+		case LA64_BC_BNE:
+		case LA64_BC_BLT:
+		case LA64_BC_BGE:
+		case LA64_BC_BLTU:
+		case LA64_BC_BGEU: {
+			// These use ri16 format: rd, rj, offs16
+			const auto offset = InstructionHelpers<W>::sign_extend_16(original.ri16.imm) << 2;
+			// Check if branch target is within segment
+			if (this->is_within(pc + offset)) {
+				auto fi = *(FasterLA64_RI16_Branch *)&instruction_bits;
+				fi.rd = original.ri16.rd;
+				fi.rj = original.ri16.rj;
+				fi.set_offset(offset);
+				return fi.whole;
+			} else {
+				bytecode = LA64_BC_INVALID;
+				return original.whole;
+			}
+		} break;
 		case LA64_BC_LD_D: {
 			auto fi = *(FasterLA64_RI12 *)&instruction_bits;
 			fi.rd = original.ri12.rd;
@@ -743,6 +763,36 @@ uint32_t DecodedExecuteSegment<W>::optimize_bytecode(uint8_t& bytecode, address_
 			// No optimization needed - JIRL uses original instruction bits
 			// because it needs to access ri16 fields directly in VIEW_INSTR()
 			return instruction_bits;
+		case LA64_BC_BEQZ:
+		case LA64_BC_BNEZ: {
+			// BEQZ/BNEZ use ri21 format: rj, offs21
+			const auto offset = InstructionHelpers<W>::sign_extend_21(original.ri21.offs_lo, original.ri21.offs_hi) << 2;
+			// Check if branch target is within segment
+			if (this->is_within(pc + offset)) {
+				auto fi = *(FasterLA64_RI21_Branch *)&instruction_bits;
+				fi.rj = original.ri21.rj;
+				fi.set_offset(offset);
+				return fi.whole;
+			} else {
+				bytecode = LA64_BC_INVALID;
+				return original.whole;
+			}
+		} break;
+		case LA64_BC_BCEQZ:
+		case LA64_BC_BCNEZ: {
+			// BCEQZ/BCNEZ use bits[7:5] for condition flag (cj), offs21 for offset
+			const auto offset = InstructionHelpers<W>::sign_extend_21(original.ri21.offs_lo, original.ri21.offs_hi) << 2;
+			// Check if branch target is within segment
+			if (this->is_within(pc + offset)) {
+				auto fi = *(FasterLA64_RI21_Branch *)&instruction_bits;
+				fi.rj = (original.whole >> 5) & 0x7; // Extract cj from bits[7:5]
+				fi.set_offset(offset);
+				return fi.whole;
+			} else {
+				bytecode = LA64_BC_INVALID;
+				return original.whole;
+			}
+		} break;
 		default:
 			// No optimization
 			return instruction_bits;

@@ -48,16 +48,16 @@ libloong follows the same design principles as libriscv:
 - **Machine**: The main emulator state, containing CPU and Memory
 - **CPU**: Instruction decoder, executor, and register file
 - **Memory**: Arena-based memory management with multiple execute segments
-- **Decoder Cache**: Fast instruction decoding and dispatch (eventually)
+- **Decoder Cache**: Fast instruction decoding and dispatch
 
 ```sh
 Function    Best Rate MB/s  Avg time     Min time     Max time
-Copy:           32083.4     0.005137     0.004987     0.005475
-Scale:           3723.5     0.043730     0.042970     0.045769
-Add:             8703.5     0.027995     0.027575     0.028574
-Triad:           5706.6     0.042222     0.042057     0.042625
+Copy:           32186.5     0.005037     0.004971     0.005185
+Scale:           3777.1     0.043774     0.042360     0.048827
+Add:             9674.3     0.025661     0.024808     0.028854
+Triad:           5808.6     0.042454     0.041318     0.046490
 
-CoreMark 1.0 : 2676.973192 / GCC14.2.0 -O3 -DPERFORMANCE_RUN=1   / Static
+CoreMark 1.0 : 2729.488203 / GCC14.2.0 -O3 -DPERFORMANCE_RUN=1   / Static
 ```
 Despite not having a complete threaded dispatch yet, it is quite fast.
 

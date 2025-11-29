@@ -37,7 +37,7 @@ Execute `cxx_test` until completion without debug lines, then start executing th
 build$ ./tests/debug_test -o tests/loongarch_bins/cxx_test --call test_exception
 ```
 
-WARNING: Do _NOT_ use debug_test for benchmarks such as stream.elf and coremark.elf. They will never complete as they run through billions of instructions. Use other means.
+WARNING: Do _NOT_ use debug_test for benchmarks such as stream.elf and coremark.elf. They will never complete as they run through billions of instructions. Use the CLI.
 
 ## Adding a new bytecode
 

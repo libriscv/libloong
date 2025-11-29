@@ -23,10 +23,12 @@
 	pc += decoder->block_bytes; \
 	EXECUTE_INSTR();
 #define PERFORM_BRANCH(offset)           \
-	if (LA_LIKELY(counter < max_counter)) { \
-		NEXT_BLOCK_UNCHECKED(offset);    \
-	}                                    \
 	pc += offset;                        \
+	if (LA_LIKELY(counter < max_counter)) { \
+		decoder += offset >> DecoderCache<W>::SHIFT; \
+		pc += decoder->block_bytes;      \
+		EXECUTE_INSTR();                 \
+	}                                    \
 	goto check_jump;
 
 namespace loongarch

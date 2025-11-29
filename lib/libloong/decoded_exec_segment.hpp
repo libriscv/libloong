@@ -43,6 +43,8 @@ namespace loongarch
 
 		bool is_execute_only() const noexcept { return m_execute_only; }
 
+		uint32_t optimize_bytecode(uint8_t& bytecode, address_t pc, uint32_t instruction_bits) const;
+
 	private:
 		address_t m_exec_begin;
 		address_t m_exec_end;

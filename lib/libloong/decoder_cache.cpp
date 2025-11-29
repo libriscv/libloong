@@ -3,12 +3,10 @@
 #include "la_instr.hpp"
 #include "threaded_bytecodes.hpp"
 #include <cstring>
+#include "threaded_rewriter.cpp" // workaround for buggy template instantiation
 
 namespace loongarch
 {
-	template <int W>
-	extern uint32_t optimize_bytecode(uint8_t& bytecode, address_type<W> pc, uint32_t instruction_bits);
-
 	// Check if an instruction is diverging (changes control flow)
 	// Note: PC-reading instructions (PCADDI, PCALAU12I, PCADDU12I) are NOT diverging
 	// because they only read PC, they don't modify it
@@ -529,7 +527,7 @@ namespace loongarch
 			// typically to rewrite cases where rd == zero register.
 			// This avoids a check in the hot-path for rd != 0.
 			const address_type<W> pc = exec_begin + (i * sizeof(la_instruction));
-			cache[i].instr = optimize_bytecode<W>(cache[i].bytecode, pc, instr);
+			cache[i].instr = segment.optimize_bytecode(cache[i].bytecode, pc, instr);
 
 			if (is_diverging_instruction<W>(instr)) {
 				// Diverging instruction: block_bytes = 0

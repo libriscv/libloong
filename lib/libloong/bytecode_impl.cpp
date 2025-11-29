@@ -140,7 +140,7 @@ INSTRUCTION(LA64_BC_PCADDI, la64_pcaddi)
 	const int32_t si20 = InstructionHelpers<W>::sign_extend_20(instr.ri20.imm);
 	const int64_t offset = (si20 << 2);
 	REG(instr.ri20.rd) = pc + offset;
-	NEXT_BLOCK(4);
+	NEXT_BLOCK_UNCHECKED(4);
 }
 
 // LA64_BC_PCALAU12I: PC-aligned add upper immediate (rd = (PC & ~0xFFF) + (imm20 << 12))
@@ -149,7 +149,7 @@ INSTRUCTION(LA64_BC_PCALAU12I, la64_pcalau12i)
 	VIEW_INSTR();
 	const int64_t offset = (int32_t)(instr.ri20.imm << 12);
 	REG(instr.ri20.rd) = (pc & ~address_t(0xFFF)) + offset;
-	NEXT_BLOCK(4);
+	NEXT_BLOCK_UNCHECKED(4);
 }
 
 // LA64_BC_LDPTR_D: Load pointer doubleword (rd = mem[rj + sign_ext(imm14 << 2)])
@@ -449,7 +449,7 @@ INSTRUCTION(LA64_BC_BEQZ, la64_beqz)
 		auto offset = InstructionHelpers<W>::sign_extend_12(instr.ri12.imm) << 2;
 		PERFORM_BRANCH(offset);
 	}
-	NEXT_BLOCK(4);
+	NEXT_BLOCK_UNCHECKED(4);
 }
 
 // LA64_BC_BNEZ: Branch if not equal to zero
@@ -460,7 +460,7 @@ INSTRUCTION(LA64_BC_BNEZ, la64_bnez)
 		auto offset = InstructionHelpers<W>::sign_extend_12(instr.ri12.imm) << 2;
 		PERFORM_BRANCH(offset);
 	}
-	NEXT_BLOCK(4);
+	NEXT_BLOCK_UNCHECKED(4);
 }
 
 // LA64_BC_BEQ: Branch if equal
@@ -471,7 +471,7 @@ INSTRUCTION(LA64_BC_BEQ, la64_beq)
 		auto offset = InstructionHelpers<W>::sign_extend_16(instr.ri16.imm) << 2;
 		PERFORM_BRANCH(offset);
 	}
-	NEXT_BLOCK(4);
+	NEXT_BLOCK_UNCHECKED(4);
 }
 
 // LA64_BC_BNE: Branch if not equal
@@ -482,7 +482,7 @@ INSTRUCTION(LA64_BC_BNE, la64_bne)
 		auto offset = InstructionHelpers<W>::sign_extend_16(instr.ri16.imm) << 2;
 		PERFORM_BRANCH(offset);
 	}
-	NEXT_BLOCK(4);
+	NEXT_BLOCK_UNCHECKED(4);
 }
 
 // LA64_BC_BLT: Branch if less than
@@ -493,7 +493,7 @@ INSTRUCTION(LA64_BC_BLT, la64_blt)
 		auto offset = InstructionHelpers<W>::sign_extend_16(instr.ri16.imm) << 2;
 		PERFORM_BRANCH(offset);
 	}
-	NEXT_BLOCK(4);
+	NEXT_BLOCK_UNCHECKED(4);
 }
 
 // LA64_BC_BGE: Branch if greater than or equal
@@ -504,7 +504,7 @@ INSTRUCTION(LA64_BC_BGE, la64_bge)
 		auto offset = InstructionHelpers<W>::sign_extend_16(instr.ri16.imm) << 2;
 		PERFORM_BRANCH(offset);
 	}
-	NEXT_BLOCK(4);
+	NEXT_BLOCK_UNCHECKED(4);
 }
 
 // LA64_BC_BLTU: Branch if less than unsigned
@@ -515,7 +515,7 @@ INSTRUCTION(LA64_BC_BLTU, la64_bltu)
 		auto offset = InstructionHelpers<W>::sign_extend_16(instr.ri16.imm) << 2;
 		PERFORM_BRANCH(offset);
 	}
-	NEXT_BLOCK(4);
+	NEXT_BLOCK_UNCHECKED(4);
 }
 
 // LA64_BC_BGEU: Branch if greater than or equal unsigned
@@ -526,7 +526,7 @@ INSTRUCTION(LA64_BC_BGEU, la64_bgeu)
 		auto offset = InstructionHelpers<W>::sign_extend_16(instr.ri16.imm) << 2;
 		PERFORM_BRANCH(offset);
 	}
-	NEXT_BLOCK(4);
+	NEXT_BLOCK_UNCHECKED(4);
 }
 
 // LA64_BC_JIRL: Jump indirect and link register
@@ -553,12 +553,8 @@ INSTRUCTION(LA64_BC_VLD, la64_vld)
 {
 	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
 	const auto addr = REG(fi.rj) + fi.imm;
-	auto& vr = REGISTERS().getvr(fi.rd);
-	vr.du[0] = MACHINE().memory.template read<uint64_t>(addr);
-	vr.du[1] = MACHINE().memory.template read<uint64_t>(addr + 8);
-	// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
-	vr.du[2] = 0;
-	vr.du[3] = 0;
+	auto& vr = REGISTERS().getvr128low(fi.rd);
+	vr = MACHINE().memory.template read<remove_cvref_t<decltype(vr)>>(addr);
 	NEXT_INSTR();
 }
 
@@ -577,12 +573,8 @@ INSTRUCTION(LA64_BC_VLDX, la64_vldx)
 {
 	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
 	const auto addr = REG(fi.rj) + REG(fi.rk);
-	auto& vr = REGISTERS().getvr(fi.rd);
-	vr.du[0] = MACHINE().memory.template read<uint64_t>(addr);
-	vr.du[1] = MACHINE().memory.template read<uint64_t>(addr + 8);
-	// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
-	vr.du[2] = 0;
-	vr.du[3] = 0;
+	auto& vr = REGISTERS().getvr128low(fi.rd);
+	vr = MACHINE().memory.template read<remove_cvref_t<decltype(vr)>>(addr);
 	NEXT_INSTR();
 }
 
@@ -743,7 +735,7 @@ INSTRUCTION(LA64_BC_BCEQZ, la64_bceqz)
 	if (REGISTERS().cf(cj) == 0) {
 		PERFORM_BRANCH(offset);
 	}
-	NEXT_BLOCK(4);
+	NEXT_BLOCK_UNCHECKED(4);
 }
 
 // LA64_BC_BCNEZ: Branch if condition flag not equal to zero
@@ -757,7 +749,7 @@ INSTRUCTION(LA64_BC_BCNEZ, la64_bcnez)
 	if (REGISTERS().cf(cj) != 0) {
 		PERFORM_BRANCH(offset);
 	}
-	NEXT_BLOCK(4);
+	NEXT_BLOCK_UNCHECKED(4);
 }
 
 // LA64_BC_SYSCALL: System call
@@ -779,7 +771,7 @@ INSTRUCTION(LA64_BC_SYSCALL, la64_syscall)
 		goto check_jump;
 	}
 	// Syscall completed normally
-	NEXT_BLOCK(4);
+	NEXT_BLOCK_UNCHECKED(4);
 }
 
 // LA64_BC_SYSCALL_IMM: Immediate system call
@@ -802,8 +794,7 @@ INSTRUCTION(LA64_BC_CLO_W, la64_clo_w)
 {
 	auto fi = *(FasterLA64_R2 *)&DECODER().instr;
 	uint32_t val = static_cast<uint32_t>(REG(fi.rj));
-	int count = 0;
-	for (int i = 31; i >= 0 && (val & (1u << i)); i--) count++;
+	uint32_t count = __builtin_clz(~val);
 	REG(fi.rd) = count;
 	NEXT_INSTR();
 }
@@ -867,10 +858,8 @@ INSTRUCTION(LA64_BC_SLTI, la64_slti)
 INSTRUCTION(LA64_BC_CLO_D, la64_clo_d)
 {
 	auto fi = *(FasterLA64_R2 *)&DECODER().instr;
-	uint64_t val = REG(fi.rj);
-	int count = 0;
-	for (int i = 63; i >= 0 && (val & (1ULL << i)); i--) count++;
-	REG(fi.rd) = count;
+	const uint64_t val = REG(fi.rj);
+	REG(fi.rd) = __builtin_clzll(~val);
 	NEXT_INSTR();
 }
 
@@ -1008,7 +997,7 @@ INSTRUCTION(LA64_BC_PCADDU12I, la64_pcaddu12i)
 	const int64_t si20 = InstructionHelpers<W>::sign_extend_20(instr.ri20.imm);
 	const int64_t offset = si20 << 12;
 	REG(instr.ri20.rd) = pc + offset;
-	NEXT_BLOCK(4);
+	NEXT_BLOCK_UNCHECKED(4);
 }
 
 // LA64_BC_ANDN: AND NOT
@@ -1131,10 +1120,11 @@ INSTRUCTION(LA64_BC_REVB_4H, la64_revb_4h)
 // LA64_BC_INVALID: Invalid instruction
 INSTRUCTION(LA64_BC_INVALID, execute_invalid)
 {
-	REGISTERS().pc = pc;
+	// Reconstruct PC and trigger exception
+	REGISTERS().pc = pc - DECODER().block_bytes;
 	MACHINE().set_instruction_counter(counter);
 	// Trigger invalid instruction exception
-	CPU().trigger_exception(ILLEGAL_OPCODE, pc);
+	CPU().trigger_exception(ILLEGAL_OPCODE, DECODER().instr);
 }
 
 // LA64_BC_STOP: Stop execution marker

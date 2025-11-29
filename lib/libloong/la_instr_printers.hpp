@@ -924,27 +924,6 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		return snprintf(buf, len, "movfcsr2gr %s, $fcsr%u", reg_name(rd), fcsr_idx);
 	}
 
-	static int FCMP_COR_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t cd = instr.whole & 0x7;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
-		uint32_t fk = (instr.whole >> 10) & 0x1F;
-		return snprintf(buf, len, "fcmp.cor.d $fcc%u, $fa%u, $fa%u", cd, fj, fk);
-	}
-
-	static int FCMP_CULE_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t cd = instr.whole & 0x7;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
-		uint32_t fk = (instr.whole >> 10) & 0x1F;
-		return snprintf(buf, len, "fcmp.cule.d $fcc%u, $fa%u, $fa%u", cd, fj, fk);
-	}
-
-	static int FCMP_SLT_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t cd = instr.whole & 0x7;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
-		uint32_t fk = (instr.whole >> 10) & 0x1F;
-		return snprintf(buf, len, "fcmp.slt.d $fcc%u, $fa%u, $fa%u", cd, fj, fk);
-	}
-
 	static int VFCMP_SLT_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		uint32_t vd = instr.whole & 0x1F;
 		uint32_t vj = (instr.whole >> 5) & 0x1F;
@@ -952,39 +931,50 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		return snprintf(buf, len, "vfcmp.slt.d $vr%u, $vr%u, $vr%u", vd, vj, vk);
 	}
 
-	static int FCMP_SLE_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t cd = instr.whole & 0x7;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
-		uint32_t fk = (instr.whole >> 10) & 0x1F;
-		return snprintf(buf, len, "fcmp.sle.d $fcc%u, $fa%u, $fa%u", cd, fj, fk);
-	}
-
-	static int FCMP_CLT_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t cd = instr.whole & 0x7;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
-		uint32_t fk = (instr.whole >> 10) & 0x1F;
-		return snprintf(buf, len, "fcmp.clt.d $fcc%u, $fa%u, $fa%u", cd, fj, fk);
-	}
-
-	static int FCMP_CEQ_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t cd = instr.whole & 0x7;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
-		uint32_t fk = (instr.whole >> 10) & 0x1F;
-		return snprintf(buf, len, "fcmp.ceq.d $fcc%u, $fa%u, $fa%u", cd, fj, fk);
-	}
-
-	static int FCMP_CUNE_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t cd = instr.whole & 0x7;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
-		uint32_t fk = (instr.whole >> 10) & 0x1F;
-		return snprintf(buf, len, "fcmp.cune.d $fcc%u, $fa%u, $fa%u", cd, fj, fk);
-	}
-
 	static int VFCMP_SLE_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		uint32_t vd = instr.whole & 0x1F;
 		uint32_t vj = (instr.whole >> 5) & 0x1F;
 		uint32_t vk = (instr.whole >> 10) & 0x1F;
 		return snprintf(buf, len, "vfcmp.sle.d $vr%u, $vr%u, $vr%u", vd, vj, vk);
+	}
+
+	static int FCMP_COND_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t cd = instr.whole & 0x7;
+		uint32_t fj = (instr.whole >> 5) & 0x1F;
+		uint32_t fk = (instr.whole >> 10) & 0x1F;
+		const uint32_t cond = (instr.whole >> 15) & 0x1F;
+
+		// Map condition codes to mnemonics according to LoongArch manual Table 9
+		const char* mnemonic;
+		switch (cond) {
+			case 0x0:  mnemonic = "caf";  break;  // Always False (quiet)
+			case 0x1:  mnemonic = "saf";  break;  // Always False (signaling)
+			case 0x2:  mnemonic = "clt";  break;  // Less Than (quiet)
+			case 0x3:  mnemonic = "slt";  break;  // Less Than (signaling)
+			case 0x4:  mnemonic = "ceq";  break;  // Equal (quiet)
+			case 0x5:  mnemonic = "seq";  break;  // Equal (signaling)
+			case 0x6:  mnemonic = "cle";  break;  // Less or Equal (quiet)
+			case 0x7:  mnemonic = "sle";  break;  // Less or Equal (signaling)
+			case 0x8:  mnemonic = "cun";  break;  // Unordered (quiet)
+			case 0x9:  mnemonic = "sun";  break;  // Unordered (signaling)
+			case 0xA:  mnemonic = "cult"; break;  // Unordered or Less Than (quiet)
+			case 0xB:  mnemonic = "sult"; break;  // Unordered or Less Than (signaling)
+			case 0xC:  mnemonic = "cueq"; break;  // Unordered or Equal (quiet)
+			case 0xD:  mnemonic = "sueq"; break;  // Unordered or Equal (signaling)
+			case 0xE:  mnemonic = "cule"; break;  // Unordered or Less or Equal (quiet)
+			case 0xF:  mnemonic = "sule"; break;  // Unordered or Less or Equal (signaling)
+			case 0x10: mnemonic = "cne";  break;  // Not Equal (quiet)
+			case 0x11: mnemonic = "sne";  break;  // Not Equal (signaling)
+			case 0x14: mnemonic = "cor";  break;  // Ordered (quiet)
+			case 0x15: mnemonic = "sor";  break;  // Ordered (signaling)
+			case 0x18: mnemonic = "cune"; break;  // Unordered or Not Equal (quiet)
+			case 0x19: mnemonic = "sune"; break;  // Unordered or Not Equal (signaling)
+			default:
+				// Unknown condition code
+				return snprintf(buf, len, "fcmp.0x%x.d $fcc%u, $fa%u, $fa%u", cond, cd, fj, fk);
+		}
+
+		return snprintf(buf, len, "fcmp.%s.d $fcc%u, $fa%u, $fa%u", mnemonic, cd, fj, fk);
 	}
 
 	static int FSEL(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {

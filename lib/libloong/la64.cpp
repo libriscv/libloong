@@ -308,13 +308,6 @@ namespace loongarch
 	INSTRUCTION(MOVFR2GR_D);
 	INSTRUCTION(MOVGR2FR_D);
 	INSTRUCTION(MOVFCSR2GR);
-	INSTRUCTION(FCMP_COR_D);
-	INSTRUCTION(FCMP_CULE_D);
-	INSTRUCTION(FCMP_CEQ_D);
-	INSTRUCTION(FCMP_CLT_D);
-	INSTRUCTION(FCMP_CUNE_D);
-	INSTRUCTION(FCMP_SLT_D);
-	INSTRUCTION(FCMP_SLE_D);
 	INSTRUCTION(VFCMP_SLT_D);
 	INSTRUCTION(VFCMP_SLE_D);
 	INSTRUCTION(FSEL);
@@ -332,6 +325,7 @@ namespace loongarch
 	INSTRUCTION(FMADD_D);
 	INSTRUCTION(FLDX_D);
 	INSTRUCTION(FSTX_D);
+	INSTRUCTION(FCMP_COND_D);
 
 	// Decode function
 	template <>
@@ -491,7 +485,7 @@ namespace loongarch
 				uint32_t op10 = (instr.whole >> 22) & 0x3FF;
 				if (op10 == 0x00C) {
 					uint32_t cond = (instr.whole >> 15) & 0x1F;
-					if (cond == 0x14) return DECODED_INSTR(FCMP_COR_D);
+					if (cond == 0x14) return DECODED_INSTR(FCMP_COND_D);
 				}
 			}
 			// BSTRINS.D and BSTRPICK.D: bits [31:22] (op10)
@@ -544,16 +538,7 @@ namespace loongarch
 		// FCMP instructions: bits[31:22] = 0x030, bits[19:15] = condition code
 		{
 			uint32_t op10 = (instr.whole >> 22) & 0x3FF;
-			if (op10 == 0x030) {
-				uint32_t cond = (instr.whole >> 15) & 0x1F;
-				if (cond == 0x14) return DECODED_INSTR(FCMP_COR_D);
-				if (cond == 0x0E) return DECODED_INSTR(FCMP_CULE_D);
-				if (cond == 0x02) return DECODED_INSTR(FCMP_CEQ_D);
-				if (cond == 0x03) return DECODED_INSTR(FCMP_SLT_D);
-				if (cond == 0x04) return DECODED_INSTR(FCMP_CLT_D);
-				if (cond == 0x07) return DECODED_INSTR(FCMP_SLE_D);
-				if (cond == 0x18) return DECODED_INSTR(FCMP_CUNE_D);
-			}
+			if (op10 == 0x030) return DECODED_INSTR(FCMP_COND_D);
 		}
 		// VFCMP instructions: bits[31:21] = 0x063, bits[20:15] = condition code
 		{

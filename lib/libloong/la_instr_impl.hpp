@@ -834,51 +834,50 @@ struct InstrImpl {
 		cpu.reg(rd) = cpu.registers().fcsr();
 	}
 
-	static void FCMP_COR_D(cpu_t& cpu, la_instruction instr) {
-		// Floating-point compare ordered (checks if neither operand is NaN)
-		uint32_t cd = instr.whole & 0x7;  // FCC register index (3 bits)
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
-		uint32_t fk = (instr.whole >> 10) & 0x1F;
+	static void FCMP_COND_D(cpu_t& cpu, la_instruction instr) {
+		// Floating-point compare with condition (double precision)
+		// Format: fcmp.cond.d cc, fj, fk
+		uint32_t cd = instr.whole & 0x7;         // FCC register index (3 bits)
+		uint32_t fj = (instr.whole >> 5) & 0x1F; // Source register 1
+		uint32_t fk = (instr.whole >> 10) & 0x1F; // Source register 2
+		uint32_t cond = (instr.whole >> 15) & 0x1F; // Condition code (5 bits)
 
 		const auto& vr_j = cpu.registers().getvr(fj);
 		const auto& vr_k = cpu.registers().getvr(fk);
 		double fj_val = vr_j.df[0];
 		double fk_val = vr_k.df[0];
 
-		// COR (Comparison Ordered): true if neither operand is NaN
-		bool result = !std::isnan(fj_val) && !std::isnan(fk_val);
-		cpu.registers().set_cf(cd, result ? 1 : 0);
-	}
+		bool is_unordered = std::isnan(fj_val) || std::isnan(fk_val);
+		bool result = false;
 
-	static void FCMP_CULE_D(cpu_t& cpu, la_instruction instr) {
-		// Floating-point compare unordered or less than or equal
-		uint32_t cd = instr.whole & 0x7;  // FCC register index (3 bits)
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
-		uint32_t fk = (instr.whole >> 10) & 0x1F;
+		switch (cond) {
+			case 0x02: // CEQ - Equal (ordered)
+				result = !is_unordered && (fj_val == fk_val);
+				break;
+			case 0x03: // SLT - Signaling Less Than (ordered)
+				result = !is_unordered && (fj_val < fk_val);
+				break;
+			case 0x04: // CLT - (Quiet) Less Than (ordered)
+				result = !is_unordered && (fj_val < fk_val);
+				break;
+			case 0x07: // SLE - Signaling Less or Equal (ordered)
+				result = !is_unordered && (fj_val <= fk_val);
+				break;
+			case 0x0E: // CULE - (Quiet) Unordered or Less or Equal
+				result = is_unordered || (fj_val <= fk_val);
+				break;
+			case 0x14: // COR - (Quiet) Ordered
+				result = !is_unordered;
+				break;
+			case 0x18: // CUNE - (Quiet) Unordered or Not Equal
+				result = is_unordered || (fj_val != fk_val);
+				break;
+			default:
+				// Unknown condition code - this should not happen in normal execution
+				result = false;
+				break;
+		}
 
-		const auto& vr_j = cpu.registers().getvr(fj);
-		const auto& vr_k = cpu.registers().getvr(fk);
-		double fj_val = vr_j.df[0];
-		double fk_val = vr_k.df[0];
-
-		// CULE (Comparison Unordered or Less than or Equal): true if unordered (NaN) or fj <= fk
-		bool result = std::isnan(fj_val) || std::isnan(fk_val) || (fj_val <= fk_val);
-		cpu.registers().set_cf(cd, result ? 1 : 0);
-	}
-
-	static void FCMP_SLT_D(cpu_t& cpu, la_instruction instr) {
-		// Floating-point compare signed less than (ordered)
-		uint32_t cd = instr.whole & 0x7;  // FCC register index (3 bits)
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
-		uint32_t fk = (instr.whole >> 10) & 0x1F;
-
-		const auto& vr_j = cpu.registers().getvr(fj);
-		const auto& vr_k = cpu.registers().getvr(fk);
-		double fj_val = vr_j.df[0];
-		double fk_val = vr_k.df[0];
-
-		// SLT (Signed Less Than): true if both are ordered and fj < fk
-		bool result = !std::isnan(fj_val) && !std::isnan(fk_val) && (fj_val < fk_val);
 		cpu.registers().set_cf(cd, result ? 1 : 0);
 	}
 
@@ -904,70 +903,6 @@ struct InstrImpl {
 		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
 		dst.du[2] = 0;
 		dst.du[3] = 0;
-	}
-
-	static void FCMP_SLE_D(cpu_t& cpu, la_instruction instr) {
-		// Floating-point compare signed less-or-equal (ordered)
-		uint32_t cd = instr.whole & 0x7;  // FCC register index (3 bits)
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
-		uint32_t fk = (instr.whole >> 10) & 0x1F;
-
-		const auto& vr_j = cpu.registers().getvr(fj);
-		const auto& vr_k = cpu.registers().getvr(fk);
-		double fj_val = vr_j.df[0];
-		double fk_val = vr_k.df[0];
-
-		// SLE (Signed Less-or-Equal): true if both are ordered and fj <= fk
-		bool result = !std::isnan(fj_val) && !std::isnan(fk_val) && (fj_val <= fk_val);
-		cpu.registers().set_cf(cd, result ? 1 : 0);
-	}
-
-	static void FCMP_CLT_D(cpu_t& cpu, la_instruction instr) {
-		// Floating-point compare less than (ordered)
-		uint32_t cd = instr.whole & 0x7;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
-		uint32_t fk = (instr.whole >> 10) & 0x1F;
-
-		const auto& vr_j = cpu.registers().getvr(fj);
-		const auto& vr_k = cpu.registers().getvr(fk);
-		double fj_val = vr_j.df[0];
-		double fk_val = vr_k.df[0];
-
-		// CLT (Compare Less Than): true if both are ordered and fj < fk
-		bool result = !std::isnan(fj_val) && !std::isnan(fk_val) && (fj_val < fk_val);
-		cpu.registers().set_cf(cd, result ? 1 : 0);
-	}
-
-	static void FCMP_CEQ_D(cpu_t& cpu, la_instruction instr) {
-		// Floating-point compare equal (ordered)
-		uint32_t cd = instr.whole & 0x7;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
-		uint32_t fk = (instr.whole >> 10) & 0x1F;
-
-		const auto& vr_j = cpu.registers().getvr(fj);
-		const auto& vr_k = cpu.registers().getvr(fk);
-		double fj_val = vr_j.df[0];
-		double fk_val = vr_k.df[0];
-
-		// CEQ (Compare Equal): true if both are ordered and fj == fk
-		bool result = !std::isnan(fj_val) && !std::isnan(fk_val) && (fj_val == fk_val);
-		cpu.registers().set_cf(cd, result ? 1 : 0);
-	}
-
-	static void FCMP_CUNE_D(cpu_t& cpu, la_instruction instr) {
-		// Floating-point compare unordered or not equal
-		uint32_t cd = instr.whole & 0x7;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
-		uint32_t fk = (instr.whole >> 10) & 0x1F;
-
-		const auto& vr_j = cpu.registers().getvr(fj);
-		const auto& vr_k = cpu.registers().getvr(fk);
-		double fj_val = vr_j.df[0];
-		double fk_val = vr_k.df[0];
-
-		// CUNE (Compare Unordered or Not Equal): true if unordered OR not equal
-		bool result = std::isnan(fj_val) || std::isnan(fk_val) || (fj_val != fk_val);
-		cpu.registers().set_cf(cd, result ? 1 : 0);
 	}
 
 	static void VFCMP_SLE_D(cpu_t& cpu, la_instruction instr) {

@@ -260,14 +260,7 @@ DecodedExecuteSegment<W>& Memory<W>::create_execute_segment(
 		throw MachineException(INVALID_PROGRAM, "Execute segment length is not 4-byte aligned");
 	}
 
-	const size_t aligned_size = (len + 4095) & ~size_t(4095);
-	if (addr + aligned_size > m_arena_size || addr + aligned_size < addr) {
-		throw MachineException(INVALID_PROGRAM, "Execute segment exceeds memory arena");
-	}
-	const size_t page_count = aligned_size / 4096;
-
-	auto segment = std::make_shared<DecodedExecuteSegment<W>>(
-		addr, addr + aligned_size, page_count);
+	auto segment = std::make_shared<DecodedExecuteSegment<W>>(addr, addr + len);
 
 	populate_decoder_cache(*segment, addr, static_cast<const uint8_t*>(data), len);
 

@@ -84,6 +84,7 @@ namespace loongarch
 		auto& current_execute_segment() noexcept { return *m_exec; }
 		auto& current_execute_segment() const noexcept { return *m_exec; }
 
+		// next_execute_segment() never fails; it throws on error
 		struct NextExecuteReturn {
 			DecodedExecuteSegment<W>* exec;
 			address_t pc;

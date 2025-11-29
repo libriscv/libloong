@@ -42,7 +42,7 @@ uint32_t DecodedExecuteSegment<W>::optimize_bytecode(uint8_t& bytecode, address_
 		case LA64_BC_BGEU: {
 			// These use ri16 format: rd, rj, offs16
 			const auto offset = InstructionHelpers<W>::sign_extend_16(original.ri16.imm) << 2;
-			// Check if branch target is within segment
+			// Validate branch target
 			if (this->is_within(pc + offset)) {
 				auto fi = *(FasterLA64_RI16_Branch *)&instruction_bits;
 				fi.rd = original.ri16.rd;

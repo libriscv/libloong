@@ -143,7 +143,7 @@ namespace loongarch
 			return addr >= m_rodata_start && addr < m_arena_size;
 		}
 		inline bool is_writable(address_t addr, size_t size = sizeof(address_t)) const noexcept {
-			return addr >= m_data_start && addr + size < m_arena_size;
+			return addr >= m_data_start && addr < m_arena_size - size;
 		}
 		[[noreturn]] LA_COLD_PATH() static void protection_fault(address_t addr, const char* message);
 	};

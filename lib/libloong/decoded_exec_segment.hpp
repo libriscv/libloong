@@ -8,8 +8,8 @@ namespace loongarch
 	struct DecodedExecuteSegment {
 		using address_t = address_type<W>;
 
-		DecodedExecuteSegment(address_t begin, address_t end, size_t pages)
-			: m_exec_begin(begin), m_exec_end(end), m_pages(pages) {}
+		DecodedExecuteSegment(address_t begin, address_t end)
+			: m_exec_begin(begin), m_exec_end(end) {}
 
 		~DecodedExecuteSegment() {
 			if (m_decoder_cache.cache) {
@@ -18,7 +18,15 @@ namespace loongarch
 		}
 
 		bool is_within(address_t addr, size_t len = 4) const noexcept {
-			return addr >= m_exec_begin && addr + len <= m_exec_end;
+			address_t addr_end;
+#ifdef _MSC_VER
+			addr_end = addr + len;
+			return addr >= m_exec_begin && addr_end <= m_exec_end && (addr_end > m_exec_begin);
+#else
+			if (!__builtin_add_overflow(addr, len, &addr_end))
+				return addr >= m_exec_begin && addr_end <= m_exec_end && (addr_end > m_exec_begin);
+#endif
+			return false;
 		}
 
 		address_t exec_begin() const noexcept { return m_exec_begin; }
@@ -48,7 +56,6 @@ namespace loongarch
 	private:
 		address_t m_exec_begin;
 		address_t m_exec_end;
-		size_t m_pages;
 		DecoderCache<W> m_decoder_cache;
 		bool m_stale = false;
 		bool m_execute_only = false;

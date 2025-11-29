@@ -7,7 +7,7 @@ namespace loongarch
 	template <int W>
 	std::shared_ptr<DecodedExecuteSegment<W>>& CPU<W>::empty_execute_segment() noexcept {
 		static std::shared_ptr<DecodedExecuteSegment<W>> empty_shared =
-			std::make_shared<DecodedExecuteSegment<W>>(0, 0, 0);
+			std::make_shared<DecodedExecuteSegment<W>>(0, 0);
 		return empty_shared;
 	}
 
@@ -91,6 +91,10 @@ namespace loongarch
 	typename CPU<W>::NextExecuteReturn CPU<W>::next_execute_segment(address_t pc)
 	{
 		auto segment = machine().memory.exec_segment_for(pc);
+		if (!segment) {
+			throw MachineException(EXECUTION_SPACE_PROTECTION_FAULT,
+				"Jump outside execute segment", pc);
+		}
 		this->m_exec = segment.get();
 		return {this->m_exec, pc};
 	}

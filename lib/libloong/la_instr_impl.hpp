@@ -1526,10 +1526,10 @@ struct InstrImpl {
 		// Takes all 8 words from xj, produces 4 doublewords
 		uint32_t xd = instr.whole & 0x1F;
 		uint32_t xj = (instr.whole >> 5) & 0x1F;
-		uint32_t xk = (instr.whole >> 10) & 0x1F;
+		//uint32_t xk = (instr.whole >> 10) & 0x1F;
 
 		const auto& src_j = cpu.registers().getvr(xj);
-		const auto& src_k = cpu.registers().getvr(xk);
+		//const auto& src_k = cpu.registers().getvr(xk);
 
 		// Read all inputs first to handle register aliasing
 		// Takes all 8 words from xj: pairs (0,1), (2,3), (4,5), (6,7) → 4 doublewords
@@ -1623,7 +1623,6 @@ struct InstrImpl {
 		for (int i = 0; i < 4; i++) {
 			double val1 = src1.df[i];
 			double val2 = src2.df[i];
-			bool cmp = false;
 			switch (cond) {
 				case 0x02: // CLT - (Quiet) Less Than (ordered)
 				case 0x03: // SLT - Signaling Less Than (ordered)
@@ -1684,10 +1683,10 @@ struct InstrImpl {
 		// Adds adjacent pairs of 64-bit signed doublewords and produces 128-bit results
 		uint32_t xd = instr.whole & 0x1F;
 		uint32_t xj = (instr.whole >> 5) & 0x1F;
-		uint32_t xk = (instr.whole >> 10) & 0x1F;
+		//uint32_t xk = (instr.whole >> 10) & 0x1F;
 
 		const auto& src1 = cpu.registers().getvr(xj);
-		const auto& src2 = cpu.registers().getvr(xk);
+		//const auto& src2 = cpu.registers().getvr(xk);
 
 		// Read all inputs first to handle register aliasing
 		// Takes all 4 doublewords from xj: pairs (0,1), (2,3) → 2 quadwords
@@ -2489,8 +2488,8 @@ struct InstrImpl {
 		// imm specifies which 128-bit chunks to select
 		// Bits [1:0] select source for low 128 bits
 		// Bits [3:2] select source for high 128 bits
-		uint32_t lo_sel = (imm >> 0) & 0x3;
-		uint32_t hi_sel = (imm >> 2) & 0x3;
+		uint32_t lo_sel = (imm >> 0) & 0x1;
+		uint32_t hi_sel = (imm >> 1) & 0x1;
 
 		uint64_t tmp[4];
 		tmp[0] = src.du[0];
@@ -2879,8 +2878,6 @@ struct InstrImpl {
 	}
 
 	static void UNIMPLEMENTED(cpu_t& cpu, la_instruction instr) {
-		fprintf(stderr, "UNIMPLEMENTED at PC=0x%lx: 0x%08x\n",
-			(unsigned long)cpu.pc(), instr.whole);
 		cpu.trigger_exception(UNIMPLEMENTED_INSTRUCTION, instr.whole);
 	}
 

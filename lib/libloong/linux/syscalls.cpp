@@ -61,7 +61,8 @@ namespace loongarch
 		std::string buffer(512, '\0');
 		int len = snprintf(buffer.data(), buffer.size(), fmt, args...);
 		if (len > 0) {
-			(void)write(STDOUT_FILENO, buffer.data(), static_cast<size_t>(len));
+			auto res = write(STDOUT_FILENO, buffer.data(), static_cast<size_t>(len));
+			(void)res;
 		}
 	}
 

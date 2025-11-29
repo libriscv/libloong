@@ -785,7 +785,7 @@ namespace loongarch
 						uint32_t subop = (instr.whole >> 12) & 0xF;
 						if (subop == 0x6) return DECODED_INSTR(VPICKVE2GR_D);
 						if (subop == 0x7) return DECODED_INSTR(VPICKVE2GR_DU);
-						if (subop >= 0x0 && subop <= 0x3) return DECODED_INSTR(VPICKVE2GR_W);
+						if (subop <= 0x3) return DECODED_INSTR(VPICKVE2GR_W);
 						if (subop >= 0x4 && subop <= 0x5) return DECODED_INSTR(VPICKVE2GR_WU);
 					}
 				}

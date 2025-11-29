@@ -2,11 +2,8 @@
 #include <vector>
 #include <cstdint>
 #include <cstdlib>
-
 using namespace loongarch;
-
 static constexpr uint32_t MAX_INSTRUCTIONS = 5'000;
-static constexpr bool FUZZ_SYSTEM_CALLS = true;
 
 // In order to be able to inspect a coredump we want to
 // crash on every ASAN error.
@@ -35,7 +32,7 @@ static void fuzz_instruction_set(const uint8_t* data, size_t len)
 	if (aligned_len == 0)
 		return;
 
-	constexpr uint32_t EXEC_ADDR = 0x10000;
+	constexpr uint32_t EXEC_ADDR  =  0x10000;
 	constexpr uint32_t STACK_ADDR = 0x800000;
 
 	try
@@ -46,14 +43,6 @@ static void fuzz_instruction_set(const uint8_t* data, size_t len)
 
 		// Initialize stack pointer
 		machine.cpu.reg(REG_SP) = STACK_ADDR;
-
-		// Install a no-op syscall handler for common syscalls to prevent crashes during fuzzing
-		if constexpr (FUZZ_SYSTEM_CALLS) {
-			// Install a no-op handler for exit syscall (93)
-			machine.install_syscall_handler(93, [] (auto& m) {
-				m.stop();
-			});
-		}
 
 		// Create executable area from fuzzer input data
 		// The data is already byte-aligned, init_execute_area expects it rounded to 4 bytes

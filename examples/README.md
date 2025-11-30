@@ -60,6 +60,16 @@ Advanced example with custom syscalls:
 - Memory string operations
 - Multiple syscall handlers
 
+### rust/
+
+Rust language example for LoongArch:
+- Cross-compilation to LoongArch
+- Static linking with Rust std
+- Fibonacci and basic algorithms
+- String and vector operations
+
+See [rust/README.md](rust/README.md) for details.
+
 ## Using with Real LoongArch Binaries
 
 To use these examples with actual LoongArch ELF binaries:

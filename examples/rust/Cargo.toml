@@ -1,0 +1,19 @@
+[package]
+name = "hello-loongarch"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "hello-std"
+path = "src/hello.rs"
+
+[profile.release]
+opt-level = 2
+strip = false
+lto = true
+panic = "abort"
+
+[profile.dev]
+panic = "abort"
+
+[dependencies]

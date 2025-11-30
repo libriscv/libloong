@@ -1,0 +1,10 @@
+[build]
+target = "loongarch64-unknown-linux-gnu"
+
+[target.loongarch64-unknown-linux-gnu]
+linker = "loongarch64-linux-gnu-gcc-14"
+rustflags = [
+    "-C", "target-feature=+crt-static",
+    "-C", "link-arg=-static",
+    "-C", "link-arg=-Wl,-Ttext-segment=0x200000"
+]

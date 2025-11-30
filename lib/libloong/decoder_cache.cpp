@@ -132,14 +132,6 @@ namespace loongarch
 		if (op10 == 0x0A6) {
 			return LA64_BC_ST_W;
 		}
-		// PCADDI: op7 = 0x0C (check bits[31:25] = 0x18 >> 1)
-		if (op7 == 0x0C) {
-			return LA64_BC_PCADDI;
-		}
-		// PCALAU12I: op7 = 0x0D (check bits[31:25] = 0x1A >> 1)
-		if (op7 == 0x0D) {
-			return LA64_BC_PCALAU12I;
-		}
 		// LDPTR.D: 0x26000000 (check bits[31:24] = 0x26)
 		if ((instr >> 24) == 0x26) {
 			return LA64_BC_LDPTR_D;
@@ -307,7 +299,6 @@ namespace loongarch
 		if (op10 == 0x1C1) {
 			return LA64_BC_VHADDW_D_W;
 		}
-
 		// XVLD: LASX 256-bit vector load - op10 = 0x0b2 (0x2C800000 >> 22)
 		if (op10 == 0x0b2) {
 			return LA64_BC_XVLD;
@@ -316,8 +307,6 @@ namespace loongarch
 		if (op10 == 0x0b3) {
 			return LA64_BC_XVST;
 		}
-
-		// New bytecodes from coremark profiling
 		// SRLI.W: op16 = 0x0044 (0x00448000 >> 16)
 		if (op16 == 0x0044) {
 			return LA64_BC_SRLI_W;
@@ -349,14 +338,6 @@ namespace loongarch
 		// LD.WU: op10 = 0x0AA (0x2a800000 >> 22)
 		if (op10 == 0x0AA) {
 			return LA64_BC_LD_WU;
-		}
-		// PCADDU12I: op7 = 0x0E (0x1C000000 >> 25)
-		if (op7 == 0x0E) {
-			return LA64_BC_PCADDU12I;
-		}
-		// PCADDU18I: op7 = 0x0F (0x1E000000 >> 25)
-		if (op7 == 0x0F) {
-			return LA64_BC_PCADDU18I;
 		}
 		// ANDN: op17 = 0x0002D (0x00168000 >> 15)
 		if (op17 == 0x0002D) {
@@ -422,6 +403,28 @@ namespace loongarch
 			return LA64_BC_VFADD_D;
 		}
 
+		// When debugging fast dispatch, all bytecodes above this line
+		// may be temporarily removed in order to eliminate a problematic
+		// bytecode, but *none below this line*.
+
+		// Non-diverging PC-modifying instructions
+		// PCADDI: op7 = 0x0C (check bits[31:25] = 0x18 >> 1)
+		if (op7 == 0x0C) {
+			return LA64_BC_PCADDI;
+		}
+		// PCALAU12I: op7 = 0x0D (check bits[31:25] = 0x1A >> 1)
+		if (op7 == 0x0D) {
+			return LA64_BC_PCALAU12I;
+		}
+		// PCADDU12I: op7 = 0x0E (0x1C000000 >> 25)
+		if (op7 == 0x0E) {
+			return LA64_BC_PCADDU12I;
+		}
+		// PCADDU18I: op7 = 0x0F (0x1E000000 >> 25)
+		if (op7 == 0x0F) {
+			return LA64_BC_PCADDU18I;
+		}
+
 		// Branch instructions
 		if (op6 == 0x10) { // BEQZ
 			return LA64_BC_BEQZ;
@@ -465,11 +468,6 @@ namespace loongarch
 		}
 		if (op6 == 0x1B) { // BGEU
 			return LA64_BC_BGEU;
-		}
-
-		// Fallback: Check if it's diverging (PC-modifying)
-		if (is_diverging_instruction<W>(instr)) {
-			return LA64_BC_FUNCBLOCK;
 		}
 
 		// Fallback: regular function (non-PC-modifying)

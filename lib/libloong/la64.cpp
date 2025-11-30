@@ -291,6 +291,13 @@ namespace loongarch
 
 	// Vector replicate
 	INSTRUCTION(VREPLGR2VR_B);
+	INSTRUCTION(VREPLGR2VR_H);
+	INSTRUCTION(VREPLGR2VR_W);
+	INSTRUCTION(VREPLGR2VR_D);
+	INSTRUCTION(VINSGR2VR_B);
+	INSTRUCTION(VINSGR2VR_H);
+	INSTRUCTION(VINSGR2VR_W);
+	INSTRUCTION(VINSGR2VR_D);
 	INSTRUCTION(VREPLVEI_D);
 
 	// Vector immediate arithmetic
@@ -302,6 +309,7 @@ namespace loongarch
 	INSTRUCTION(VSEQI_B);
 	INSTRUCTION(VFRSTPI_B);
 	INSTRUCTION(VPICKVE2GR_BU);
+	INSTRUCTION(VLDI);
 
 	// FP/Vector to GPR
 	INSTRUCTION(MOVFR2GR_S);
@@ -751,8 +759,10 @@ namespace loongarch
 				uint32_t top16 = (instr.whole >> 16) & 0xFFFF;
 				uint32_t op10  = (instr.whole >> 22) & 0x3FF;
 
-				// VORI.B: Vector OR immediate (byte) - op10 = 0x1CF
-				if (op10 == 0x1CF) return DECODED_INSTR(VORI_B);
+				// VLDI: Vector load immediate - bits[31:18] = 0x1CF8
+				if ((instr.whole >> 18) == 0x1CF8) return DECODED_INSTR(VLDI);
+				// VORI.B: Vector OR immediate (byte) - bits[31:18] = 0x1CF5
+				if ((instr.whole >> 18) == 0x1CF5) return DECODED_INSTR(VORI_B);
 				// VBITREVI.D: Vector Bit Reverse Immediate (double) - op10 = 0x1CC
 				if (op10 == 0x1CC) return DECODED_INSTR(VBITREVI_D);
 				// VHADDW.D.W: Vector horizontal add with widening - op10 = 0x1C1
@@ -816,10 +826,27 @@ namespace loongarch
 					uint32_t subop = (instr.whole >> 10) & 0x3F;
 					if (subop == 0x18) return DECODED_INSTR(VSETALLNEZ_B);
 				}
-				// VREPLGR2VR.B: 0x729F0xxx
+				// VREPLGR2VR: 0x729F0xxx
+				// .B (subop=0x00), .H (subop=0x01), .W (subop=0x02), .D (subop=0x03)
 				if (top16 == 0x729F) {
 					uint32_t subop = (instr.whole >> 10) & 0x3F;
 					if (subop == 0x00) return DECODED_INSTR(VREPLGR2VR_B);
+					if (subop == 0x01) return DECODED_INSTR(VREPLGR2VR_H);
+					if (subop == 0x02) return DECODED_INSTR(VREPLGR2VR_W);
+					if (subop == 0x03) return DECODED_INSTR(VREPLGR2VR_D);
+				}
+				// VINSGR2VR: 0x72EBxxxx with different bit patterns
+				// .b: bits[15:14]=10, .h: bits[15:13]=110, .w: bits[15:12]=1110, .d: bits[15:11]=11110
+				if (top16 == 0x72EB) {
+					uint32_t bits15_14 = (instr.whole >> 14) & 0x3;
+					uint32_t bits15_13 = (instr.whole >> 13) & 0x7;
+					uint32_t bits15_12 = (instr.whole >> 12) & 0xF;
+					uint32_t bits15_11 = (instr.whole >> 11) & 0x1F;
+
+					if (bits15_14 == 0x2) return DECODED_INSTR(VINSGR2VR_B);  // 10
+					if (bits15_13 == 0x6) return DECODED_INSTR(VINSGR2VR_H);  // 110
+					if (bits15_12 == 0xE) return DECODED_INSTR(VINSGR2VR_W);  // 1110
+					if (bits15_11 == 0x1E) return DECODED_INSTR(VINSGR2VR_D); // 11110
 				}
 				// VADDI.BU: 0x728Axxx (bits[31:15] = 0xE514)
 				if ((instr.whole >> 15) == 0xE514) {
@@ -868,6 +895,10 @@ namespace loongarch
 				// VOR.V: bits[31:15] = 0xE24D
 				if ((instr.whole >> 15) == 0xE24D) {
 					return DECODED_INSTR(VOR_V);
+				}
+				// VNOR.V: bits[31:15] = 0xE24F
+				if ((instr.whole >> 15) == 0xE24F) {
+					return DECODED_INSTR(VNOR_V);
 				}
 				// VORN.V: bits[31:15] = 0xE251
 				if ((instr.whole >> 15) == 0xE251) {

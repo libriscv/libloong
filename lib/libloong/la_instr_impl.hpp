@@ -1894,6 +1894,43 @@ struct InstrImpl {
 		dst.du[3] = 0;
 	}
 
+	static void VLDI(cpu_t& cpu, la_instruction instr) {
+		// VLDI vd, imm13
+		// LSX load immediate - loads immediate pattern into 128-bit vector
+		// Format: bits[4:0] = vd, bits[17:5] = imm13
+		// imm13 = [mode:3][value:10] where mode determines the pattern
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t imm13 = (instr.whole >> 5) & 0x1FFF;
+
+		// Extract mode (top 3 bits) and value (bottom 10 bits)
+		uint32_t mode = (imm13 >> 10) & 0x7;
+		uint32_t value = imm13 & 0x3FF;
+
+		auto& dst = cpu.registers().getvr(vd);
+
+		// Sign-extend value from 10 bits
+		int64_t sext_value = (int64_t)(int16_t)(value << 6) >> 6;
+
+		// Apply pattern based on mode
+		switch (mode) {
+			case 0: // Replicate 8-bit immediate to all bytes
+				for (int i = 0; i < 16; i++) dst.bu[i] = (uint8_t)sext_value;
+				break;
+			case 1: // Replicate 16-bit immediate to all halfwords
+				for (int i = 0; i < 8; i++) dst.hu[i] = (uint16_t)sext_value;
+				break;
+			case 2: // Replicate 32-bit immediate to all words
+				for (int i = 0; i < 4; i++) dst.wu[i] = (uint32_t)sext_value;
+				break;
+			case 3: // Replicate 64-bit immediate to all doublewords
+				for (int i = 0; i < 2; i++) dst.du[i] = (uint64_t)sext_value;
+				break;
+			default: // Other modes - set to zero for now
+				for (int i = 0; i < 2; i++) dst.du[i] = 0;
+				break;
+		}
+	}
+
 	static void VORI_B(cpu_t& cpu, la_instruction instr) {
 		// VORI.B: Vector OR immediate (operate on each byte)
 		uint32_t vd = instr.whole & 0x1F;
@@ -2139,6 +2176,102 @@ struct InstrImpl {
 		}
 		dst.du[0] = replicated;
 		dst.du[1] = replicated;
+	}
+
+	static void VREPLGR2VR_H(cpu_t& cpu, la_instruction instr) {
+		// VREPLGR2VR.H vd, rj
+		// Replicate halfword from GPR rj to all 8 halfwords of vd
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t rj = (instr.whole >> 5) & 0x1F;
+
+		uint16_t value = cpu.reg(rj) & 0xFFFF;
+		auto& dst = cpu.registers().getvr(vd);
+
+		// Fill all 8 halfwords with the same value
+		for (int i = 0; i < 8; i++) {
+			dst.hu[i] = value;
+		}
+	}
+
+	static void VREPLGR2VR_W(cpu_t& cpu, la_instruction instr) {
+		// VREPLGR2VR.W vd, rj
+		// Replicate word from GPR rj to all 4 words of vd
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t rj = (instr.whole >> 5) & 0x1F;
+
+		uint32_t value = cpu.reg(rj) & 0xFFFFFFFF;
+		auto& dst = cpu.registers().getvr(vd);
+
+		// Fill all 4 words with the same value
+		for (int i = 0; i < 4; i++) {
+			dst.wu[i] = value;
+		}
+	}
+
+	static void VREPLGR2VR_D(cpu_t& cpu, la_instruction instr) {
+		// VREPLGR2VR.D vd, rj
+		// Replicate doubleword from GPR rj to both 64-bit elements of vd
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t rj = (instr.whole >> 5) & 0x1F;
+
+		uint64_t value = cpu.reg(rj);
+		auto& dst = cpu.registers().getvr(vd);
+
+		// Fill both doublewords with the same value
+		dst.du[0] = value;
+		dst.du[1] = value;
+	}
+
+	static void VINSGR2VR_B(cpu_t& cpu, la_instruction instr) {
+		// VINSGR2VR.B vd, rj, idx
+		// Insert byte from GPR rj to byte element idx of vd
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t rj = (instr.whole >> 5) & 0x1F;
+		uint32_t idx = (instr.whole >> 10) & 0xF;
+
+		uint8_t value = cpu.reg(rj) & 0xFF;
+		auto& dst = cpu.registers().getvr(vd);
+
+		dst.bu[idx] = value;
+	}
+
+	static void VINSGR2VR_H(cpu_t& cpu, la_instruction instr) {
+		// VINSGR2VR.H vd, rj, idx
+		// Insert halfword from GPR rj to halfword element idx of vd
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t rj = (instr.whole >> 5) & 0x1F;
+		uint32_t idx = (instr.whole >> 10) & 0x7;
+
+		uint16_t value = cpu.reg(rj) & 0xFFFF;
+		auto& dst = cpu.registers().getvr(vd);
+
+		dst.hu[idx] = value;
+	}
+
+	static void VINSGR2VR_W(cpu_t& cpu, la_instruction instr) {
+		// VINSGR2VR.W vd, rj, idx
+		// Insert word from GPR rj to word element idx of vd
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t rj = (instr.whole >> 5) & 0x1F;
+		uint32_t idx = (instr.whole >> 10) & 0x3;
+
+		uint32_t value = cpu.reg(rj) & 0xFFFFFFFF;
+		auto& dst = cpu.registers().getvr(vd);
+
+		dst.wu[idx] = value;
+	}
+
+	static void VINSGR2VR_D(cpu_t& cpu, la_instruction instr) {
+		// VINSGR2VR.D vd, rj, idx
+		// Insert doubleword from GPR rj to doubleword element idx of vd
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t rj = (instr.whole >> 5) & 0x1F;
+		uint32_t idx = (instr.whole >> 10) & 0x1;
+
+		uint64_t value = cpu.reg(rj);
+		auto& dst = cpu.registers().getvr(vd);
+
+		dst.du[idx] = value;
 	}
 
 	static void VADDI_BU(cpu_t& cpu, la_instruction instr) {

@@ -18,6 +18,10 @@ namespace loongarch
 	#define INSTRUCTION(name) \
 		static constexpr CPU<LA64>::instruction_t instr64_##name { Impl::name, Printers::name }
 
+	// Macro to create instruction with custom printer
+	#define INSTRUCTION_P(name, printer) \
+		static constexpr CPU<LA64>::instruction_t instr64_##name { Impl::name, Printers::printer }
+
 	#define DECODED_INSTR(name) instr64_##name
 
 	// Create all instruction descriptors
@@ -270,8 +274,22 @@ namespace loongarch
 	INSTRUCTION(VILVL_H);
 
 	// Vector arithmetic/logic
-	INSTRUCTION(VSUB_B);
-	INSTRUCTION(VSUB_W);
+	INSTRUCTION_P(VSUB_B, VSUB);
+	INSTRUCTION_P(VSUB_H, VSUB);
+	INSTRUCTION_P(VSUB_W, VSUB);
+	INSTRUCTION_P(VSUB_D, VSUB);
+	INSTRUCTION_P(VMUL_B, VMUL);
+	INSTRUCTION_P(VMUL_H, VMUL);
+	INSTRUCTION_P(VMUL_W, VMUL);
+	INSTRUCTION_P(VMUL_D, VMUL);
+	INSTRUCTION_P(VMADD_B, VMADD);
+	INSTRUCTION_P(VMADD_H, VMADD);
+	INSTRUCTION_P(VMADD_W, VMADD);
+	INSTRUCTION_P(VMADD_D, VMADD);
+	INSTRUCTION_P(VADDI_BU, VADDI);
+	INSTRUCTION_P(VADDI_HU, VADDI);
+	INSTRUCTION_P(VADDI_WU, VADDI);
+	INSTRUCTION_P(VADDI_DU, VADDI);
 	INSTRUCTION(VHADDW_D_W);
 	INSTRUCTION(VSEQ_B);
 	INSTRUCTION(VSLT_B);
@@ -280,6 +298,8 @@ namespace loongarch
 	INSTRUCTION(VAND_V);
 	INSTRUCTION(VFADD_D);
 	INSTRUCTION(VFDIV_D);
+	INSTRUCTION(VFTINTRZ_W_S);
+	INSTRUCTION(VFTINTRZ_L_D);
 	INSTRUCTION(VBITREVI_D);
 	INSTRUCTION(VORI_B);
 	INSTRUCTION(VLDX);
@@ -301,12 +321,17 @@ namespace loongarch
 	INSTRUCTION(VREPLVEI_D);
 
 	// Vector immediate arithmetic
-	INSTRUCTION(VADDI_BU);
-	INSTRUCTION(VADD_B);
+	INSTRUCTION_P(VADD_B, VADD);
+	INSTRUCTION_P(VADD_H, VADD);
+	INSTRUCTION_P(VADD_W, VADD);
+	INSTRUCTION_P(VADD_D, VADD);
 	INSTRUCTION(VSHUF_B);
 	INSTRUCTION(VBITSEL_V);
 	INSTRUCTION(VMIN_BU);
-	INSTRUCTION(VSEQI_B);
+	INSTRUCTION_P(VSEQI_B, VSEQI);
+	INSTRUCTION_P(VSEQI_H, VSEQI);
+	INSTRUCTION_P(VSEQI_W, VSEQI);
+	INSTRUCTION_P(VSEQI_D, VSEQI);
 	INSTRUCTION(VFRSTPI_B);
 	INSTRUCTION(VPICKVE2GR_BU);
 	INSTRUCTION(VLDI);
@@ -325,9 +350,16 @@ namespace loongarch
 	INSTRUCTION(FABS_D);
 	INSTRUCTION(FNEG_D);
 	INSTRUCTION(FMOV_D);
+	INSTRUCTION_P(FCLASS_S, FCLASS);
+	INSTRUCTION_P(FCLASS_D, FCLASS);
 	INSTRUCTION(FFINT_D_L);
 	INSTRUCTION(FFINT_D_W);
+	INSTRUCTION(FFINT_S_W);
+	INSTRUCTION(FFINT_S_L);
+	INSTRUCTION(FTINTRZ_W_S);
 	INSTRUCTION(FTINTRZ_W_D);
+	INSTRUCTION(FTINTRZ_L_S);
+	INSTRUCTION(FTINTRZ_L_D);
 	INSTRUCTION(FADD_D);
 	INSTRUCTION(FMUL_D);
 	INSTRUCTION(FSUB_D);
@@ -492,12 +524,26 @@ namespace loongarch
 				if (op22_val == 0x4506) return DECODED_INSTR(FNEG_D);
 				// FMOV.D: bits[31:10] = 0x4526
 				if (op22_val == 0x4526) return DECODED_INSTR(FMOV_D);
+				// FCLASS.S: bits[31:10] = 0x450D
+				if (op22_val == 0x450D) return DECODED_INSTR(FCLASS_S);
+				// FCLASS.D: bits[31:10] = 0x450E
+				if (op22_val == 0x450E) return DECODED_INSTR(FCLASS_D);
 				// FFINT.D.L: bits[31:10] = 0x474A (convert 64-bit int to double)
 				if (op22_val == 0x474A) return DECODED_INSTR(FFINT_D_L);
 				// FFINT.D.W: bits[31:10] = 0x4748 (convert 32-bit int to double)
 				if (op22_val == 0x4748) return DECODED_INSTR(FFINT_D_W);
+				// FFINT.S.W: bits[31:10] = 0x4744 (convert 32-bit int to single)
+				if (op22_val == 0x4744) return DECODED_INSTR(FFINT_S_W);
+				// FFINT.S.L: bits[31:10] = 0x4746 (convert 64-bit int to single)
+				if (op22_val == 0x4746) return DECODED_INSTR(FFINT_S_L);
+				// FTINTRZ.W.S: bits[31:10] = 0x46A1 (truncate single to int32)
+				if (op22_val == 0x46A1) return DECODED_INSTR(FTINTRZ_W_S);
 				// FTINTRZ.W.D: bits[31:10] = 0x46A2 (truncate double to int32)
 				if (op22_val == 0x46A2) return DECODED_INSTR(FTINTRZ_W_D);
+				// FTINTRZ.L.S: bits[31:10] = 0x46A9 (truncate single to int64)
+				if (op22_val == 0x46A9) return DECODED_INSTR(FTINTRZ_L_S);
+				// FTINTRZ.L.D: bits[31:10] = 0x46AA (truncate double to int64)
+				if (op22_val == 0x46AA) return DECODED_INSTR(FTINTRZ_L_D);
 			}
 			// FCMP.COR.D: bits[31:22] = 0x0C (opcode), bits[19:15] = 0x14 (COR condition)
 			{
@@ -848,21 +894,85 @@ namespace loongarch
 					if (bits15_12 == 0xE) return DECODED_INSTR(VINSGR2VR_W);  // 1110
 					if (bits15_11 == 0x1E) return DECODED_INSTR(VINSGR2VR_D); // 11110
 				}
-				// VADDI.BU: 0x728Axxx (bits[31:15] = 0xE514)
-				if ((instr.whole >> 15) == 0xE514) {
-					return DECODED_INSTR(VADDI_BU);
-				}
 				// VSUB.B: bits[31:15] = 0xE018
 				if ((instr.whole >> 15) == 0xE018) {
 					return DECODED_INSTR(VSUB_B);
+				}
+				// VSUB.H: bits[31:15] = 0xE019
+				if ((instr.whole >> 15) == 0xE019) {
+					return DECODED_INSTR(VSUB_H);
 				}
 				// VSUB.W: bits[31:15] = 0xE01A
 				if ((instr.whole >> 15) == 0xE01A) {
 					return DECODED_INSTR(VSUB_W);
 				}
+				// VSUB.D: bits[31:15] = 0xE01B
+				if ((instr.whole >> 15) == 0xE01B) {
+					return DECODED_INSTR(VSUB_D);
+				}
+				// VMUL.B: bits[31:15] = 0xE108
+				if ((instr.whole >> 15) == 0xE108) {
+					return DECODED_INSTR(VMUL_B);
+				}
+				// VMUL.H: bits[31:15] = 0xE109
+				if ((instr.whole >> 15) == 0xE109) {
+					return DECODED_INSTR(VMUL_H);
+				}
+				// VMUL.W: bits[31:15] = 0xE10A
+				if ((instr.whole >> 15) == 0xE10A) {
+					return DECODED_INSTR(VMUL_W);
+				}
+				// VMUL.D: bits[31:15] = 0xE10B
+				if ((instr.whole >> 15) == 0xE10B) {
+					return DECODED_INSTR(VMUL_D);
+				}
+				// VMADD.B: bits[31:15] = 0xE150
+				if ((instr.whole >> 15) == 0xE150) {
+					return DECODED_INSTR(VMADD_B);
+				}
+				// VMADD.H: bits[31:15] = 0xE151
+				if ((instr.whole >> 15) == 0xE151) {
+					return DECODED_INSTR(VMADD_H);
+				}
+				// VMADD.W: bits[31:15] = 0xE152
+				if ((instr.whole >> 15) == 0xE152) {
+					return DECODED_INSTR(VMADD_W);
+				}
+				// VMADD.D: bits[31:15] = 0xE153
+				if ((instr.whole >> 15) == 0xE153) {
+					return DECODED_INSTR(VMADD_D);
+				}
+				// VADDI.BU: bits[31:15] = 0xE514
+				if ((instr.whole >> 15) == 0xE514) {
+					return DECODED_INSTR(VADDI_BU);
+				}
+				// VADDI.HU: bits[31:15] = 0xE515
+				if ((instr.whole >> 15) == 0xE515) {
+					return DECODED_INSTR(VADDI_HU);
+				}
+				// VADDI.WU: bits[31:15] = 0xE516
+				if ((instr.whole >> 15) == 0xE516) {
+					return DECODED_INSTR(VADDI_WU);
+				}
+				// VADDI.DU: bits[31:15] = 0xE517
+				if ((instr.whole >> 15) == 0xE517) {
+					return DECODED_INSTR(VADDI_DU);
+				}
 				// VADD.B: bits[31:15] = 0xE014
 				if ((instr.whole >> 15) == 0xE014) {
 					return DECODED_INSTR(VADD_B);
+				}
+				// VADD.H: bits[31:15] = 0xE015
+				if ((instr.whole >> 15) == 0xE015) {
+					return DECODED_INSTR(VADD_H);
+				}
+				// VADD.W: bits[31:15] = 0xE016
+				if ((instr.whole >> 15) == 0xE016) {
+					return DECODED_INSTR(VADD_W);
+				}
+				// VADD.D: bits[31:15] = 0xE017
+				if ((instr.whole >> 15) == 0xE017) {
+					return DECODED_INSTR(VADD_D);
 				}
 				// VSEQ.B: bits[31:15] = 0xE000
 				if ((instr.whole >> 15) == 0xE000) {
@@ -880,9 +990,30 @@ namespace loongarch
 				if ((instr.whole >> 15) == 0xE500) {
 					return DECODED_INSTR(VSEQI_B);
 				}
+				// VSEQI.H: bits[31:15] = 0xE501
+				if ((instr.whole >> 15) == 0xE501) {
+					return DECODED_INSTR(VSEQI_H);
+				}
+				// VSEQI.W: bits[31:15] = 0xE502
+				if ((instr.whole >> 15) == 0xE502) {
+					return DECODED_INSTR(VSEQI_W);
+				}
+				// VSEQI.D: bits[31:15] = 0xE503
+				if ((instr.whole >> 15) == 0xE503) {
+					return DECODED_INSTR(VSEQI_D);
+				}
 				// VFRSTPI.B: bits[31:15] = 0xE534
 				if ((instr.whole >> 15) == 0xE534) {
 					return DECODED_INSTR(VFRSTPI_B);
+				}
+				// VFTINTRZ.W.S / VFTINTRZ.L.D: bits[31:15] = 0xE53C
+				if ((instr.whole >> 15) == 0xE53C) {
+					// Differentiate by bit 10
+					if ((instr.whole >> 10) & 1) {
+						return DECODED_INSTR(VFTINTRZ_L_D);
+					} else {
+						return DECODED_INSTR(VFTINTRZ_W_S);
+					}
 				}
 				// VXOR.V: bits[31:15] = 0xE24E
 				if ((instr.whole >> 15) == 0xE24E) {

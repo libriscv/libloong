@@ -54,9 +54,25 @@ Many instructions have slow-path instructions already decoded in la64.cpp and im
 
 Unpopular instructions might be considered for removal from bytecode dispatch because performance is critical.
 
+Especially LSX or LASX instructions with subtypes B, H, W and D should share an instruction printer. Example:
+```cpp
+	INSTRUCTION_P(VSEQI_B, VSEQI);
+	INSTRUCTION_P(VSEQI_H, VSEQI);
+	INSTRUCTION_P(VSEQI_W, VSEQI);
+	INSTRUCTION_P(VSEQI_D, VSEQI);
+```
+
 ## Instruction statistics
 
 Running programs in the CLI with --stats will execute the guest program to completion and show statistics about which instructions have been decoded into bytecodes and not. Any instruction that has the bytecode FUNCTION is using the slow-path and is not really implemented as a bytecode, rather a fallback that calls the slow-path instruction handler is used. Popular instructions need to have a dedicated optimized bytecode for good emulation performance. If an instruction is showing as both FUNCTION and a dedicated bytecode, it is guaranteed that the bytecode decoding step is not covering the instruction properly.
+
+## New system calls
+
+Syscall numbers can be found in:
+```
+/usr/loongarch64-linux-gnu/include/asm-generic/unistd.h
+```
+
 
 ## Building 64-bit LoongArch programs
 

@@ -1,10 +1,11 @@
 #include <libloong/machine.hpp>
 #include <libloong/threaded_bytecodes.hpp>
-#include <cstring>
 #include <chrono>
+#include <cstdlib>
+#include <cstring>
 #include <fstream>
 #include <inttypes.h>
-#include <cstdlib>
+#include <memory>
 
 #ifndef _WIN32
 #include <getopt.h>
@@ -17,7 +18,7 @@ struct EmulatorOptions {
 	std::string binary_path;
 	std::vector<std::string> program_args;
 	uint64_t max_instructions = UINT64_MAX;
-	uint64_t memory_max = 512ull * 1024 * 1024; // 512 MB
+	uint64_t memory_max = 2048ull << 20; // 2 GB
 	bool verbose = false;
 	bool precise = false;
 	bool timing = false;
@@ -125,18 +126,19 @@ static void print_bytecode_statistics(const Machine<W>& machine)
 template <int W>
 static int run_program(const std::vector<uint8_t>& binary, const EmulatorOptions& opts)
 {
+	std::unique_ptr<Machine<W>> machine;
 	try {
 		// Create machine
-		Machine<W> machine { binary, {
+		machine = std::make_unique<Machine<W>>(binary, MachineOptions<W>{
 			.memory_max = opts.memory_max,
 			.verbose_loader = opts.verbose,
 			.verbose_syscalls = opts.verbose,
-		}};
+		});
 
 		// Setup Linux syscalls
-		machine.setup_linux_syscalls();
+		machine->setup_linux_syscalls();
 		// Setup accelerated syscalls
-		machine.setup_accelerated_syscalls();
+		machine->setup_accelerated_syscalls();
 
 		// Setup program arguments
 		if (opts.verbose) {
@@ -145,24 +147,24 @@ static int run_program(const std::vector<uint8_t>& binary, const EmulatorOptions
 				printf("  %s\n", arg.c_str());
 			}
 		}
-		machine.setup_linux(opts.program_args, {"LC_ALL=C", "USER=groot"});
+		machine->setup_linux(opts.program_args, {"LC_ALL=C", "USER=groot"});
 
 		if (opts.verbose) {
 			printf("Program entry point at: 0x%" PRIx64 "\n",
-				   (uint64_t)machine.memory.start_address());
+				   (uint64_t)machine->memory.start_address());
 		}
 
 		const auto t0 = std::chrono::high_resolution_clock::now();
 
 		// Run the program
 		if (opts.precise) {
-			machine.set_max_instructions(opts.max_instructions);
-			machine.set_instruction_counter(0);
-			machine.cpu.simulate_precise();
+			machine->set_max_instructions(opts.max_instructions);
+			machine->set_instruction_counter(0);
+			machine->cpu.simulate_precise();
 		} else if (opts.max_instructions == UINT64_MAX) {
-			machine.cpu.simulate_inaccurate(machine.cpu.pc());
+			machine->cpu.simulate_inaccurate(machine->cpu.pc());
 		} else {
-			machine.simulate(opts.max_instructions);
+			machine->simulate(opts.max_instructions);
 		}
 
 		const auto t1 = std::chrono::high_resolution_clock::now();
@@ -170,17 +172,17 @@ static int run_program(const std::vector<uint8_t>& binary, const EmulatorOptions
 
 		// Show bytecode statistics if requested
 		if (opts.show_bytecode_stats) {
-			print_bytecode_statistics(machine);
+			print_bytecode_statistics(*machine);
 		}
 
 		// Check if stopped normally
-		if (!machine.instruction_limit_reached()) {
-			const int exit_code = machine.template return_value<int>();
+		if (!machine->instruction_limit_reached()) {
+			const int exit_code = machine->template return_value<int>();
 			if (!opts.silent) {
 				if (opts.timing && opts.max_instructions != UINT64_MAX) {
 					printf("Program exited with code %d after %" PRIu64 " instructions (%.6f seconds)\n",
 							exit_code,
-							machine.instruction_counter(),
+							machine->instruction_counter(),
 							elapsed.count());
 				} else if (opts.timing) {
 					printf("Program exited with code %d (%.6f seconds)\n",
@@ -194,7 +196,7 @@ static int run_program(const std::vector<uint8_t>& binary, const EmulatorOptions
 		} else {
 			if (!opts.silent) {
 				fprintf(stderr, "Execution timeout after %" PRIu64 " instructions",
-						machine.instruction_counter());
+						machine->instruction_counter());
 				if (opts.timing) {
 					fprintf(stderr, " (%.6f seconds)", elapsed.count());
 				}
@@ -206,6 +208,10 @@ static int run_program(const std::vector<uint8_t>& binary, const EmulatorOptions
 	} catch (const MachineException& e) {
 		fprintf(stderr, "Machine exception: %s (data: 0x%llx)\n",
 			e.what(), (unsigned long long)e.data());
+		if (machine) {
+			fprintf(stderr, "  Instruction count: %" PRIu64 "\n", machine->instruction_counter());
+			fprintf(stderr, "%s\n", machine->cpu.registers().to_string().c_str());
+		}
 		return -1;
 	} catch (const std::exception& e) {
 		fprintf(stderr, "Error: %s\n", e.what());

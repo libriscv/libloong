@@ -294,12 +294,17 @@ namespace loongarch
 	INSTRUCTION_P(VADDI_DU, VADDI);
 	INSTRUCTION(VHADDW_D_W);
 	INSTRUCTION(VSEQ_B);
-	INSTRUCTION(VSLT_B);
+	INSTRUCTION_P(VSLT_B, VSLT);
+	INSTRUCTION_P(VSLT_H, VSLT);
+	INSTRUCTION_P(VSLT_W, VSLT);
+	INSTRUCTION_P(VSLT_D, VSLT);
 	INSTRUCTION(VNOR_V);
 	INSTRUCTION(VORN_V);
 	INSTRUCTION(VAND_V);
 	INSTRUCTION(VFADD_D);
 	INSTRUCTION(VFDIV_D);
+	INSTRUCTION_P(VFMUL_S, VFMUL);
+	INSTRUCTION_P(VFMUL_D, VFMUL);
 	INSTRUCTION(VFTINTRZ_W_S);
 	INSTRUCTION(VFTINTRZ_L_D);
 	INSTRUCTION(VBITREVI_D);
@@ -341,6 +346,7 @@ namespace loongarch
 	// FP/Vector to GPR
 	INSTRUCTION(MOVFR2GR_S);
 	INSTRUCTION(MOVFR2GR_D);
+	INSTRUCTION(MOVGR2FR_W);
 	INSTRUCTION(MOVGR2FR_D);
 	INSTRUCTION(MOVFCSR2GR);
 	INSTRUCTION(MOVFR2CF);
@@ -508,6 +514,8 @@ namespace loongarch
 				if (op22_val == 0x452D) return DECODED_INSTR(MOVFR2GR_S);
 				// MOVFR2GR.D: bits[31:10] = 0x452E
 				if (op22_val == 0x452E) return DECODED_INSTR(MOVFR2GR_D);
+				// MOVGR2FR.W: bits[31:10] = 0x4529
+				if (op22_val == 0x4529) return DECODED_INSTR(MOVGR2FR_W);
 				// MOVGR2FR.D: bits[31:10] = 0x452A
 				if (op22_val == 0x452A) return DECODED_INSTR(MOVGR2FR_D);
 				// MOVFCSR2GR: bits[31:10] = 0x4532
@@ -818,6 +826,10 @@ namespace loongarch
 				if ((instr.whole & 0xFFFF8000) == 0x71310000) return DECODED_INSTR(VFADD_D);
 				// VFDIV.D: Vector floating-point divide (double) - bits[31:15] = 0xE276
 				if ((instr.whole >> 15) == 0xE276) return DECODED_INSTR(VFDIV_D);
+				// VFMUL.S: Vector floating-point multiply (single) - bits[31:15] = 0xE271
+				if ((instr.whole >> 15) == 0xE271) return DECODED_INSTR(VFMUL_S);
+				// VFMUL.D: Vector floating-point multiply (double) - bits[31:15] = 0xE272
+				if ((instr.whole >> 15) == 0xE272) return DECODED_INSTR(VFMUL_D);
 				// VILVL: Vector Interleave Low (B/H/W/D)
 				// VILVL.B: bits[31:15] = 0xE234
 				if ((instr.whole >> 15) == 0xE234) {
@@ -990,6 +1002,18 @@ namespace loongarch
 				// VSLT.B: bits[31:15] = 0xE00C
 				if ((instr.whole >> 15) == 0xE00C) {
 					return DECODED_INSTR(VSLT_B);
+				}
+				// VSLT.H: bits[31:15] = 0xE00D
+				if ((instr.whole >> 15) == 0xE00D) {
+					return DECODED_INSTR(VSLT_H);
+				}
+				// VSLT.W: bits[31:15] = 0xE00E
+				if ((instr.whole >> 15) == 0xE00E) {
+					return DECODED_INSTR(VSLT_W);
+				}
+				// VSLT.D: bits[31:15] = 0xE00F
+				if ((instr.whole >> 15) == 0xE00F) {
+					return DECODED_INSTR(VSLT_D);
 				}
 				// VMIN.BU: bits[31:15] = 0xE0EC
 				if ((instr.whole >> 15) == 0xE0EC) {

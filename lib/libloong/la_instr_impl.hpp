@@ -822,6 +822,19 @@ struct InstrImpl {
 		cpu.reg(rd) = vr.du[0];  // Read 64-bit value from low doubleword
 	}
 
+	static void MOVGR2FR_W(cpu_t& cpu, la_instruction instr) {
+		// Move 32-bit value from GPR to FPR (word)
+		uint32_t fd = instr.whole & 0x1F;
+		uint32_t rj = (instr.whole >> 5) & 0x1F;
+		// In LoongArch, FP registers share storage with LSX vector registers
+		// $fa0 is the low 64 bits of $vr0, so we write to the vector register
+		// For .w variant, write 32-bit value to low word and sign-extend to 64 bits
+		auto& vr = cpu.registers().getvr(fd);
+		uint32_t value = cpu.reg(rj) & 0xFFFFFFFF;
+		vr.wu[0] = value;  // Write 32-bit value to low word
+		vr.wu[1] = 0;      // Clear upper 32 bits of low doubleword
+	}
+
 	static void MOVGR2FR_D(cpu_t& cpu, la_instruction instr) {
 		// Move 64-bit value from GPR to FPR
 		uint32_t fd = instr.whole & 0x1F;
@@ -2087,6 +2100,61 @@ struct InstrImpl {
 		dst.du[3] = 0;
 	}
 
+	static void VSLT_H(cpu_t& cpu, la_instruction instr) {
+		// VSLT.H: Vector signed less-than halfwords (set mask)
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t vj = (instr.whole >> 5) & 0x1F;
+		uint32_t vk = (instr.whole >> 10) & 0x1F;
+
+		const auto& src1 = cpu.registers().getvr(vj);
+		const auto& src2 = cpu.registers().getvr(vk);
+		auto& dst = cpu.registers().getvr(vd);
+
+		for (int i = 0; i < 8; i++) {
+			// Signed comparison
+			dst.hu[i] = (src1.h[i] < src2.h[i]) ? 0xFFFF : 0x0000;
+		}
+		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+		dst.du[2] = 0;
+		dst.du[3] = 0;
+	}
+
+	static void VSLT_W(cpu_t& cpu, la_instruction instr) {
+		// VSLT.W: Vector signed less-than words (set mask)
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t vj = (instr.whole >> 5) & 0x1F;
+		uint32_t vk = (instr.whole >> 10) & 0x1F;
+
+		const auto& src1 = cpu.registers().getvr(vj);
+		const auto& src2 = cpu.registers().getvr(vk);
+		auto& dst = cpu.registers().getvr(vd);
+
+		dst.wu[0] = ((int32_t)src1.w[0] < (int32_t)src2.w[0]) ? 0xFFFFFFFF : 0x00000000;
+		dst.wu[1] = ((int32_t)src1.w[1] < (int32_t)src2.w[1]) ? 0xFFFFFFFF : 0x00000000;
+		dst.wu[2] = ((int32_t)src1.w[2] < (int32_t)src2.w[2]) ? 0xFFFFFFFF : 0x00000000;
+		dst.wu[3] = ((int32_t)src1.w[3] < (int32_t)src2.w[3]) ? 0xFFFFFFFF : 0x00000000;
+		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+		dst.du[2] = 0;
+		dst.du[3] = 0;
+	}
+
+	static void VSLT_D(cpu_t& cpu, la_instruction instr) {
+		// VSLT.D: Vector signed less-than doublewords (set mask)
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t vj = (instr.whole >> 5) & 0x1F;
+		uint32_t vk = (instr.whole >> 10) & 0x1F;
+
+		const auto& src1 = cpu.registers().getvr(vj);
+		const auto& src2 = cpu.registers().getvr(vk);
+		auto& dst = cpu.registers().getvr(vd);
+
+		dst.du[0] = ((int64_t)src1.d[0] < (int64_t)src2.d[0]) ? 0xFFFFFFFFFFFFFFFFULL : 0x0000000000000000ULL;
+		dst.du[1] = ((int64_t)src1.d[1] < (int64_t)src2.d[1]) ? 0xFFFFFFFFFFFFFFFFULL : 0x0000000000000000ULL;
+		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+		dst.du[2] = 0;
+		dst.du[3] = 0;
+	}
+
 	static void VILVL_B(cpu_t& cpu, la_instruction instr) {
 		// VILVL.B: Vector Interleave Low Byte
 		// Interleaves the low 64-bit bytes from two vectors
@@ -2378,6 +2446,42 @@ struct InstrImpl {
 
 		dst.df[0] = src1.df[0] / src2.df[0];
 		dst.df[1] = src1.df[1] / src2.df[1];
+		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+		dst.du[2] = 0;
+		dst.du[3] = 0;
+	}
+
+	static void VFMUL_S(cpu_t& cpu, la_instruction instr) {
+		// VFMUL.S: Vector floating-point multiply (single precision, 4x32-bit)
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t vj = (instr.whole >> 5) & 0x1F;
+		uint32_t vk = (instr.whole >> 10) & 0x1F;
+
+		const auto& src1 = cpu.registers().getvr(vj);
+		const auto& src2 = cpu.registers().getvr(vk);
+		auto& dst = cpu.registers().getvr(vd);
+
+		dst.f[0] = src1.f[0] * src2.f[0];
+		dst.f[1] = src1.f[1] * src2.f[1];
+		dst.f[2] = src1.f[2] * src2.f[2];
+		dst.f[3] = src1.f[3] * src2.f[3];
+		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+		dst.du[2] = 0;
+		dst.du[3] = 0;
+	}
+
+	static void VFMUL_D(cpu_t& cpu, la_instruction instr) {
+		// VFMUL.D: Vector floating-point multiply (double precision, 2x64-bit)
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t vj = (instr.whole >> 5) & 0x1F;
+		uint32_t vk = (instr.whole >> 10) & 0x1F;
+
+		const auto& src1 = cpu.registers().getvr(vj);
+		const auto& src2 = cpu.registers().getvr(vk);
+		auto& dst = cpu.registers().getvr(vd);
+
+		dst.df[0] = src1.df[0] * src2.df[0];
+		dst.df[1] = src1.df[1] * src2.df[1];
 		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
 		dst.du[2] = 0;
 		dst.du[3] = 0;

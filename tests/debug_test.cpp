@@ -38,7 +38,7 @@ static void print_help(const char* progname)
 		<< "  -m, --memory            Maximum memory in MiB (default: 256)\n"
 		<< "  -q, --quiet             Disable verbose loader and syscalls\n"
 		<< "  -r, --registers         Show register state after each instruction\n"
-		<< "  -o, --compare-objdump   Compare execution with objdump disassembly\n"
+		<< "  -o, --compare-objdump   Compare with objdump and stop on mnemonic mismatch\n"
 		<< "  -s, --short             Use short output format\n"
 		<< "  -c, --call <function>   Call a function after init (and debug that)\n"
 		<< "      --arg <value>       Appends argument to pass to function call\n"
@@ -46,7 +46,8 @@ static void print_help(const char* progname)
 		<< "Examples:\n"
 		<< "  " << progname << " program.elf\n"
 		<< "  " << progname << " --max-instructions 1000000 --short program.elf\n"
-		<< "  " << progname << " -q -r program.elf\n\n"
+		<< "  " << progname << " -q -r program.elf\n"
+		<< "  " << progname << " -o program.elf  # Stop if instruction mismatch detected\n\n"
 		<< "  " << progname << " --call test42 --expect 42 program.elf\n";
 }
 
@@ -202,6 +203,7 @@ int main(int argc, char* argv[])
 		DebugMachine<LA64> debug_machine(*machine);
 		debug_machine.filename = opts.binary_path;
 		debug_machine.compare_objdump = opts.compare_objdump;
+		debug_machine.stop_on_objdump_mismatch = opts.compare_objdump; // Automatically stop on mismatch when comparing
 		debug_machine.verbose_registers = opts.verbose_registers;
 		debug_machine.short_output = opts.short_output;
 

@@ -11,6 +11,7 @@ namespace loongarch
 		bool verbose_registers = true;
 		bool verbose_instructions = true;
 		bool compare_objdump = false;
+		bool stop_on_objdump_mismatch = false;
 		bool short_output = false;
 		std::string filename;
 		std::string objdump_path = "loongarch64-linux-gnu-objdump";
@@ -27,6 +28,7 @@ namespace loongarch
 		std::string demangle(const char* mangled);
 	private:
 		std::string get_objdump_line(address_type<W> pc);
+		bool compare_instructions(const std::string& our_instr, const std::string& objdump_instr);
 		std::unordered_map<address_type<W>, std::string> m_objdump_cache;
 	};
 

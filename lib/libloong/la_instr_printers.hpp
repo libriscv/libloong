@@ -206,6 +206,9 @@ struct InstrPrinters {
 	}
 
 	static int ANDI(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		if (instr.ri12.rd == 0) {
+			return snprintf(buf, len, "nop");
+		}
 		return snprintf(buf, len, "andi %s, %s, 0x%x",
 			reg_name(instr.ri12.rd), reg_name(instr.ri12.rj), instr.ri12.imm);
 	}
@@ -508,6 +511,15 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 	static int BLT(char* buf, size_t len, const cpu_t& cpu, la_instruction instr, addr_t pc) {
 		int32_t offset = InstructionHelpers<W>::sign_extend_16(instr.ri16.imm) << 2;
 		addr_t target = pc + offset;
+		if (instr.ri16.rd == 0) {
+			// BLT rd, $zero, target is equivalent to BLTZ rd, target
+			return snprintf(buf, len, "bltz %s, 0x%lx",
+				reg_name(instr.ri16.rj), (unsigned long)target);
+		} else if (instr.ri16.rj == 0) {
+			// BLT $zero, rd, target is equivalent to BGTZ rd, target
+			return snprintf(buf, len, "bgtz %s, 0x%lx",
+				reg_name(instr.ri16.rd), (unsigned long)target);
+		}
 		return snprintf(buf, len, "blt %s, %s, 0x%lx",
 			reg_name(instr.ri16.rj), reg_name(instr.ri16.rd), (unsigned long)target);
 	}
@@ -515,6 +527,15 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 	static int BGE(char* buf, size_t len, const cpu_t& cpu, la_instruction instr, addr_t pc) {
 		int32_t offset = InstructionHelpers<W>::sign_extend_16(instr.ri16.imm) << 2;
 		addr_t target = pc + offset;
+		if (instr.ri16.rd == 0) {
+			// BGE rd, $zero, target is equivalent to BGEZ rd, target
+			return snprintf(buf, len, "bgez %s, 0x%lx",
+				reg_name(instr.ri16.rj), (unsigned long)target);
+		} else if (instr.ri16.rj == 0) {
+			// BGE $zero, rd, target is equivalent to BLEZ rd, target
+			return snprintf(buf, len, "blez %s, 0x%lx",
+				reg_name(instr.ri16.rd), (unsigned long)target);
+		}
 		return snprintf(buf, len, "bge %s, %s, 0x%lx",
 			reg_name(instr.ri16.rj), reg_name(instr.ri16.rd), (unsigned long)target);
 	}

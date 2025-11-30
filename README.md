@@ -59,7 +59,6 @@ Triad:           9690.3     0.025947     0.024767     0.028585
 
 CoreMark 1.0 : 2959.140192 / GCC14.2.0 -O3 -DPERFORMANCE_RUN=1   / Static
 ```
-Despite not having a complete threaded dispatch yet, it is quite fast.
 
 ## Documentation
 

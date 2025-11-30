@@ -759,10 +759,14 @@ uint32_t DecodedExecuteSegment<W>::optimize_bytecode(uint8_t& bytecode, address_
 			NOP_IF_RD_ZERO(fi.rd, bytecode);
 			return fi.whole;
 		} break;
-		case LA64_BC_JIRL:
-			// No optimization needed - JIRL uses original instruction bits
-			// because it needs to access ri16 fields directly in VIEW_INSTR()
-			return instruction_bits;
+		case LA64_BC_JIRL: {
+			// JIRL uses ri16 format: rd, rj, imm16
+			auto fi = *(FasterLA64_RI16_Branch *)&instruction_bits;
+			fi.rd = original.ri16.rd;
+			fi.rj = original.ri16.rj;
+			fi.offset = original.ri16.imm;
+			return fi.whole;
+		} break;
 		case LA64_BC_BEQZ:
 		case LA64_BC_BNEZ: {
 			// BEQZ/BNEZ use ri21 format: rj, offs21

@@ -1159,9 +1159,12 @@ struct InstrImpl {
 
 	static void CLO_W(cpu_t& cpu, la_instruction instr) {
 		uint32_t val = static_cast<uint32_t>(cpu.reg(instr.r2.rj));
-		int count = 0;
-		for (int i = 31; i >= 0 && (val & (1u << i)); i--) count++;
-		cpu.reg(instr.r2.rd) = count;
+		cpu.reg(instr.r2.rd) = ~val ? __builtin_clz(~val) : 32;
+	}
+
+	static void CLO_D(cpu_t& cpu, la_instruction instr) {
+		uint64_t val = cpu.reg(instr.r2.rj);
+		cpu.reg(instr.r2.rd) = ~val ? __builtin_clzll(~val) : 64;
 	}
 
 	static void CLZ_W(cpu_t& cpu, la_instruction instr) {
@@ -1169,35 +1172,24 @@ struct InstrImpl {
 		cpu.reg(instr.r2.rd) = val ? __builtin_clz(val) : 32;
 	}
 
-	static void CTO_W(cpu_t& cpu, la_instruction instr) {
-		uint32_t val = static_cast<uint32_t>(cpu.reg(instr.r2.rj));
-		int count = 0;
-		for (int i = 0; i < 32 && (val & (1u << i)); i++) count++;
-		cpu.reg(instr.r2.rd) = count;
-	}
-
-	static void CTZ_W(cpu_t& cpu, la_instruction instr) {
-		uint32_t val = static_cast<uint32_t>(cpu.reg(instr.r2.rj));
-		cpu.reg(instr.r2.rd) = val ? __builtin_ctz(val) : 32;
-	}
-
-	static void CLO_D(cpu_t& cpu, la_instruction instr) {
-		uint64_t val = cpu.reg(instr.r2.rj);
-		int count = 0;
-		for (int i = 63; i >= 0 && (val & (1ULL << i)); i--) count++;
-		cpu.reg(instr.r2.rd) = count;
-	}
-
 	static void CLZ_D(cpu_t& cpu, la_instruction instr) {
 		uint64_t val = cpu.reg(instr.r2.rj);
 		cpu.reg(instr.r2.rd) = val ? __builtin_clzll(val) : 64;
 	}
 
+	static void CTO_W(cpu_t& cpu, la_instruction instr) {
+		uint32_t val = static_cast<uint32_t>(cpu.reg(instr.r2.rj));
+		cpu.reg(instr.r2.rd) = ~val ? __builtin_ctz(~val) : 32;
+	}
+
 	static void CTO_D(cpu_t& cpu, la_instruction instr) {
 		uint64_t val = cpu.reg(instr.r2.rj);
-		int count = 0;
-		for (int i = 0; i < 64 && (val & (1ULL << i)); i++) count++;
-		cpu.reg(instr.r2.rd) = count;
+		cpu.reg(instr.r2.rd) = ~val ? __builtin_ctzll(~val) : 64;
+	}
+
+	static void CTZ_W(cpu_t& cpu, la_instruction instr) {
+		uint32_t val = static_cast<uint32_t>(cpu.reg(instr.r2.rj));
+		cpu.reg(instr.r2.rd) = val ? __builtin_ctz(val) : 32;
 	}
 
 	static void CTZ_D(cpu_t& cpu, la_instruction instr) {

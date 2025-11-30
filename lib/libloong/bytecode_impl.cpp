@@ -520,14 +520,12 @@ INSTRUCTION(LA64_BC_BGEU, la64_bgeu)
 // LA64_BC_JIRL: Jump indirect and link register
 INSTRUCTION(LA64_BC_JIRL, la64_jirl)
 {
-	VIEW_INSTR();
-	auto next_pc = pc + 4;
-	auto base = REG(instr.ri16.rj);
-	auto offset = InstructionHelpers<W>::sign_extend_16(instr.ri16.imm) << 2;
-	auto target = base + offset;
+	auto fi = *(FasterLA64_RI16_Branch *)&DECODER().instr;
+	auto offset = (int32_t)fi.offset << 2;
+	auto target = REG(fi.rj) + offset;
 
-	if (instr.ri16.rd != 0) {
-		REG(instr.ri16.rd) = next_pc;
+	if (fi.rd != 0) {
+		REG(fi.rd) = pc + 4;
 	}
 	NEXT_BLOCK(target - pc);
 }
@@ -774,8 +772,17 @@ INSTRUCTION(LA64_BC_CLO_W, la64_clo_w)
 {
 	auto fi = *(FasterLA64_R2 *)&DECODER().instr;
 	uint32_t val = static_cast<uint32_t>(REG(fi.rj));
-	uint32_t count = __builtin_clz(~val);
+	uint32_t count = ~val ? __builtin_clz(~val) : 32;
 	REG(fi.rd) = count;
+	NEXT_INSTR();
+}
+
+// LA64_BC_CLO_D: Count leading ones doubleword
+INSTRUCTION(LA64_BC_CLO_D, la64_clo_d)
+{
+	auto fi = *(FasterLA64_R2 *)&DECODER().instr;
+	const uint64_t val = REG(fi.rj);
+	REG(fi.rd) = ~val ? __builtin_clzll(~val) : 64;
 	NEXT_INSTR();
 }
 
@@ -831,15 +838,6 @@ INSTRUCTION(LA64_BC_SLTI, la64_slti)
 	int64_t a = static_cast<int64_t>(REG(fi.rj));
 	int64_t b = fi.imm;
 	REG(fi.rd) = (a < b) ? 1 : 0;
-	NEXT_INSTR();
-}
-
-// LA64_BC_CLO_D: Count leading ones doubleword
-INSTRUCTION(LA64_BC_CLO_D, la64_clo_d)
-{
-	auto fi = *(FasterLA64_R2 *)&DECODER().instr;
-	const uint64_t val = REG(fi.rj);
-	REG(fi.rd) = __builtin_clzll(~val);
 	NEXT_INSTR();
 }
 

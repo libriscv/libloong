@@ -10,7 +10,7 @@ option(LA_64  "64-bit loong support" ON)
 option(LA_DEBUG "Enable debug output" OFF)
 option(LA_BINARY_TRANSLATION "Enable binary translation" OFF)
 option(LA_THREADED "Enable threaded support" ON)
-option(LA_MEMORY_TRAPS "Enable memory traps" ON)
+set(LA_MASKED_MEMORY_BITS "0" CACHE STRING "Power-of-two memory arena size for masking (0 = disabled)")
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -21,7 +21,6 @@ set(loong_VERSION_MINOR 1)
 
 # Source files
 set(SOURCES
-	libloong/common.cpp
 	libloong/cpu.cpp
 	libloong/elf_loader.cpp
 	libloong/machine.cpp

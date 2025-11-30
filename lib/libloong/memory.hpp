@@ -16,6 +16,8 @@ namespace loongarch
 	struct alignas(LA_MACHINE_ALIGNMENT) Memory
 	{
 		using address_t = address_type<W>;
+		static constexpr address_t LA_MASKED_MEMORY_SIZE = 1ull << LA_MASKED_MEMORY_BITS;
+		static constexpr address_t LA_MASKED_MEMORY_MASK = LA_MASKED_MEMORY_SIZE - 1;
 
 		Memory(Machine<W>& machine, std::string_view binary, const MachineOptions<W>& options);
 		Memory(Machine<W>& machine, const Machine<W>& other, const MachineOptions<W>& options);

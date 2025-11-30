@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <cstring>
+#include "libloong_settings.h"
 
 namespace loongarch {
 
@@ -8,10 +9,17 @@ template <int W>
 template <typename T>
 inline T Memory<W>::read(address_t addr) const
 {
-	if (LA_UNLIKELY(addr < m_rodata_start || addr >= m_arena_size)) {
-		protection_fault(addr, "Read from unmapped memory");
+	if constexpr (LA_MASKED_MEMORY_MASK) {
+		if constexpr (LA_MASKED_MEMORY_MASK == UINT32_MAX) {
+			addr = (uint32_t)addr;
+		} else {
+			addr &= LA_MASKED_MEMORY_MASK;
+		}
+	} else {
+		if (LA_UNLIKELY(addr < m_rodata_start || addr >= m_arena_size)) {
+			protection_fault(addr, "Read from unmapped memory");
+		}
 	}
-
 	return *reinterpret_cast<const T*>(&m_arena[addr]);
 }
 
@@ -19,10 +27,17 @@ template <int W>
 template <typename T>
 inline void Memory<W>::write(address_t addr, T value)
 {
-	if (LA_UNLIKELY(!is_writable(addr, sizeof(T)))) {
-		protection_fault(addr, "Write to read-only memory");
+	if constexpr (LA_MASKED_MEMORY_MASK) {
+		if constexpr (LA_MASKED_MEMORY_MASK == UINT32_MAX) {
+			addr = (uint32_t)addr;
+		} else {
+			addr &= LA_MASKED_MEMORY_MASK;
+		}
+	} else {
+		if (LA_UNLIKELY(!is_writable(addr, sizeof(T)))) {
+			protection_fault(addr, "Write to read-only memory");
+		}
 	}
-
 	*reinterpret_cast<T*>(&m_arena[addr]) = value;
 }
 

@@ -8,7 +8,6 @@
 #cmakedefine LA_DEBUG
 #cmakedefine LA_BINARY_TRANSLATION
 #cmakedefine LA_THREADED
-#cmakedefine LA_MEMORY_TRAPS
 
 // Version
 #define LOONGARCH_VERSION_MAJOR @LOONGARCH_VERSION_MAJOR@
@@ -17,3 +16,6 @@
 // Architecture constants
 #define LA_PAGE_SIZE 4096
 #define LA_MACHINE_ALIGNMENT 64
+
+// Masked memory arena bits (0 = disabled)
+#define LA_MASKED_MEMORY_BITS @LA_MASKED_MEMORY_BITS@ULL

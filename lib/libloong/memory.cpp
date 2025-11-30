@@ -43,6 +43,9 @@ Memory<W>::~Memory()
 template <int W>
 void Memory<W>::allocate_arena(size_t size)
 {
+	if constexpr (LA_MASKED_MEMORY_BITS) {
+		size = LA_MASKED_MEMORY_SIZE;
+	}
 	if (this->m_arena) free_arena();
 #ifdef __unix__
 	this->m_arena = static_cast<uint8_t*>(mmap(nullptr, size + OVER_ALLOCATE_SIZE,
@@ -64,6 +67,9 @@ void Memory<W>::allocate_arena(size_t size)
 template <int W>
 void Memory<W>::allocate_custom_arena(size_t size, address_t rodata_start, address_t data_start)
 {
+	if constexpr (LA_MASKED_MEMORY_BITS) {
+		throw MachineException(FEATURE_DISABLED, "Custom arena allocation is not supported with masked memory");
+	}
 	if (rodata_start >= size || data_start >= size || rodata_start > data_start) {
 		throw MachineException(INVALID_PROGRAM, "Invalid custom arena boundaries");
 	}

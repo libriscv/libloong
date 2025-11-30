@@ -4,7 +4,7 @@ set -e
 echo "Building Rust LoongArch example..."
 
 # Build the std binary for LoongArch
-cargo build --release --bin hello-std
+cargo build --bin hello-std
 
 # Copy the binary to a convenient location
 cp target/loongarch64-unknown-linux-gnu/release/hello-std ./hello-std.elf

@@ -591,6 +591,14 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 			reg_name(instr.ri20.rd), instr.ri20.imm, (unsigned long)target);
 	}
 
+	static int PCADDU18I(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t pc) {
+		int32_t si20 = InstructionHelpers<W>::sign_extend_20(instr.ri20.imm);
+		int64_t offset = (int64_t)(si20 << 18);
+		addr_t target = pc + offset;
+		return snprintf(buf, len, "pcaddu18i %s, 0x%x  # 0x%lx",
+			reg_name(instr.ri20.rd), si20 & 0xFFFFF, (unsigned long)target);
+	}
+
 	static int LU52I_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		return snprintf(buf, len, "lu52i.d %s, %s, 0x%x",
 			reg_name(instr.ri12.rd), reg_name(instr.ri12.rj), instr.ri12.imm);

@@ -76,6 +76,7 @@ namespace loongarch
 		LA64_BC_LDX_HU,            // Load halfword unsigned indexed (76 in coremark)
 		LA64_BC_LD_WU,             // Load word unsigned (75 in coremark)
 		LA64_BC_PCADDU12I,         // PC-aligned add upper 12 immediate (73 in coremark)
+		LA64_BC_PCADDU18I,         // PC-aligned add upper 18 immediate
 		LA64_BC_ANDN,              // AND NOT (68 in coremark)
 		LA64_BC_STX_B,             // Store byte indexed (66 in coremark)
 		LA64_BC_CTZ_D,             // Count trailing zeros doubleword (65 in coremark)
@@ -208,6 +209,7 @@ namespace loongarch
 		case LA64_BC_LDX_HU: return "LDX.HU";
 		case LA64_BC_LD_WU: return "LD.WU";
 		case LA64_BC_PCADDU12I: return "PCADDU12I";
+		case LA64_BC_PCADDU18I: return "PCADDU18I";
 		case LA64_BC_ANDN: return "ANDN";
 		case LA64_BC_STX_B: return "STX.B";
 		case LA64_BC_CTZ_D: return "CTZ.D";

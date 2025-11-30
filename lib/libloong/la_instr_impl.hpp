@@ -554,6 +554,12 @@ struct InstrImpl {
 		cpu.reg(instr.ri20.rd) = pc_aligned + offset;
 	}
 
+	static void PCADDU18I(cpu_t& cpu, la_instruction instr) {
+		int32_t si20 = InstructionHelpers<W>::sign_extend_20(instr.ri20.imm);
+		int64_t offset = (int64_t)(si20 << 18);
+		cpu.reg(instr.ri20.rd) = cpu.pc() + offset;
+	}
+
 	static void LU52I_D(cpu_t& cpu, la_instruction instr) {
 		uint64_t base = cpu.reg(instr.ri12.rj) & 0x000FFFFFFFFFFFFF;
 		uint64_t upper = ((uint64_t)instr.ri12.imm) << 52;

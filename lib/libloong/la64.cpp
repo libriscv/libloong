@@ -132,6 +132,7 @@ namespace loongarch
 	INSTRUCTION(PCADDI);
 	INSTRUCTION(PCADDU12I);
 	INSTRUCTION(PCALAU12I);
+	INSTRUCTION(PCADDU18I);
 	INSTRUCTION(LU52I_D);
 
 	// Bit Manipulation
@@ -583,8 +584,13 @@ namespace loongarch
 			}
 			break;
 
-		case 0x07: // PCADDU12I (0x1C000000)
-			return DECODED_INSTR(PCADDU12I);
+		case 0x07: // PCADDU12I (0x1C000000) / PCADDU18I (0x1E000000)
+			{
+				uint32_t op7 = (instr.whole >> 25) & 0x7F;
+				if (op7 == 0x0E) return DECODED_INSTR(PCADDU12I);
+				if (op7 == 0x0F) return DECODED_INSTR(PCADDU18I);
+			}
+			break;
 
 		case 0x09: // LDPTR.W / STPTR.W / LDPTR.D / STPTR.D (mask is 0xFF000000)
 			{

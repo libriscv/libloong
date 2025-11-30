@@ -69,6 +69,7 @@ static constexpr void *computed_opcode[] = {
 	[LA64_BC_LDX_HU]    = &&la64_ldx_hu,
 	[LA64_BC_LD_WU]     = &&la64_ld_wu,
 	[LA64_BC_PCADDU12I] = &&la64_pcaddu12i,
+	[LA64_BC_PCADDU18I] = &&la64_pcaddu18i,
 	[LA64_BC_ANDN]      = &&la64_andn,
 	[LA64_BC_STX_B]     = &&la64_stx_b,
 	[LA64_BC_CTZ_D]     = &&la64_ctz_d,

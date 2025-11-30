@@ -226,6 +226,7 @@ namespace Opcode {
 	constexpr uint32_t PCADDI     = 0x18000000;
 	constexpr uint32_t PCADDU12I  = 0x1c000000;
 	constexpr uint32_t PCALAU12I  = 0x1a000000;
+	constexpr uint32_t PCADDU18I  = 0x1e000000;
 	constexpr uint32_t LU52I_D    = 0x03000000;		// System
 	constexpr uint32_t SYSCALL    = 0x002b0000;
 	constexpr uint32_t BREAK      = 0x002a0000;

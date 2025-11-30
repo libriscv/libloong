@@ -656,6 +656,9 @@ uint32_t DecodedExecuteSegment<W>::optimize_bytecode(uint8_t& bytecode, address_
 		case LA64_BC_PCADDU12I:
 			// PCADDU12I uses PC, handled as diverging instruction
 			return instruction_bits;
+		case LA64_BC_PCADDU18I:
+			// PCADDU18I uses PC, handled as diverging instruction
+			return instruction_bits;
 		case LA64_BC_ANDN: {
 			// ANDN rd, rj, rk - uses R3 format
 			auto fi = *(FasterLA64_R3 *)&instruction_bits;

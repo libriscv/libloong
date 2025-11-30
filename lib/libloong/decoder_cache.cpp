@@ -354,6 +354,10 @@ namespace loongarch
 		if (op7 == 0x0E) {
 			return LA64_BC_PCADDU12I;
 		}
+		// PCADDU18I: op7 = 0x0F (0x1E000000 >> 25)
+		if (op7 == 0x0F) {
+			return LA64_BC_PCADDU18I;
+		}
 		// ANDN: op17 = 0x0002D (0x00168000 >> 15)
 		if (op17 == 0x0002D) {
 			return LA64_BC_ANDN;

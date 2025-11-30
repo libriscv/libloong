@@ -123,7 +123,8 @@ uint32_t DecodedExecuteSegment<W>::optimize_bytecode(uint8_t& bytecode, address_
 			auto fi = *(FasterLA64_RI12 *)&instruction_bits;
 			fi.rd = original.ri12.rd;
 			fi.rj = original.ri12.rj;
-			fi.set_imm(original.ri12.imm);
+			// ANDI uses zero-extended immediate, not sign-extended
+			fi.imm = original.ri12.imm & 0xFFF;
 			NOP_IF_RD_ZERO(fi.rd, bytecode);
 			return fi.whole;
 		} break;
@@ -609,20 +610,22 @@ uint32_t DecodedExecuteSegment<W>::optimize_bytecode(uint8_t& bytecode, address_
 			return fi.whole;
 		} break;
 		case LA64_BC_XORI: {
-			// XORI rd, rj, imm12 - uses RI12 format
+			// XORI rd, rj, imm12 - uses RI12 format with zero-extended immediate
 			auto fi = *(FasterLA64_RI12 *)&instruction_bits;
 			fi.rd = original.ri12.rd;
 			fi.rj = original.ri12.rj;
-			fi.set_imm(original.ri12.imm);
+			// XORI uses zero-extended immediate, not sign-extended
+			fi.imm = original.ri12.imm & 0xFFF;
 			NOP_IF_RD_ZERO(fi.rd, bytecode);
 			return fi.whole;
 		} break;
 		case LA64_BC_SLTUI: {
-			// SLTUI rd, rj, imm12 - uses RI12 format
+			// SLTUI rd, rj, imm12 - uses RI12 format with zero-extended immediate
 			auto fi = *(FasterLA64_RI12 *)&instruction_bits;
 			fi.rd = original.ri12.rd;
 			fi.rj = original.ri12.rj;
-			fi.set_imm(original.ri12.imm);
+			// SLTUI uses zero-extended immediate for unsigned comparison
+			fi.imm = original.ri12.imm & 0xFFF;
 			NOP_IF_RD_ZERO(fi.rd, bytecode);
 			return fi.whole;
 		} break;

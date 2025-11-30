@@ -60,8 +60,8 @@ INSTRUCTION(LA64_BC_ADDI_D, la64_addi_d)
 INSTRUCTION(LA64_BC_ANDI, la64_andi)
 {
 	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
-	// ANDI uses zero-extended immediate (mask to 12 bits)
-	REG(fi.rd) = REG(fi.rj) & (fi.imm & 0xFFF);
+	// ANDI uses zero-extended immediate (already properly extended in optimizer)
+	REG(fi.rd) = REG(fi.rj) & fi.imm;
 	NEXT_INSTR();
 }
 
@@ -927,7 +927,7 @@ INSTRUCTION(LA64_BC_LU52I_D, la64_lu52i_d)
 INSTRUCTION(LA64_BC_XORI, la64_xori)
 {
 	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
-	REG(fi.rd) = REG(fi.rj) ^ (fi.imm & 0xFFF);
+	REG(fi.rd) = REG(fi.rj) ^ fi.imm;
 	NEXT_INSTR();
 }
 
@@ -936,7 +936,7 @@ INSTRUCTION(LA64_BC_SLTUI, la64_sltui)
 {
 	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
 	uint64_t a = REG(fi.rj);
-	uint64_t b = static_cast<uint64_t>(fi.imm) & 0xFFF;
+	uint64_t b = static_cast<uint64_t>(fi.imm);
 	REG(fi.rd) = (a < b) ? 1 : 0;
 	NEXT_INSTR();
 }

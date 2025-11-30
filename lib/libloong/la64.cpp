@@ -268,10 +268,12 @@ namespace loongarch
 	INSTRUCTION(VPICKVE2GR_WU);
 
 	// Vector interleave
-	INSTRUCTION(VILVL_D);
+	INSTRUCTION_P(VILVL_B, VILVL);
+	INSTRUCTION_P(VILVL_H, VILVL);
+	INSTRUCTION_P(VILVL_W, VILVL);
+	INSTRUCTION_P(VILVL_D, VILVL);
 	INSTRUCTION(VILVH_D);
 	INSTRUCTION(VPICKEV_W);
-	INSTRUCTION(VILVL_H);
 
 	// Vector arithmetic/logic
 	INSTRUCTION_P(VSUB_B, VSUB);
@@ -310,14 +312,14 @@ namespace loongarch
 	INSTRUCTION(VXOR_V);
 
 	// Vector replicate
-	INSTRUCTION(VREPLGR2VR_B);
-	INSTRUCTION(VREPLGR2VR_H);
-	INSTRUCTION(VREPLGR2VR_W);
-	INSTRUCTION(VREPLGR2VR_D);
-	INSTRUCTION(VINSGR2VR_B);
-	INSTRUCTION(VINSGR2VR_H);
-	INSTRUCTION(VINSGR2VR_W);
-	INSTRUCTION(VINSGR2VR_D);
+	INSTRUCTION_P(VREPLGR2VR_B, VREPLGR2VR);
+	INSTRUCTION_P(VREPLGR2VR_H, VREPLGR2VR);
+	INSTRUCTION_P(VREPLGR2VR_W, VREPLGR2VR);
+	INSTRUCTION_P(VREPLGR2VR_D, VREPLGR2VR);
+	INSTRUCTION_P(VINSGR2VR_B, VINSGR2VR);
+	INSTRUCTION_P(VINSGR2VR_H, VINSGR2VR);
+	INSTRUCTION_P(VINSGR2VR_W, VINSGR2VR);
+	INSTRUCTION_P(VINSGR2VR_D, VINSGR2VR);
 	INSTRUCTION(VREPLVEI_D);
 
 	// Vector immediate arithmetic
@@ -816,19 +818,26 @@ namespace loongarch
 				if ((instr.whole & 0xFFFF8000) == 0x71310000) return DECODED_INSTR(VFADD_D);
 				// VFDIV.D: Vector floating-point divide (double) - bits[31:15] = 0xE276
 				if ((instr.whole >> 15) == 0xE276) return DECODED_INSTR(VFDIV_D);
-				// VILVL.H: Vector Interleave Low Half-word (0x711a8xxx)
-				// bits[31:15] = 0xE235
+				// VILVL: Vector Interleave Low (B/H/W/D)
+				// VILVL.B: bits[31:15] = 0xE234
+				if ((instr.whole >> 15) == 0xE234) {
+					return DECODED_INSTR(VILVL_B);
+				}
+				// VILVL.H: bits[31:15] = 0xE235
 				if ((instr.whole >> 15) == 0xE235) {
 					return DECODED_INSTR(VILVL_H);
 				}
-				// VILVL.D: Vector Interleave Low Double-word (0x711b8xxx)
-				// bits[31:15] = 0xE237
+				// VILVL.W: bits[31:15] = 0xE236
+				if ((instr.whole >> 15) == 0xE236) {
+					return DECODED_INSTR(VILVL_W);
+				}
+				// VILVL.D: bits[31:15] = 0xE237
 				if ((instr.whole >> 15) == 0xE237) {
 					return DECODED_INSTR(VILVL_D);
 				}
 				// VILVH.D: Vector Interleave High Double-word
-				// bits[31:15] = 0xE276
-				if ((instr.whole >> 15) == 0xE276) {
+				// bits[31:15] = 0xE23F
+				if ((instr.whole >> 15) == 0xE23F) {
 					return DECODED_INSTR(VILVH_D);
 				}
 				// VPICKEV.W: Vector Pick Even Word

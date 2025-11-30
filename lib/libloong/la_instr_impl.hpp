@@ -2087,6 +2087,32 @@ struct InstrImpl {
 		dst.du[3] = 0;
 	}
 
+	static void VILVL_B(cpu_t& cpu, la_instruction instr) {
+		// VILVL.B: Vector Interleave Low Byte
+		// Interleaves the low 64-bit bytes from two vectors
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t vj = (instr.whole >> 5) & 0x1F;
+		uint32_t vk = (instr.whole >> 10) & 0x1F;
+
+		const auto& src1 = cpu.registers().getvr(vj);
+		const auto& src2 = cpu.registers().getvr(vk);
+		auto& dst = cpu.registers().getvr(vd);
+
+		// Interleave: dst[0] = src2[0], dst[1] = src1[0], dst[2] = src2[1], dst[3] = src1[1], ...
+		// For bytes (8-bit), we interleave the low 8 elements from each source
+		uint8_t result[16];
+		for (int i = 0; i < 8; i++) {
+			result[i*2] = src2.bu[i];
+			result[i*2 + 1] = src1.bu[i];
+		}
+		for (int i = 0; i < 16; i++) {
+			dst.bu[i] = result[i];
+		}
+		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+		dst.du[2] = 0;
+		dst.du[3] = 0;
+	}
+
 	static void VILVL_H(cpu_t& cpu, la_instruction instr) {
 		// VILVL.H: Vector Interleave Low Half-word
 		// Interleaves the low 64-bit half-words from two vectors
@@ -2107,6 +2133,32 @@ struct InstrImpl {
 		}
 		for (int i = 0; i < 8; i++) {
 			dst.hu[i] = result[i];
+		}
+		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+		dst.du[2] = 0;
+		dst.du[3] = 0;
+	}
+
+	static void VILVL_W(cpu_t& cpu, la_instruction instr) {
+		// VILVL.W: Vector Interleave Low Word
+		// Interleaves the low 64-bit words from two vectors
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t vj = (instr.whole >> 5) & 0x1F;
+		uint32_t vk = (instr.whole >> 10) & 0x1F;
+
+		const auto& src1 = cpu.registers().getvr(vj);
+		const auto& src2 = cpu.registers().getvr(vk);
+		auto& dst = cpu.registers().getvr(vd);
+
+		// Interleave: dst[0] = src2[0], dst[1] = src1[0], dst[2] = src2[1], dst[3] = src1[1]
+		// For words (32-bit), we interleave the low 2 elements from each source
+		uint32_t result[4];
+		for (int i = 0; i < 2; i++) {
+			result[i*2] = src2.wu[i];
+			result[i*2 + 1] = src1.wu[i];
+		}
+		for (int i = 0; i < 4; i++) {
+			dst.wu[i] = result[i];
 		}
 		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
 		dst.du[2] = 0;

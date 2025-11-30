@@ -206,8 +206,8 @@ static int run_program(const std::vector<uint8_t>& binary, const EmulatorOptions
 		}
 
 	} catch (const MachineException& e) {
-		fprintf(stderr, "Machine exception: %s (data: 0x%llx)\n",
-			e.what(), (unsigned long long)e.data());
+		fprintf(stderr, "Machine exception: %s, data: 0x%llx (%ld)\n",
+			e.what(), (unsigned long long)e.data(), (long)e.data());
 		if (machine) {
 			fprintf(stderr, "  Instruction count: %" PRIu64 "\n", machine->instruction_counter());
 			fprintf(stderr, "%s\n", machine->cpu.registers().to_string().c_str());

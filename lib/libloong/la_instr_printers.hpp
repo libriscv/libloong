@@ -1282,18 +1282,14 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		return snprintf(buf, len, "vslt.b $vr%u, $vr%u, $vr%u", vd, vj, vk);
 	}
 
-	static int VILVL_H(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int VILVL(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		static constexpr char sizes[] = {'b', 'h', 'w', 'd'};
 		uint32_t vd = instr.whole & 0x1F;
 		uint32_t vj = (instr.whole >> 5) & 0x1F;
 		uint32_t vk = (instr.whole >> 10) & 0x1F;
-		return snprintf(buf, len, "vilvl.h $vr%u, $vr%u, $vr%u", vd, vj, vk);
-	}
-
-	static int VILVL_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
-		return snprintf(buf, len, "vilvl.d $vr%u, $vr%u, $vr%u", vd, vj, vk);
+		// Extract size from opcode: bits[16:15] encode the size (0=b, 1=h, 2=w, 3=d)
+		uint32_t size_idx = (instr.whole >> 15) & 0x3;
+		return snprintf(buf, len, "vilvl.%c $vr%u, $vr%u, $vr%u", sizes[size_idx], vd, vj, vk);
 	}
 
 	static int VILVH_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
@@ -1466,56 +1462,31 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		return snprintf(buf, len, "vreplvei.d $vr%u, $vr%u, 0x%x", vd, vj, idx);
 	}
 
-	static int VREPLGR2VR_B(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int VREPLGR2VR(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		static constexpr char sizes[] = {'b', 'h', 'w', 'd'};
 		uint32_t vd = instr.whole & 0x1F;
 		uint32_t rj = (instr.whole >> 5) & 0x1F;
-		return snprintf(buf, len, "vreplgr2vr.b $vr%u, %s", vd, reg_name(rj));
+		// Extract size from subop: bits[11:10] (0=b, 1=h, 2=w, 3=d)
+		uint32_t size_idx = (instr.whole >> 10) & 0x3;
+		return snprintf(buf, len, "vreplgr2vr.%c $vr%u, %s", sizes[size_idx], vd, reg_name(rj));
 	}
 
-	static int VREPLGR2VR_H(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int VINSGR2VR(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		static constexpr char sizes[] = {'b', 'h', 'w', 'd'};
+		static constexpr uint32_t idx_masks[] = {0xF, 0x7, 0x3, 0x1};
 		uint32_t vd = instr.whole & 0x1F;
 		uint32_t rj = (instr.whole >> 5) & 0x1F;
-		return snprintf(buf, len, "vreplgr2vr.h $vr%u, %s", vd, reg_name(rj));
-	}
-
-	static int VREPLGR2VR_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t rj = (instr.whole >> 5) & 0x1F;
-		return snprintf(buf, len, "vreplgr2vr.w $vr%u, %s", vd, reg_name(rj));
-	}
-
-	static int VREPLGR2VR_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t rj = (instr.whole >> 5) & 0x1F;
-		return snprintf(buf, len, "vreplgr2vr.d $vr%u, %s", vd, reg_name(rj));
-	}
-
-	static int VINSGR2VR_B(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t rj = (instr.whole >> 5) & 0x1F;
-		uint32_t idx = (instr.whole >> 10) & 0xF;
-		return snprintf(buf, len, "vinsgr2vr.b $vr%u, %s, 0x%x", vd, reg_name(rj), idx);
-	}
-
-	static int VINSGR2VR_H(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t rj = (instr.whole >> 5) & 0x1F;
-		uint32_t idx = (instr.whole >> 10) & 0x7;
-		return snprintf(buf, len, "vinsgr2vr.h $vr%u, %s, 0x%x", vd, reg_name(rj), idx);
-	}
-
-	static int VINSGR2VR_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t rj = (instr.whole >> 5) & 0x1F;
-		uint32_t idx = (instr.whole >> 10) & 0x3;
-		return snprintf(buf, len, "vinsgr2vr.w $vr%u, %s, 0x%x", vd, reg_name(rj), idx);
-	}
-
-	static int VINSGR2VR_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t rj = (instr.whole >> 5) & 0x1F;
-		uint32_t idx = (instr.whole >> 10) & 0x1;
-		return snprintf(buf, len, "vinsgr2vr.d $vr%u, %s, 0x%x", vd, reg_name(rj), idx);
+		// Determine size by checking bit patterns: .b=10, .h=110, .w=1110, .d=11110
+		uint32_t bits15_14 = (instr.whole >> 14) & 0x3;
+		uint32_t bits15_13 = (instr.whole >> 13) & 0x7;
+		uint32_t bits15_12 = (instr.whole >> 12) & 0xF;
+		uint32_t size_idx;
+		if (bits15_14 == 0x2) size_idx = 0;       // .b: 10
+		else if (bits15_13 == 0x6) size_idx = 1;  // .h: 110
+		else if (bits15_12 == 0xE) size_idx = 2;  // .w: 1110
+		else size_idx = 3;                         // .d: 11110
+		uint32_t idx = (instr.whole >> 10) & idx_masks[size_idx];
+		return snprintf(buf, len, "vinsgr2vr.%c $vr%u, %s, 0x%x", sizes[size_idx], vd, reg_name(rj), idx);
 	}
 
 	static int VADDI_BU(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {

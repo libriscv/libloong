@@ -485,6 +485,18 @@ namespace loongarch
 			static_cast<uint64_t>(offset),
 			static_cast<uint64_t>(machine.cpu.reg(REG_A0)));
 	}
+	template <int W>
+	static void syscall_munmap(Machine<W>& machine)
+	{
+		const auto addr  = machine.cpu.reg(REG_A0);
+		const auto length = machine.cpu.reg(REG_A1);
+
+		machine.memory.mmap_deallocate(addr, length);
+		machine.set_result(0);
+		sysprint(machine, "munmap(addr=0x%llx, len=%llu) = %d\n",
+			static_cast<uint64_t>(addr), static_cast<uint64_t>(length),
+			machine.template return_value<int>());
+	}
 
 	// Futex syscall (basic support for threading)
 	template <int W>
@@ -602,6 +614,7 @@ namespace loongarch
 		install_syscall_handler(LA_SYS_mmap, syscall_mmap<W>);
 		install_syscall_handler(LA_SYS_mprotect, syscall_mprotect<W>);
 		install_syscall_handler(LA_SYS_madvise, syscall_madvise<W>);
+		install_syscall_handler(LA_SYS_munmap, syscall_munmap<W>);
 
 		// Threading/synchronization
 		install_syscall_handler(LA_SYS_set_tid_address, syscall_set_tid_address<W>);

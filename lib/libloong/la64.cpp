@@ -25,6 +25,7 @@ namespace loongarch
 	#define DECODED_INSTR(name) instr64_##name
 
 	// Create all instruction descriptors
+	INSTRUCTION(INVALID);
 	INSTRUCTION(UNIMPLEMENTED);
 	INSTRUCTION(NOP);
 
@@ -1187,6 +1188,12 @@ namespace loongarch
 		}
 
 		return DECODED_INSTR(UNIMPLEMENTED);
+	}
+
+	template <>
+	const CPU<LA64>::instruction_t& CPU<LA64>::get_invalid_instruction() noexcept
+	{
+		return DECODED_INSTR(INVALID);
 	}
 
 	template <>

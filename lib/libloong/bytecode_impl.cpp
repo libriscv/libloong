@@ -1136,14 +1136,3 @@ INSTRUCTION(LA64_BC_FUNCTION, execute_decoded_function)
 	handler(CPU(), la_instruction{DECODER().instr});
 	NEXT_INSTR();
 }
-
-// LA64_BC_FUNCBLOCK: PC-modifying instruction (branches, jumps, PC-relative)
-INSTRUCTION(LA64_BC_FUNCBLOCK, execute_function_block)
-{
-	VIEW_INSTR();
-	REGISTERS().pc = pc;
-	const auto handler = DECODER().get_handler();
-	handler(CPU(), instr);
-	pc = REGISTERS().pc;
-	NEXT_BLOCK(4);
-}

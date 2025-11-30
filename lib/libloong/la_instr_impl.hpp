@@ -3666,6 +3666,10 @@ struct InstrImpl {
 		}
 	}
 
+	static void INVALID(cpu_t& cpu, la_instruction instr) {
+		cpu.trigger_exception(ILLEGAL_OPCODE, instr.whole);
+	}
+
 	static void UNIMPLEMENTED(cpu_t& cpu, la_instruction instr) {
 		cpu.trigger_exception(UNIMPLEMENTED_INSTRUCTION, instr.whole);
 	}

@@ -105,6 +105,7 @@ namespace loongarch
 		// Debugging
 		uint32_t install_ebreak_at(address_t addr);
 
+		static const instruction_t& get_invalid_instruction() noexcept;
 		static const instruction_t& get_unimplemented_instruction() noexcept;
 
 	private:

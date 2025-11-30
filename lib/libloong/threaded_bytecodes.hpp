@@ -128,7 +128,6 @@ namespace loongarch
 
 		// Generic handlers
 		LA64_BC_FUNCTION,          // Non-PC-modifying instruction (simple handler call)
-		LA64_BC_FUNCBLOCK,         // PC-modifying instruction (branches, jumps, PC-relative)
 		LA64_BC_SYSCALL,           // System call (needs special handling)
 		LA64_BC_SYSCALLIMM,        // System call with immediate number (most likely patched in)
 		LA64_BC_NOP,               // No operation (DBAR, etc)
@@ -251,7 +250,6 @@ namespace loongarch
 		case LA64_BC_BLTU: return "BLTU";
 		case LA64_BC_BGEU: return "BGEU";
 		case LA64_BC_FUNCTION: return "FUNCTION";
-		case LA64_BC_FUNCBLOCK: return "FUNCBLOCK";
 		case LA64_BC_SYSCALL: return "SYSCALL";
 		case LA64_BC_SYSCALLIMM: return "SYSCALL+IMM";
 		case LA64_BC_NOP: return "NOP";

@@ -36,9 +36,9 @@ namespace loongarch
 			// Count this bytecode
 			bytecode_counts[bc]++;
 
-			// For fallback bytecodes (LA64_BC_FUNCTION, LA64_BC_FUNCBLOCK),
+			// For fallback bytecodes (LA64_BC_FUNCTION),
 			// track per-handler statistics so we can show all unimplemented instructions
-			if (bc == LA64_BC_FUNCTION || bc == LA64_BC_FUNCBLOCK) {
+			if (bc == LA64_BC_FUNCTION) {
 				handler_t handler = entry.get_handler();
 				handler_counts[handler]++;
 
@@ -54,8 +54,8 @@ namespace loongarch
 		stats.reserve(bytecode_counts.size() + handler_counts.size());
 
 		for (const auto& [bytecode, count] : bytecode_counts) {
-			// Skip FUNCTION and FUNCBLOCK here - we'll add them per-handler below
-			if (bytecode == LA64_BC_FUNCTION || bytecode == LA64_BC_FUNCBLOCK) {
+			// Skip FUNCTION here - we'll add them per-handler below
+			if (bytecode == LA64_BC_FUNCTION) {
 				continue;
 			}
 
@@ -69,12 +69,9 @@ namespace loongarch
 		// Add per-handler statistics for fallback bytecodes
 		for (const auto& [handler, count] : handler_counts) {
 			BytecodeStats stat;
-			// Determine if this is FUNCTION or FUNCBLOCK based on the sample instruction
-			uint32_t sample = handler_samples[handler];
-			const auto& decoded = CPU<W>::decode(la_instruction{sample});
-			stat.bytecode = (decoded.handler == handler) ? LA64_BC_FUNCTION : LA64_BC_FUNCBLOCK;
+			stat.bytecode = LA64_BC_FUNCTION;
 			stat.count = count;
-			stat.sample_instruction = sample;
+			stat.sample_instruction = handler_samples[handler];
 			stats.push_back(stat);
 		}
 

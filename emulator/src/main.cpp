@@ -72,9 +72,8 @@ static void print_bytecode_statistics(const Machine<W>& machine)
 		const char* name = loongarch::bytecode_name(stat.bytecode);
 		const double percentage = (100.0 * stat.count) / total;
 
-		// For fallback bytecodes (FUNCTION, FUNCBLOCK), decode the sample instruction using the printer
-		if ((stat.bytecode == loongarch::LA64_BC_FUNCTION ||
-		     stat.bytecode == loongarch::LA64_BC_FUNCBLOCK) &&
+		// For fallback bytecodes (FUNCTION), decode the sample instruction using the printer
+		if (stat.bytecode == loongarch::LA64_BC_FUNCTION &&
 		    stat.sample_instruction != 0) {
 			// Decode the instruction to get its printer
 			loongarch::la_instruction instr;

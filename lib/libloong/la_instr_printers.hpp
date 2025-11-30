@@ -56,6 +56,10 @@ struct InstrPrinters {
 	using cpu_t = CPU<W>;
 	using addr_t = address_type<W>;
 
+	static int INVALID(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		return snprintf(buf, len, "ILLEGAL 0x%08x", instr.whole);
+	}
+
 	static int UNIMPLEMENTED(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		return snprintf(buf, len, "UNIMPL 0x%08x", instr.whole);
 	}

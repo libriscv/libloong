@@ -491,7 +491,8 @@ namespace loongarch
 		const size_t num_instructions = aligned_size / 4;
 		auto* cache = new DecoderData<W>[num_instructions + 1];
 		// Guarantee that invalid instruction is handler 0
-		const auto invalid_handler = DecoderData<W>::compute_handler_for(0);
+		const auto invalid_handler = DecoderData<W>::compute_handler_for(
+			CPU<W>::get_invalid_instruction().handler);
 		if (invalid_handler != 0) {
 			// This should never happen, but just in case
 			throw std::runtime_error("DecoderCache: Handler 0 is not invalid handler");

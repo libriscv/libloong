@@ -10,6 +10,13 @@ namespace loongarch
 
 	#define DECODED_INSTR(name) instr32_##name
 
+	// INVALID instruction
+	INSTRUCTION(INVALID,
+	[](CPU<LA32>& cpu, la_instruction instr) {
+		(void)cpu; (void)instr;
+		CPU<LA32>::trigger_exception(ILLEGAL_OPCODE, instr.whole);
+	});
+
 	// Unimplemented instruction
 	INSTRUCTION(UNIMPLEMENTED,
 	[](CPU<LA32>& cpu, la_instruction instr) {
@@ -82,6 +89,12 @@ namespace loongarch
 		}
 
 		return DECODED_INSTR(UNIMPLEMENTED);
+	}
+
+	template <>
+	const CPU<LA32>::instruction_t& CPU<LA32>::get_invalid_instruction() noexcept
+	{
+		return DECODED_INSTR(INVALID);
 	}
 
 	template <>

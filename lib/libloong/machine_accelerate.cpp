@@ -56,6 +56,10 @@ void Machine<W>::setup_accelerated_syscalls()
 		const address_t dest = machine.cpu.reg(REG_A0);
 		const address_t src  = machine.cpu.reg(REG_A1);
 		const size_t n       = machine.cpu.reg(REG_A2);
+		if (LA_UNLIKELY(n == 0)) {
+			machine.set_result(dest);
+			return;
+		}
 		// Perform native memcpy
 		uint8_t* dest_ptr = machine.memory.template writable_memarray<uint8_t>(dest, n);
 		const uint8_t* src_ptr = machine.memory.template memarray<uint8_t>(src, n);

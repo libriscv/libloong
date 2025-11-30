@@ -58,13 +58,7 @@ namespace loongarch
 	template <int W>
 	void DebugMachine<W>::print_registers()
 	{
-		for (int i = 0; i < 32; i += 4) {
-			printf("R%02d: 0x%016lx  R%02d: 0x%016lx  R%02d: 0x%016lx  R%02d: 0x%016lx\n",
-				i,   (unsigned long)machine.cpu.reg(i),
-				i+1, (unsigned long)machine.cpu.reg(i+1),
-				i+2, (unsigned long)machine.cpu.reg(i+2),
-				i+3, (unsigned long)machine.cpu.reg(i+3));
-		}
+		printf("%s\n", machine.cpu.registers().to_string().c_str());
 	}
 
 	template <int W>

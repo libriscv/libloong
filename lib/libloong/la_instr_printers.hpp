@@ -211,6 +211,10 @@ struct InstrPrinters {
 	}
 
 	static int ORI(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+			if (instr.ri12.rj == 0) {
+				return snprintf(buf, len, "li.w %s, 0x%x",
+					reg_name(instr.ri12.rd), instr.ri12.imm);
+			}
 			return snprintf(buf, len, "ori %s, %s, 0x%x",
 				reg_name(instr.ri12.rd), reg_name(instr.ri12.rj), instr.ri12.imm);
 		}

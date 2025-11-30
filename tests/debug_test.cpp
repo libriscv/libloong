@@ -257,8 +257,6 @@ int main(int argc, char* argv[])
 			<< " (type=" << static_cast<int>(me.type())
 			<< ", data=0x" << std::hex << me.data() << std::dec << ")" << std::endl;
 		if (machine) {
-			std::cerr << "CPU State at exception:" << std::endl;
-			std::cerr << "PC=0x" << std::hex << me.data() << std::dec << std::endl;
 			DebugMachine<LA64> debug_machine(*machine);
 			debug_machine.print_registers();
 		}

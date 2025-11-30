@@ -80,9 +80,8 @@ namespace loongarch
 	template <int W>
 	static void syscall_write(Machine<W>& machine)
 	{
-		int fd = machine.cpu.reg(REG_A0);
-		auto addr = machine.cpu.reg(REG_A1);
-		size_t len = machine.cpu.reg(REG_A2);
+		auto [fd, addr, len] =
+			machine.template sysargs<int, address_type<W>, size_t>();
 
 		if (fd == 1 || fd == 2) { // stdout or stderr
 			const char* view = machine.memory.template memarray<char>(addr, len);
@@ -102,9 +101,8 @@ namespace loongarch
 	template <int W>
 	static void syscall_writev(Machine<W>& machine)
 	{
-		int fd = machine.cpu.reg(REG_A0);
-		auto iov_addr = machine.cpu.reg(REG_A1);
-		size_t iovcnt = machine.cpu.reg(REG_A2);
+		auto [fd, iov_addr, iovcnt] =
+			machine.template sysargs<int, address_type<W>, size_t>();
 		if (iovcnt > 1024) {
 			throw MachineException(ILLEGAL_OPERATION, "iovcnt too large in writev syscall");
 		}
@@ -139,9 +137,10 @@ namespace loongarch
 	template <int W>
 	static void syscall_read(Machine<W>& machine)
 	{
-		int fd = machine.cpu.reg(REG_A0);
-		(void)machine.cpu.reg(REG_A1);  // addr
-		(void)machine.cpu.reg(REG_A2);  // len
+		auto [fd, addr, len] =
+			machine.template sysargs<int, address_type<W>, size_t>();
+		(void)addr;
+		(void)len;
 
 		// Sandboxed: stdin returns EOF, other fds return error
 		if (fd == 0) {
@@ -151,8 +150,8 @@ namespace loongarch
 		}
 		sysprint(machine, "read(fd=%d, buf=0x%llx, count=%llu) = %d\n",
 			fd,
-			static_cast<uint64_t>(machine.cpu.reg(REG_A1)),
-			static_cast<uint64_t>(machine.cpu.reg(REG_A2)),
+			static_cast<uint64_t>(addr),
+			static_cast<uint64_t>(len),
 			machine.template return_value<int>());
 	}
 
@@ -168,7 +167,7 @@ namespace loongarch
 	template <int W>
 	static void syscall_close(Machine<W>& machine)
 	{
-		int fd = machine.cpu.reg(REG_A0);
+		auto [fd] = machine.template sysargs<int>();
 		// Allow closing stdio descriptors (ignore silently)
 		if (fd >= 0 && fd <= 2) {
 			machine.set_result(0);
@@ -181,8 +180,8 @@ namespace loongarch
 	template <int W>
 	static void syscall_fstat(Machine<W>& machine)
 	{
-		int fd = machine.cpu.reg(REG_A0);
-		auto statbuf = machine.cpu.reg(REG_A1);
+		auto [fd, statbuf] =
+			machine.template sysargs<int, address_type<W>>();
 
 		// Only support stdio descriptors
 		if (fd >= 0 && fd <= 2 && statbuf != 0) {
@@ -207,7 +206,7 @@ namespace loongarch
 	template <int W>
 	static void syscall_ioctl(Machine<W>& machine)
 	{
-		int fd = machine.cpu.reg(REG_A0);
+		auto [fd] = machine.template sysargs<int>();
 		// Return ENOTTY for stdio (not a terminal in sandbox)
 		if (fd >= 0 && fd <= 2) {
 			machine.set_result(-LA_ENOTTY);
@@ -229,9 +228,8 @@ namespace loongarch
 	template <int W>
 	static void syscall_madvise(Machine<W>& machine)
 	{
-		const auto addr = machine.cpu.reg(REG_A0);
-		const size_t length = machine.cpu.reg(REG_A1);
-		const int advice = machine.cpu.reg(REG_A2);
+		auto [addr, length, advice] =
+			machine.template sysargs<address_type<W>, size_t, int>();
 		// Always succeed (advice is ignored)
 		machine.set_result(0);
 		sysprint(machine, "madvise(addr=0x%llx, len=%llu, advice=%d) = %d\n",
@@ -243,8 +241,8 @@ namespace loongarch
 	template <int W>
 	static void syscall_clock_gettime(Machine<W>& machine)
 	{
-		const int clockid = machine.cpu.reg(REG_A0);
-		const address_type<W> tp = machine.cpu.reg(REG_A1);
+		auto [clockid, tp] =
+			machine.template sysargs<int, address_type<W>>();
 		if (tp != 0) {
 			struct timespec ts;
 			clock_gettime(clockid, &ts);
@@ -260,7 +258,8 @@ namespace loongarch
 	template <int W>
 	static void syscall_gettimeofday(Machine<W>& machine)
 	{
-		const address_type<W> tv_addr = machine.cpu.reg(REG_A0);
+		auto [tv_addr] =
+			machine.template sysargs<address_type<W>>();
 		if (tv_addr != 0) {
 			struct timeval tv;
 			gettimeofday(&tv, nullptr);
@@ -464,12 +463,8 @@ namespace loongarch
 	template <int W>
 	static void syscall_mmap(Machine<W>& machine)
 	{
-		const auto addr  = machine.cpu.reg(REG_A0);
-		const auto length = machine.cpu.reg(REG_A1);
-		const int  prot  = machine.cpu.reg(REG_A2);
-		const int  flags = machine.cpu.reg(REG_A3);
-		const int  fd    = machine.cpu.reg(REG_A4);
-		const off_t offset = machine.cpu.reg(REG_A5);
+		auto [addr, length, prot, flags, fd, offset] =
+			machine.template sysargs<address_type<W>, size_t, int, int, int, off_t>();
 
 		// Simple implementation: allocate memory from our heap
 		if (addr == 0) {
@@ -533,9 +528,7 @@ namespace loongarch
 	template <int W>
 	static void syscall_tgkill(Machine<W>& machine)
 	{
-		int tgid = machine.cpu.reg(REG_A0);
-		int tid = machine.cpu.reg(REG_A1);
-		int sig = machine.cpu.reg(REG_A2);
+		auto [tgid, tid, sig] = machine.template sysargs<int, int, int>();
 
 		sysprint(machine, "tgkill(tgid=%d, tid=%d, sig=%d) - aborting\n", tgid, tid, sig);
 
@@ -562,8 +555,8 @@ namespace loongarch
 	template <int W>
 	static void syscall_ppoll(Machine<W>& machine)
 	{
-		const auto fds_addr = machine.cpu.reg(REG_A0);
-		const size_t nfds = machine.cpu.reg(REG_A1);
+		auto [fds_addr, nfds] =
+			machine.template sysargs<address_type<W>, size_t>();
 		// const auto timeout_addr = machine.cpu.reg(REG_A2);
 		if (nfds > 1024) {
 			throw MachineException(ILLEGAL_OPERATION, "nfds too large in ppoll syscall");

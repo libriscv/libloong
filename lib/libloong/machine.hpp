@@ -53,6 +53,20 @@ namespace loongarch
 		template <typename T = address_t>
 		T return_value() const;
 
+		// System call argument helpers
+		template <typename T>
+		inline T sysarg(int idx) const;
+
+		/// @brief Retrieve a tuple of arguments based on the given types.
+		/// Example: auto [str, i, f] = machine.sysargs<std::string, int, float>();
+		/// Example: auto [addr, len] = machine.sysargs<address_type<W>, unsigned>();
+		/// Note: String views consume 2 registers each (address and length).
+		/// Example: auto [view] = machine.sysargs<std::string_view>();
+		/// @tparam ...Args A list of argument types.
+		/// @return The resolved arguments in a tuple.
+		template <typename... Args>
+		inline auto sysargs() const;
+
 		// Function calls (implemented in machine_vmcall.hpp)
 		template <uint64_t MAX_INSTRUCTIONS = 10'000'000ull, typename... Args>
 		address_t vmcall(address_t func_addr, Args&&... args);
@@ -119,6 +133,10 @@ namespace loongarch
 		static inline std::array<syscall_t*, LA_SYSCALLS_MAX> m_syscall_handlers = {};
 
 		void push_argument(address_t& sp, address_t value);
+
+		// Helper for sysargs
+		template<typename... Args, std::size_t... Indices>
+		inline auto resolve_args(std::index_sequence<Indices...>) const;
 	};
 
 } // namespace loongarch

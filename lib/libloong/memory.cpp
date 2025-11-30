@@ -221,7 +221,7 @@ void Memory<W>::process_rela_section(size_t offset, size_t size, const MachineOp
 }
 
 template <int W>
-size_t Memory<W>::strlen(address_t addr, size_t maxlen)
+size_t Memory<W>::strlen(address_t addr, size_t maxlen) const
 {
 	const address_t end_addr = std::min(addr + maxlen, m_arena_size);
 	if (end_addr <= addr) return 0;
@@ -231,11 +231,18 @@ size_t Memory<W>::strlen(address_t addr, size_t maxlen)
 }
 
 template <int W>
-std::string Memory<W>::memstring(address_t addr, size_t maxlen)
+std::string Memory<W>::memstring(address_t addr, size_t maxlen) const
 {
 	const size_t len = this->strlen(addr, maxlen);
 	const char* ptr = memarray<char>(addr, len);
 	return std::string(ptr, len);
+}
+
+template <int W>
+std::string_view Memory<W>::memview(address_t addr, size_t len) const
+{
+	const char* ptr = memarray<char>(addr, len);
+	return std::string_view(ptr, len);
 }
 
 template <int W>

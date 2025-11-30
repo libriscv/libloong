@@ -319,3 +319,156 @@ TEST_CASE("Program counter", "[machine][pc]") {
 		REQUIRE(result.final_pc != 0);
 	}
 }
+
+TEST_CASE("System call argument helpers", "[machine][syscall][sysargs]") {
+	CodeBuilder builder;
+
+	SECTION("sysarg - integer arguments") {
+		auto binary = builder.build(R"(
+			int main() { return 0; }
+		)", "sysarg_int");
+
+		TestMachine machine(binary);
+		machine.setup_linux();
+
+		// Test data for verification
+		static int test_arg0 = 0, test_arg2 = 0;
+		static long test_arg1 = 0;
+
+		machine.machine().install_syscall_handler(500, [](Machine<LA64>& m) {
+			test_arg0 = m.sysarg<int>(0);
+			test_arg1 = m.sysarg<long>(1);
+			test_arg2 = m.sysarg<unsigned>(2);
+			m.set_result<int>(0);
+		});
+
+		// Manually set up registers and call the syscall
+		machine.machine().cpu.reg(REG_A0) = 42;
+		machine.machine().cpu.reg(REG_A1) = static_cast<uint64_t>(-123);
+		machine.machine().cpu.reg(REG_A2) = 999;
+
+		machine.machine().system_call(500);
+
+		REQUIRE(test_arg0 == 42);
+		REQUIRE(test_arg1 == -123);
+		REQUIRE(test_arg2 == 999);
+	}
+
+	SECTION("sysargs - multiple arguments") {
+		auto binary = builder.build(R"(
+			int main() { return 0; }
+		)", "sysargs_multi");
+
+		TestMachine machine(binary);
+		machine.setup_linux();
+
+		static bool test_passed = false;
+
+		machine.machine().install_syscall_handler(501, [](Machine<LA64>& m) {
+			auto [a, b, c] = m.sysargs<int, long, unsigned>();
+			test_passed = (a == 10 && b == -20 && c == 30);
+			m.set_result<int>(0);
+		});
+
+		// Set up registers
+		machine.machine().cpu.reg(REG_A0) = 10;
+		machine.machine().cpu.reg(REG_A1) = static_cast<uint64_t>(-20);
+		machine.machine().cpu.reg(REG_A2) = 30;
+
+		machine.machine().system_call(501);
+		REQUIRE(test_passed);
+	}
+
+	SECTION("sysargs - string argument") {
+		auto binary = builder.build(R"(
+			char buffer[32];
+			int main() { return 0; }
+		)", "sysargs_string");
+
+		TestMachine machine(binary);
+		machine.setup_linux();
+
+		// Get address of buffer and write a test string to it
+		const char* test_str = "Hello, World!";
+		uint64_t str_addr = machine.address_of("buffer");
+		REQUIRE(str_addr != 0);
+		machine.machine().memory.copy_to_guest(str_addr, test_str, strlen(test_str) + 1);
+
+		static bool test_passed = false;
+
+		machine.machine().install_syscall_handler(502, [](Machine<LA64>& m) {
+			auto [str] = m.sysargs<std::string>();
+			test_passed = (str == "Hello, World!");
+			m.set_result<int>(0);
+		});
+
+		// Set up registers
+		machine.machine().cpu.reg(REG_A0) = str_addr;
+
+		machine.machine().system_call(502);
+		REQUIRE(test_passed);
+	}
+
+	SECTION("sysargs - string_view argument") {
+		auto binary = builder.build(R"(
+			char buffer[32];
+			int main() { return 0; }
+		)", "sysargs_strview");
+
+		TestMachine machine(binary);
+		machine.setup_linux();
+
+		// Get address of buffer and write a test string to it
+		const char* test_str = "Test String";
+		uint64_t str_addr = machine.address_of("buffer");
+		REQUIRE(str_addr != 0);
+		machine.machine().memory.copy_to_guest(str_addr, test_str, strlen(test_str));
+
+		static bool test_passed = false;
+
+		machine.machine().install_syscall_handler(503, [](Machine<LA64>& m) {
+			auto [view] = m.sysargs<std::string_view>();
+			test_passed = (view == "Test String" && view.size() == 11);
+			m.set_result<int>(0);
+		});
+
+		// Set up registers (address and length)
+		machine.machine().cpu.reg(REG_A0) = str_addr;
+		machine.machine().cpu.reg(REG_A1) = 11;  // length
+
+		machine.machine().system_call(503);
+		REQUIRE(test_passed);
+	}
+
+	SECTION("sysargs - mixed types") {
+		auto binary = builder.build(R"(
+			char buffer[32];
+			int main() { return 0; }
+		)", "sysargs_mixed");
+
+		TestMachine machine(binary);
+		machine.setup_linux();
+
+		// Get address of buffer and write a test string to it
+		const char* test_str = "Mixed";
+		uint64_t str_addr = machine.address_of("buffer");
+		REQUIRE(str_addr != 0);
+		machine.machine().memory.copy_to_guest(str_addr, test_str, strlen(test_str) + 1);
+
+		static bool test_passed = false;
+
+		machine.machine().install_syscall_handler(504, [](Machine<LA64>& m) {
+			auto [num, str, flag] = m.sysargs<int, std::string, bool>();
+			test_passed = (num == 42 && str == "Mixed" && flag == true);
+			m.set_result<int>(0);
+		});
+
+		// Set up registers
+		machine.machine().cpu.reg(REG_A0) = 42;
+		machine.machine().cpu.reg(REG_A1) = str_addr;
+		machine.machine().cpu.reg(REG_A2) = 1;
+
+		machine.machine().system_call(504);
+		REQUIRE(test_passed);
+	}
+}

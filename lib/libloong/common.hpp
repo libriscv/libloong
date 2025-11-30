@@ -102,4 +102,10 @@ namespace loongarch
 
 	template <typename T>
 	using remove_cvref_t = typename std::remove_cv<typename std::remove_reference<T>::type>::type;
+
+	template <class...>
+	constexpr std::false_type always_false {};
+
+	template <typename T>
+	struct is_stdstring : public std::is_same<T, std::basic_string<char>> {};
 } // namespace loongarch

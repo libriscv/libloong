@@ -39,8 +39,9 @@ namespace loongarch
 		T* writable_memarray(address_t addr, size_t count = 1); // Read-write view
 		void memset(address_t addr, uint8_t value, size_t len);
 		int memcmp(address_t addr1, address_t addr2, size_t len) const;
-		size_t strlen(address_t addr, size_t maxlen = 4096);
-		std::string memstring(address_t addr, size_t maxlen = 4096);
+		size_t strlen(address_t addr, size_t maxlen = 4096) const;
+		std::string memstring(address_t addr, size_t maxlen = 4096) const;
+		std::string_view memview(address_t addr, size_t len) const;
 
 		// Memory mapping
 		address_t mmap_allocate(size_t size);

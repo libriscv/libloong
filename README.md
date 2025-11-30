@@ -13,9 +13,33 @@ It's currently a work in progress, but is able to boot into main() for full Linu
 
 ## Building
 
+### Standard Build
+
 ```bash
 mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
+make -j$(nproc)
+```
+
+### Build Options
+
+CMake configuration options:
+
+**Architecture Support:**
+- `LA_32=ON/OFF` - Enable LA32 (32-bit) support (default: ON)
+- `LA_64=ON/OFF` - Enable LA64 (64-bit) support (default: ON)
+
+**Features:**
+- `LA_DEBUG=ON/OFF` - Enable debug output (default: OFF)
+- `LA_BINARY_TRANSLATION=ON/OFF` - Enable binary translation (experimental, default: OFF)
+- `LA_THREADED=ON/OFF` - Enable threaded bytecode dispatch (default: ON)
+- `LA_MASKED_MEMORY_BITS=N` - Set masked memory arena size to 2^N bytes (0 = disabled, default: 0)
+
+**Example with options:**
+```bash
+cmake .. -DCMAKE_BUILD_TYPE=Release \
+         -DLA_MASKED_MEMORY_BITS=32 \
+         -DLA_BINARY_TRANSLATION=ON
 make -j$(nproc)
 ```
 

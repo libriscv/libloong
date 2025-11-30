@@ -3,8 +3,30 @@ project(loongarch_emulator CXX)
 set(CMAKE_POLICY_DEFAULT_CMP0069 NEW)
 set(CMAKE_CXX_STANDARD 20)
 
+# Emulator build options
 option(NATIVE "Enable native optimizations" OFF)
 option(LTO "Enable link-time optimization" OFF)
+
+# Forward library options if not already set
+# These can be set via command line: -DLA_MASKED_MEMORY_BITS=32
+if (NOT DEFINED LA_32)
+	option(LA_32 "32-bit loong support" ON)
+endif()
+if (NOT DEFINED LA_64)
+	option(LA_64 "64-bit loong support" ON)
+endif()
+if (NOT DEFINED LA_DEBUG)
+	option(LA_DEBUG "Enable debug output" OFF)
+endif()
+if (NOT DEFINED LA_BINARY_TRANSLATION)
+	option(LA_BINARY_TRANSLATION "Enable binary translation" OFF)
+endif()
+if (NOT DEFINED LA_THREADED)
+	option(LA_THREADED "Enable threaded support" ON)
+endif()
+if (NOT DEFINED LA_MASKED_MEMORY_BITS)
+	set(LA_MASKED_MEMORY_BITS "0" CACHE STRING "Power-of-two memory arena size for masking (0 = disabled)")
+endif()
 
 if (LTO)
 	include(CheckIPOSupported)

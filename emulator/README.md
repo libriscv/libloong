@@ -8,9 +8,64 @@ A high-performance command-line emulator for executing LoongArch ELF binaries.
 
 ## Building
 
-### Standard Build
+### Quick Build (Using build.sh)
 
-From the emulator directory:
+The easiest way to build is using the provided build script:
+
+```bash
+cd emulator
+./build.sh
+```
+
+For performance-critical workloads:
+
+```bash
+./build.sh --native
+```
+
+For help and all available options:
+
+```bash
+./build.sh --help
+```
+
+### Build Script Options
+
+**Performance Options:**
+- `-n, --native` - Enable native CPU optimizations (`-march=native`)
+- `--no-lto` - Disable link-time optimization (enabled by default)
+- `-d, --debug` - Build in Debug mode (default: Release)
+
+**Library Feature Options:**
+- `--masked-memory-bits N` - Set masked memory arena size to 2^N bytes
+  - Example: `--masked-memory-bits 32` for 4GB arena
+  - Default: 0 (disabled, full address range)
+- `--no-la32` - Disable LA32 (32-bit) support
+- `--no-la64` - Disable LA64 (64-bit) support
+- `--binary-translation` - Enable binary translation (experimental)
+- `--no-threaded` - Disable threaded dispatch optimization
+
+**Examples:**
+```bash
+# Standard optimized build
+./build.sh
+
+# Maximum performance with native optimizations
+./build.sh --native
+
+# With 4GB masked memory arena
+./build.sh --masked-memory-bits 32
+
+# Native optimizations + 1GB arena
+./build.sh --native --masked-memory-bits 30
+
+# Debug build
+./build.sh --debug
+```
+
+### Manual CMake Build
+
+If you prefer direct CMake:
 
 ```bash
 cd emulator
@@ -20,18 +75,21 @@ cmake .. -DCMAKE_BUILD_TYPE=Release
 make
 ```
 
-### Optimized Build
+**CMake Options:**
+- `NATIVE=ON` - Enable native CPU optimizations (`-march=native`)
+- `LTO=ON` - Enable link-time optimization (default: ON)
+- `LA_MASKED_MEMORY_BITS=N` - Set masked memory arena to 2^N bytes (0 = disabled)
+- `LA_32=ON/OFF` - Enable/disable LA32 support (default: ON)
+- `LA_64=ON/OFF` - Enable/disable LA64 support (default: ON)
+- `LA_DEBUG=ON/OFF` - Enable debug output (default: OFF)
+- `LA_BINARY_TRANSLATION=ON/OFF` - Enable binary translation (default: OFF)
+- `LA_THREADED=ON/OFF` - Enable threaded dispatch (default: ON)
 
-Enable additional optimizations:
-
+**Example:**
 ```bash
-cmake .. -DCMAKE_BUILD_TYPE=Release -DNATIVE=ON -DLTO=ON
+cmake .. -DCMAKE_BUILD_TYPE=Release -DNATIVE=ON -DLTO=ON -DLA_MASKED_MEMORY_BITS=32
 make
 ```
-
-**Build Options:**
-- `NATIVE=ON` - Enable native CPU optimizations (`-march=native`)
-- `LTO=ON` - Enable link-time optimization for better performance
 
 The emulator binary will be located at `.build/laemu`.
 
@@ -149,9 +207,10 @@ VERBOSE=1 TIMING=1 ./laemu program.elf
 
 ### Performance
 - Fast interpreter with decoder cache
-- Efficient memory management
-- Native optimizations available via `-DNATIVE=ON`
-- Link-time optimization support
+- Efficient memory management with flat memory arena
+- Native optimizations available via `--native`
+- Link-time optimization enabled by default
+- Threaded bytecode dispatch for maximum speed
 
 ### Compatibility
 - Full Linux syscall emulation
@@ -164,6 +223,14 @@ VERBOSE=1 TIMING=1 ./laemu program.elf
 - Memory limits
 - Silent mode for scripting
 - Detailed timing information
+- Bytecode usage statistics with `--stats`
+
+### Memory Management
+- **Flat Memory Arena**: Uses a single contiguous memory region instead of virtual paging
+- **Masked Memory Bits**: Optional power-of-two memory size restriction
+  - When enabled (e.g., `--masked-memory-bits 32`), memory addresses are masked to fit within 2^N bytes
+  - Example: `--masked-memory-bits 32` creates a 4GB arena where addresses wrap around
+  - Default: disabled (bounds-checked arena)
 
 ### Program Arguments
 Arguments passed after the program path are forwarded to the guest:
@@ -327,8 +394,8 @@ Machine<LA64/LA32>
 ┌─────────────┬──────────────┐
 │ CPU         │ Memory       │
 │ - Decoder   │ - Arenas     │
-│ - Executor  │ - Segments   │
-│ - Registers │ - Page table │
+│ - Executor  │ - Execute    │
+│ - Registers │   segments   │
 └─────────────┴──────────────┘
     ↓
 Linux Syscall Emulation

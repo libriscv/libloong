@@ -527,11 +527,11 @@ struct InstrImpl {
 
 	static void LU32I_D(cpu_t& cpu, la_instruction instr) {
 		// LU32I.D: rd[51:32] = si20, rd[63:52] = SignExtend(si20[19]), rd[31:0] unchanged
-		uint64_t lower = cpu.reg(instr.ri20.rd) & 0xFFFFFFFF;
+		const uint32_t lower = cpu.reg(instr.ri20.rd);
 
 		// Sign-extend the 20-bit immediate to 32 bits, then place at bits [51:32]
 		int32_t si20 = InstructionHelpers<W>::sign_extend_20(instr.ri20.imm);
-		uint64_t imm_ext = ((uint64_t)(uint32_t)si20) << 32;
+		int64_t imm_ext = (int64_t)si20 << 32;
 
 		cpu.reg(instr.ri20.rd) = imm_ext | lower;
 	}

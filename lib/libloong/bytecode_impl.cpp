@@ -412,7 +412,7 @@ INSTRUCTION(LA64_BC_BSTRINS_D, la64_bstrins_d)
 INSTRUCTION(LA64_BC_LU32I_D, la64_lu32i_d)
 {
 	auto fi = *(FasterLA64_RI20 *)&DECODER().instr;
-	uint64_t lower = REG(fi.rd) & 0xFFFFFFFF;
+	const uint32_t lower = REG(fi.rd);
 
 	// Sign-extend the 20-bit immediate to 32 bits, then place at bits [51:32]
 	int32_t si20 = fi.get_imm();

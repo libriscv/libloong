@@ -917,7 +917,7 @@ INSTRUCTION(LA64_BC_LU52I_D, la64_lu52i_d)
 {
 	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
 	// LU52I.D: GR[rd] = {imm12, GR[rj][51:0]}
-	uint64_t imm = static_cast<uint64_t>(fi.imm & 0xFFF) << 52;
+	uint64_t imm = static_cast<uint64_t>(uint16_t(fi.imm)) << 52;
 	uint64_t val = REG(fi.rj) & 0x000FFFFFFFFFFFFFull;
 	REG(fi.rd) = imm | val;
 	NEXT_INSTR();

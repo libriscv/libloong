@@ -600,8 +600,9 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 	}
 
 	static int LU52I_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		return snprintf(buf, len, "lu52i.d %s, %s, 0x%x",
-			reg_name(instr.ri12.rd), reg_name(instr.ri12.rj), instr.ri12.imm);
+		const int16_t signed_imm = InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		return snprintf(buf, len, "lu52i.d %s, %s, %d",
+			reg_name(instr.ri12.rd), reg_name(instr.ri12.rj), signed_imm);
 	}
 
 	// === Bit Manipulation Instructions ===

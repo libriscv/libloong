@@ -605,7 +605,7 @@ uint32_t DecodedExecuteSegment<W>::optimize_bytecode(uint8_t& bytecode, address_
 			auto fi = *(FasterLA64_RI12 *)&instruction_bits;
 			fi.rd = original.ri12.rd;
 			fi.rj = original.ri12.rj;
-			fi.set_imm(original.ri12.imm);
+			fi.imm = original.ri12.imm;
 			NOP_IF_RD_ZERO(fi.rd, bytecode);
 			return fi.whole;
 		} break;

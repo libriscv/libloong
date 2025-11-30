@@ -562,7 +562,7 @@ struct InstrImpl {
 
 	static void LU52I_D(cpu_t& cpu, la_instruction instr) {
 		uint64_t base = cpu.reg(instr.ri12.rj) & 0x000FFFFFFFFFFFFF;
-		uint64_t upper = ((uint64_t)instr.ri12.imm) << 52;
+		uint64_t upper = static_cast<uint64_t>(instr.ri12.imm) << 52;
 		cpu.reg(instr.ri12.rd) = base | upper;
 	}
 

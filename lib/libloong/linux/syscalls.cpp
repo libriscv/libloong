@@ -28,6 +28,7 @@ namespace loongarch
 		LA_SYS_write = 64,
 		LA_SYS_openat = 56,
 		LA_SYS_close = 57,
+		LA_SYS_ppoll = 73,
 		LA_SYS_fstat = 80,
 		LA_SYS_gettimeofday = 169,
 		LA_SYS_brk = 214,
@@ -545,6 +546,38 @@ namespace loongarch
 		machine.set_result(0);
 	}
 
+	// PPOLL syscall (mark stdio as ready)
+	template <int W>
+	static void syscall_ppoll(Machine<W>& machine)
+	{
+		const auto fds_addr = machine.cpu.reg(REG_A0);
+		const size_t nfds = machine.cpu.reg(REG_A1);
+		// const auto timeout_addr = machine.cpu.reg(REG_A2);
+		if (nfds > 1024) {
+			throw MachineException(ILLEGAL_OPERATION, "nfds too large in ppoll syscall");
+		}
+		struct vpollfd {
+			int fd;
+			short events;
+			short revents;
+		};
+		vpollfd* fds = machine.memory.template writable_memarray<vpollfd>(fds_addr, nfds);
+		for (size_t i = 0; i < nfds; i++) {
+			const int fd = fds[i].fd;
+			// Only handle stdio fds
+			if (fd >= 0 && fd <= 2) {
+				// Set revents to match events (ready)
+				auto events = fds[i].events;
+				fds[i].revents = events;
+			} else {
+				// Clear revents for other fds
+				fds[i].revents = 0;
+			}
+		}
+		// Mark stdio as ready (stub)
+		machine.set_result(0);
+	}
+
 	template <int W>
 	void Machine<W>::setup_linux_syscalls()
 	{
@@ -562,6 +595,7 @@ namespace loongarch
 		install_syscall_handler(LA_SYS_fcntl, syscall_fcntl<W>);
 		install_syscall_handler(LA_SYS_readlinkat, syscall_readlinkat<W>);
 		install_syscall_handler(LA_SYS_fstatat, syscall_fstatat<W>);
+		install_syscall_handler(LA_SYS_ppoll, syscall_ppoll<W>);
 
 		// Memory management
 		install_syscall_handler(LA_SYS_brk, syscall_brk<W>);

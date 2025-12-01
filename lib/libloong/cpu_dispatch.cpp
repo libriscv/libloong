@@ -3,14 +3,13 @@
 
 namespace loongarch
 {
-	template <int W>
-	bool CPU<W>::simulate(address_t local_pc, uint64_t counter, uint64_t max_counter)
+	bool CPU::simulate(address_t local_pc, uint64_t counter, uint64_t max_counter)
 	{
-		DecodedExecuteSegment<W>* exec = m_exec;
+		DecodedExecuteSegment* exec = m_exec;
 		// Initialize cached segment info
 		address_t exec_begin = exec->exec_begin();
 		address_t exec_end = exec->exec_end();
-		DecoderData<W>* cache = exec->decoder_cache() - (exec_begin >> DecoderCache<W>::SHIFT);
+		DecoderData* cache = exec->decoder_cache() - (exec_begin >> DecoderCache::SHIFT);
 
 		machine().set_max_instructions(max_counter);
 		while (counter < max_counter) {
@@ -25,11 +24,11 @@ namespace loongarch
 				// Cache new segment info
 				exec_begin = exec->exec_begin();
 				exec_end = exec->exec_end();
-				cache = exec->decoder_cache() - (exec_begin >> DecoderCache<W>::SHIFT);
+				cache = exec->decoder_cache() - (exec_begin >> DecoderCache::SHIFT);
 			}
 
 			// Calculate PC-relative cache index
-			auto* decoder = &cache[local_pc >> DecoderCache<W>::SHIFT];
+			auto* decoder = &cache[local_pc >> DecoderCache::SHIFT];
 
 			// Execute block of non-diverging instructions + the diverging one
 			// block_bytes is the count of non-diverging bytes, +1 for diverging
@@ -70,14 +69,13 @@ namespace loongarch
 		return max_counter == 0;
 	}
 
-	template <int W>
-	void CPU<W>::simulate_inaccurate(address_t local_pc)
+	void CPU::simulate_inaccurate(address_t local_pc)
 	{
-		DecodedExecuteSegment<W>* exec = m_exec;
+		DecodedExecuteSegment* exec = m_exec;
 		// Initialize cached segment info
 		address_t exec_begin = exec->exec_begin();
 		address_t exec_end = exec->exec_end();
-		DecoderData<W>* cache = exec->decoder_cache() - (exec_begin >> DecoderCache<W>::SHIFT);
+		DecoderData* cache = exec->decoder_cache() - (exec_begin >> DecoderCache::SHIFT);
 
 		machine().set_max_instructions(UINT64_MAX);
 		while (machine().max_instructions()) {
@@ -92,11 +90,11 @@ namespace loongarch
 				// Cache new segment info
 				exec_begin = exec->exec_begin();
 				exec_end = exec->exec_end();
-				cache = exec->decoder_cache() - (exec_begin >> DecoderCache<W>::SHIFT);
+				cache = exec->decoder_cache() - (exec_begin >> DecoderCache::SHIFT);
 			}
 
 			// Calculate PC-relative cache index
-			auto* decoder = &cache[local_pc >> DecoderCache<W>::SHIFT];
+			auto* decoder = &cache[local_pc >> DecoderCache::SHIFT];
 
 			// Execute block of non-diverging instructions + the diverging one
 			// block_bytes is the count of non-diverging bytes, +1 for diverging
@@ -130,13 +128,8 @@ namespace loongarch
 		m_regs.pc = local_pc;
 	}
 
-#ifdef LA_32
-	template bool CPU<LA32>::simulate(address_type<LA32>, uint64_t, uint64_t);
-	template void CPU<LA32>::simulate_inaccurate(address_type<LA32>);
-#endif
-#ifdef LA_64
-	template bool CPU<LA64>::simulate(address_type<LA64>, uint64_t, uint64_t);
-	template void CPU<LA64>::simulate_inaccurate(address_type<LA64>);
+// Removed: 	template bool CPU::simulate(address_t, uint64_t, uint64_t);
+// Removed: 	template void CPU::simulate_inaccurate(address_t);
 #endif
 
 } // loongarch

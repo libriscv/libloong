@@ -12,17 +12,14 @@ namespace loongarch
 	struct is_stdlayout : std::integral_constant<bool, std::is_standard_layout<T>::value> {};
 
 	// Forward declarations for vmcall support
-	template <int W>
 	struct GuestStdString {
-		using address_t = address_type<W>;
 		address_t data;
 		size_t length;
 		char sso[16]; // Small string optimization buffer
 	};
 
 	// Stack push implementation - pushes raw data onto the guest stack
-	template <int W>
-	inline address_type<W> Machine<W>::stack_push(address_t& sp, const void* data, size_t size)
+	inline address_t Machine::stack_push(address_t& sp, const void* data, size_t size)
 	{
 		const size_t aligned_size = (size + 15) & ~size_t(15);
 		sp -= aligned_size;
@@ -31,19 +28,16 @@ namespace loongarch
 	}
 
 	// Stack push implementation - pushes typed data onto the guest stack
-	template <int W>
 	template <typename T>
-	inline address_type<W> Machine<W>::stack_push(address_t& sp, const T& value)
+	inline address_t Machine::stack_push(address_t& sp, const T& value)
 	{
 		return stack_push(sp, &value, sizeof(T));
 	}
 
 	// Setup call arguments according to LoongArch calling convention
-	template <int W, typename... Args> constexpr
-	inline void setup_call(Machine<W>& machine, address_type<W> exit_addr, Args&&... args)
-	{
-		using address_t = address_type<W>;
-		auto& cpu = machine.cpu;
+	template <typename... Args> constexpr
+	inline void setup_call(Machine& machine, address_t exit_addr, Args&&... args)
+	{		auto& cpu = machine.cpu;
 
 		// Set return address to exit function
 		cpu.reg(REG_RA) = exit_addr;
@@ -70,15 +64,7 @@ namespace loongarch
 			}
 			else if constexpr (std::is_integral_v<T>) {
 				// Integer types go to integer registers (A0-A7)
-				if constexpr (W == 4 && sizeof(T) == 8) {
-					// On LA32, 64-bit integers are split across two registers
-					// Lower 32 bits in first register, upper 32 bits in second
-					const uint64_t val = static_cast<uint64_t>(args);
-					cpu.reg(iarg++) = static_cast<uint32_t>(val);
-					cpu.reg(iarg++) = static_cast<uint32_t>(val >> 32);
-				} else {
-					cpu.reg(iarg++) = static_cast<address_t>(args);
-				}
+				cpu.reg(iarg++) = static_cast<address_t>(args);
 			}
 			else if constexpr (std::is_floating_point_v<T>) {
 				// Floating-point types go to FP registers (FA0-FA7)
@@ -91,14 +77,7 @@ namespace loongarch
 			else if constexpr (std::is_enum_v<T>) {
 				// Enums are treated as their underlying integer type
 				using UnderlyingType = std::underlying_type_t<T>;
-				if constexpr (W == 4 && sizeof(UnderlyingType) == 8) {
-					// On LA32, 64-bit enums are split across two registers
-					const uint64_t val = static_cast<uint64_t>(static_cast<UnderlyingType>(args));
-					cpu.reg(iarg++) = static_cast<uint32_t>(val);
-					cpu.reg(iarg++) = static_cast<uint32_t>(val >> 32);
-				} else {
-					cpu.reg(iarg++) = static_cast<address_t>(static_cast<UnderlyingType>(args));
-				}
+				cpu.reg(iarg++) = static_cast<address_t>(static_cast<UnderlyingType>(args));
 			}
 			else if constexpr (std::is_standard_layout_v<T> && std::is_trivially_copyable_v<T>) {
 				// Standard layout structs: Push onto stack, pass pointer as integer
@@ -116,9 +95,8 @@ namespace loongarch
 	}
 
 	// vmcall: Call a guest function at a specific address
-	template <int W>
 	template <uint64_t MAX_INSTRUCTIONS, typename... Args>
-	inline address_type<W> Machine<W>::vmcall(address_t func_addr, Args&&... args)
+	inline address_t Machine::vmcall(address_t func_addr, Args&&... args)
 	{
 		// Use the exit address set via memory.set_exit_address()
 		const address_t exit_addr = memory.exit_address();
@@ -148,9 +126,8 @@ namespace loongarch
 	}
 
 	// vmcall: Call a guest function by symbol name
-	template <int W>
 	template <uint64_t MAX_INSTRUCTIONS, typename... Args>
-	inline address_type<W> Machine<W>::vmcall(const std::string& func_name, Args&&... args)
+	inline address_t Machine::vmcall(const std::string& func_name, Args&&... args)
 	{
 		// Resolve the function address
 		const address_t func_addr = this->address_of(func_name);
@@ -165,15 +142,14 @@ namespace loongarch
 	}
 
 	// preempt: Call a guest function with instruction limit and optional register save
-	template <int W>
 	template <bool Throw, bool StoreRegs, typename... Args>
-	inline address_type<W> Machine<W>::preempt(uint64_t max_instr, address_t func_addr, Args&&... args)
+	inline address_t Machine::preempt(uint64_t max_instr, address_t func_addr, Args&&... args)
 	{
 		// Use the exit address set via memory.set_exit_address()
 		const address_t exit_addr = memory.exit_address();
 
 		// Optionally save CPU registers
-		Registers<W> saved_regs;
+		Registers saved_regs;
 		if constexpr (StoreRegs) {
 			saved_regs = cpu.registers();
 		}
@@ -207,9 +183,8 @@ namespace loongarch
 	}
 
 	// preempt: Call by symbol name with instruction limit
-	template <int W>
 	template <bool Throw, bool StoreRegs, typename... Args>
-	inline address_type<W> Machine<W>::preempt(uint64_t max_instr, const std::string& func_name, Args&&... args)
+	inline address_t Machine::preempt(uint64_t max_instr, const std::string& func_name, Args&&... args)
 	{
 		// Resolve the function address
 		const address_t func_addr = this->address_of(func_name);

@@ -3,14 +3,12 @@
 #include "la_instr.hpp"
 #include "threaded_bytecodes.hpp"
 #include <cstring>
-#include "threaded_rewriter.cpp" // workaround for buggy template instantiation
 
 namespace loongarch
 {
 	// Check if an instruction is diverging (changes control flow)
 	// Note: PC-reading instructions (PCADDI, PCALAU12I, PCADDU12I) are NOT diverging
 	// because they only read PC, they don't modify it
-	template <int W>
 	static bool is_diverging_instruction(uint32_t instr)
 	{
 		const uint32_t op6 = (instr >> 26) & 0x3F;
@@ -39,7 +37,6 @@ namespace loongarch
 	}
 
 	// Determine the bytecode for a given instruction
-	template <int W>
 	static uint8_t determine_bytecode(uint32_t instr)
 	{
 		// Check for system call first
@@ -62,7 +59,7 @@ namespace loongarch
 		if (op10 == 0x0A7) {
 			return LA64_BC_ST_D;
 		}
-		// ADDI.W: op10 = 0x00A (0x02800000)
+		// ADDI.8: op10 = 0x00A (0x02800000)
 		if (op10 == 0x00A) {
 			return LA64_BC_ADDI_W;
 		}
@@ -108,7 +105,7 @@ namespace loongarch
 			}
 			return LA64_BC_ORI;
 		}
-		// SLLI.W: op17 = 0x00081 (0x00408000)
+		// SLLI.8: op17 = 0x00081 (0x00408000)
 		if (op17 == 0x00081) {
 			return LA64_BC_SLLI_W;
 		}
@@ -128,7 +125,7 @@ namespace loongarch
 		if (op10 == 0x0A4) {
 			return LA64_BC_ST_B;
 		}
-		// ST.W: op10 = 0x0A6 (0x29800000)
+		// ST.8: op10 = 0x0A6 (0x29800000)
 		if (op10 == 0x0A6) {
 			return LA64_BC_ST_W;
 		}
@@ -136,7 +133,7 @@ namespace loongarch
 		if ((instr >> 24) == 0x26) {
 			return LA64_BC_LDPTR_D;
 		}
-		// LDPTR.W: 0x24000000 (check bits[31:24] = 0x24)
+		// LDPTR.8: 0x24000000 (check bits[31:24] = 0x24)
 		if ((instr >> 24) == 0x24) {
 			return LA64_BC_LDPTR_W;
 		}
@@ -144,11 +141,11 @@ namespace loongarch
 		if ((instr >> 24) == 0x27) {
 			return LA64_BC_STPTR_D;
 		}
-		// STPTR.W: 0x25000000 (check bits[31:24] = 0x25)
+		// STPTR.8: 0x25000000 (check bits[31:24] = 0x25)
 		if ((instr >> 24) == 0x25) {
 			return LA64_BC_STPTR_W;
 		}
-		// LU12I.W: op7 = 0x0A (check bits[31:25] = 0x14 >> 1)
+		// LU12I.8: op7 = 0x0A (check bits[31:25] = 0x14 >> 1)
 		if (op7 == 0x0A) {
 			return LA64_BC_LU12I_W;
 		}
@@ -176,7 +173,7 @@ namespace loongarch
 		if (op17 == 0x0003B) {
 			return LA64_BC_MUL_D;
 		}
-		// SUB.W: op17 = 0x00022 (0x00110000 >> 15)
+		// SUB.8: op17 = 0x00022 (0x00110000 >> 15)
 		if (op17 == 0x00022) {
 			return LA64_BC_SUB_W;
 		}
@@ -188,7 +185,7 @@ namespace loongarch
 		if (op17 == 0x7038) {
 			return LA64_BC_STX_D;
 		}
-		// BSTRPICK.W: op11 = 0x003 (bits[31:21])
+		// BSTRPICK.8: op11 = 0x003 (bits[31:21])
 		const uint32_t op11 = (instr >> 21) & 0x7FF;
 		if (op11 == 0x003) {
 			return LA64_BC_BSTRPICK_W;
@@ -197,11 +194,11 @@ namespace loongarch
 		if (op17 == 0x00025) {
 			return LA64_BC_SLTU;
 		}
-		// LDX.W: op17 = 0x7010 (0x38080000 >> 15)
+		// LDX.8: op17 = 0x7010 (0x38080000 >> 15)
 		if (op17 == 0x7010) {
 			return LA64_BC_LDX_W;
 		}
-		// STX.W: op17 = 0x7030 (0x38180000 >> 15)
+		// STX.8: op17 = 0x7030 (0x38180000 >> 15)
 		if (op17 == 0x7030) {
 			return LA64_BC_STX_W;
 		}
@@ -213,7 +210,7 @@ namespace loongarch
 		if (op10 == 0x0A9) {
 			return LA64_BC_LD_HU;
 		}
-		// ADD.W: op17 = 0x00020 (0x00100000 >> 15)
+		// ADD.8: op17 = 0x00020 (0x00100000 >> 15)
 		if (op17 == 0x00020) {
 			return LA64_BC_ADD_W;
 		}
@@ -222,7 +219,7 @@ namespace loongarch
 		if (op16 == 0x0049) {
 			return LA64_BC_SRAI_D;
 		}
-		// EXT.W.B: op22 = 0x000017 (bits[31:10])
+		// EXT.8.B: op22 = 0x000017 (bits[31:10])
 		const uint32_t op22 = (instr >> 10) & 0x3FFFFF;
 		if (op22 == 0x000017) {
 			return LA64_BC_EXT_W_B;
@@ -239,7 +236,7 @@ namespace loongarch
 		if (op7 == 0x0B) {
 			return LA64_BC_LU32I_D;
 		}
-		// CLO.W, CLZ.W, CLO.D, CLZ.D, REVB.2H: op22_val = bits[31:10]
+		// CLO.8, CLZ.8, CLO.D, CLZ.D, REVB.2H: op22_val = bits[31:10]
 		const uint32_t op22_val = (instr >> 10) & 0x3FFFFF;
 		if (op22_val == 0x000004) return LA64_BC_CLO_W;
 		if (op22_val == 0x000005) return LA64_BC_CLZ_W;
@@ -295,7 +292,7 @@ namespace loongarch
 			return LA64_BC_VFMADD_D;
 		}
 
-		// VHADDW.D.W: Vector horizontal add with widening - op10 = 0x1C1
+		// VHADDW.D.8: Vector horizontal add with widening - op10 = 0x1C1
 		if (op10 == 0x1C1) {
 			return LA64_BC_VHADDW_D_W;
 		}
@@ -307,7 +304,7 @@ namespace loongarch
 		if (op10 == 0x0b3) {
 			return LA64_BC_XVST;
 		}
-		// SRLI.W: op16 = 0x0044 (0x00448000 >> 16)
+		// SRLI.8: op16 = 0x0044 (0x00448000 >> 16)
 		if (op16 == 0x0044) {
 			return LA64_BC_SRLI_W;
 		}
@@ -347,7 +344,7 @@ namespace loongarch
 		if (op17 == 0x7020) {
 			return LA64_BC_STX_B;
 		}
-		// CTZ.D, CTO.W, CTO.D, EXT.W.H, REVB.4H: op22_val = bits[31:10]
+		// CTZ.D, CTO.8, CTO.D, EXT.8.H, REVB.4H: op22_val = bits[31:10]
 		if (op22_val == 0x00000B) return LA64_BC_CTZ_D;
 		if (op22_val == 0x000006) return LA64_BC_CTO_W;
 		if (op22_val == 0x00000A) return LA64_BC_CTO_D;
@@ -365,7 +362,7 @@ namespace loongarch
 		if (op17 == 0x0002C) {
 			return LA64_BC_ORN;
 		}
-		// MUL.W: op17 = 0x00038 (0x001c0000 >> 15)
+		// MUL.8: op17 = 0x00038 (0x001c0000 >> 15)
 		if (op17 == 0x00038) {
 			return LA64_BC_MUL_W;
 		}
@@ -475,9 +472,8 @@ namespace loongarch
 	}
 
 	// Populate decoder cache for an execute segment
-	template <int W>
-	void populate_decoder_cache(DecodedExecuteSegment<W>& segment,
-		address_type<W> exec_begin, const uint8_t* code, size_t code_size)
+	void populate_decoder_cache(DecodedExecuteSegment& segment,
+		address_t exec_begin, const uint8_t* code, size_t code_size)
 	{
 		// Round down to nearest instruction boundary (4 bytes)
 		// This safely handles segments where .text + .rodata are merged
@@ -489,10 +485,10 @@ namespace loongarch
 		}
 
 		const size_t num_instructions = aligned_size / 4;
-		auto* cache = new DecoderData<W>[num_instructions + 1];
+		auto* cache = new DecoderData[num_instructions + 1];
 		// Guarantee that invalid instruction is handler 0
-		const auto invalid_handler = DecoderData<W>::compute_handler_for(
-			CPU<W>::get_invalid_instruction().handler);
+		const auto invalid_handler = DecoderData::compute_handler_for(
+			CPU::get_invalid_instruction().handler);
 		if (invalid_handler != 0) {
 			// This should never happen, but just in case
 			throw std::runtime_error("DecoderCache: Handler 0 is not invalid handler");
@@ -502,33 +498,33 @@ namespace loongarch
 		// This computes how many bytes until the next diverging instruction
 		const uint32_t* instr_ptr = reinterpret_cast<const uint32_t*>(code);
 		uint32_t accumulated_bytes = 0;
-		std::unordered_map<typename DecoderData<W>::handler_t, uint8_t> handler_map;
+		std::unordered_map<typename DecoderData::handler_t, uint8_t> handler_map;
 		for (size_t i = num_instructions; i-- > 0; ) {
 			const uint32_t instr = instr_ptr[i];
 
 			// Decode and cache the handler for fast dispatch
-			const auto& decoded = CPU<W>::decode(la_instruction{instr});
+			const auto& decoded = CPU::decode(la_instruction{instr});
 			auto it = handler_map.find(decoded.handler);
 			if (it != handler_map.end()) {
 				// Existing handler
 				cache[i].handler_idx = it->second;
 			} else {
 				// New handler
-				const uint8_t handler_idx = DecoderData<W>::compute_handler_for(decoded.handler);
+				const uint8_t handler_idx = DecoderData::compute_handler_for(decoded.handler);
 				handler_map.insert_or_assign(decoded.handler, handler_idx);
 				cache[i].handler_idx = handler_idx;
 			}
 
 			// Set bytecode for threaded dispatch
-			cache[i].bytecode = determine_bytecode<W>(instr);
+			cache[i].bytecode = determine_bytecode(instr);
 			// Optimize instruction bits for popular bytecodes
 			// The optimizer may also modify the bytecode if needed,
 			// typically to rewrite cases where rd == zero register.
 			// This avoids a check in the hot-path for rd != 0.
-			const address_type<W> pc = exec_begin + (i * sizeof(la_instruction));
+			const address_t pc = exec_begin + (i * sizeof(la_instruction));
 			cache[i].instr = segment.optimize_bytecode(cache[i].bytecode, pc, instr);
 
-			if (is_diverging_instruction<W>(instr)) {
+			if (is_diverging_instruction(instr)) {
 				// Diverging instruction: block_bytes = 0
 				cache[i].block_bytes = 0;
 				accumulated_bytes = 0;
@@ -549,10 +545,9 @@ namespace loongarch
 		segment.set_decoder_cache(cache, num_instructions);
 	}
 
-	template <int W>
-	void DecodedExecuteSegment<W>::set(address_t entry_addr, const DecoderData<W>& data)
+	void DecodedExecuteSegment::set(address_t entry_addr, const DecoderData& data)
 	{
-		const size_t index = (entry_addr - m_exec_begin) >> DecoderCache<W>::SHIFT;
+		const size_t index = (entry_addr - m_exec_begin) >> DecoderCache::SHIFT;
 		if (index < m_decoder_cache.size) {
 			m_decoder_cache.cache[index] = data;
 		} else {
@@ -564,16 +559,4 @@ namespace loongarch
 		}
 	}
 
-#ifdef LA_32
-	template struct DecodedExecuteSegment<LA32>;
-	template struct DecoderCache<LA32>;
-	template struct DecoderData<LA32>;
-	template void populate_decoder_cache<LA32>(DecodedExecuteSegment<LA32>&, address_type<LA32>, const uint8_t*, size_t);
-#endif
-#ifdef LA_64
-	template struct DecodedExecuteSegment<LA64>;
-	template struct DecoderCache<LA64>;
-	template struct DecoderData<LA64>;
-	template void populate_decoder_cache<LA64>(DecodedExecuteSegment<LA64>&, address_type<LA64>, const uint8_t*, size_t);
-#endif
 } // loongarch

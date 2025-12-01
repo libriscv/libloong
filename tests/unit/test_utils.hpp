@@ -13,7 +13,7 @@ struct ExecutionResult {
 	uint64_t instructions_executed = 0;
 	std::string error;
 	std::string stdout_output;
-	address_type<LA64> final_pc = 0;
+	address_t final_pc = 0;
 	bool reached_main = false;
 };
 
@@ -26,21 +26,21 @@ public:
 			reinterpret_cast<const char*>(m_binary_data.data()),
 			m_binary_data.size());
 
-		MachineOptions<LA64> options;
+		MachineOptions options;
 		options.verbose_loader = false;
 		options.verbose_syscalls = false;
 		options.memory_max = max_memory;
 
-		m_machine = std::make_unique<Machine<LA64>>(binary_view, options);
+		m_machine = std::make_unique<Machine>(binary_view, options);
 	}
 
 	TestMachine(std::string_view binary_view, uint64_t max_memory = 256 * 1024 * 1024) {
-		MachineOptions<LA64> options;
+		MachineOptions options;
 		options.verbose_loader = false;
 		options.verbose_syscalls = false;
 		options.memory_max = max_memory;
 
-		m_machine = std::make_unique<Machine<LA64>>(binary_view, options);
+		m_machine = std::make_unique<Machine>(binary_view, options);
 	}
 
 	// Setup standard Linux environment
@@ -113,7 +113,7 @@ public:
 
 	// Call a function in the guest (returns full 64-bit result)
 	template <typename... Args>
-	address_type<LA64> vmcall(const std::string& func_name, Args&&... args) {
+	address_t vmcall(const std::string& func_name, Args&&... args) {
 		auto func_addr = m_machine->address_of(func_name);
 		if (func_addr == 0) {
 			throw std::runtime_error("Function not found: " + func_name);
@@ -122,7 +122,7 @@ public:
 	}
 
 	template <typename... Args>
-	address_type<LA64> vmcall(address_type<LA64> func_addr, Args&&... args) {
+	address_t vmcall(address_t func_addr, Args&&... args) {
 		// Ensure IFUNCs are resolved before first vmcall
 		// This runs program initialization which resolves IFUNC symbols
 		// like strcmp that select optimized implementations at runtime
@@ -131,17 +131,17 @@ public:
 	}
 
 	// Direct access to machine
-	Machine<LA64>& machine() { return *m_machine; }
-	const Machine<LA64>& machine() const { return *m_machine; }
+	Machine& machine() { return *m_machine; }
+	const Machine& machine() const { return *m_machine; }
 
 	// Read/write guest memory
 	template <typename T>
-	T read(address_type<LA64> addr) {
+	T read(address_t addr) {
 		return m_machine->memory.template read<T>(addr);
 	}
 
 	template <typename T>
-	void write(address_type<LA64> addr, T value) {
+	void write(address_t addr, T value) {
 		m_machine->memory.template write<T>(addr, value);
 	}
 
@@ -156,7 +156,7 @@ public:
 	}
 
 	// Symbol lookup
-	address_type<LA64> address_of(const std::string& name) const {
+	address_t address_of(const std::string& name) const {
 		return m_machine->address_of(name);
 	}
 
@@ -180,7 +180,7 @@ private:
 	}
 
 	std::vector<uint8_t> m_binary_data;
-	std::unique_ptr<Machine<LA64>> m_machine;
+	std::unique_ptr<Machine> m_machine;
 	bool m_initialized = false;
 };
 

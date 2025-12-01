@@ -9,7 +9,7 @@ namespace benchmark {
 using namespace loongarch;
 
 // Global machine instance and binary
-static std::unique_ptr<Machine<LA64>> g_machine;
+static std::unique_ptr<Machine> g_machine;
 static std::vector<uint8_t> g_binary;
 static bool g_initialized = false;
 static uint64_t empty_addr = 0;
@@ -46,17 +46,20 @@ void initialize(const std::string& binary_path) {
 		g_binary.size());
 
 	// Create machine with reasonable options
-	MachineOptions<LA64> options;
+	MachineOptions options;
 	options.verbose_loader = false;
 	options.verbose_syscalls = false;
 	options.memory_max = 64 * 1024 * 1024;  // 64 MB
 	options.stack_size = 2 * 1024 * 1024;   // 2 MB
 	options.brk_size = 1 * 1024 * 1024;     // 1 MB
 
-	g_machine = std::make_unique<Machine<LA64>>(binary_view, options);
+	g_machine = std::make_unique<Machine>(binary_view, options);
 
 	// Setup Linux syscalls
 	g_machine->setup_linux_syscalls();
+	static constexpr uint32_t HEAP_SIZE = 16ull << 20; // 16 MB heap
+	const auto heap_begin = g_machine->memory.mmap_allocate(HEAP_SIZE);
+	g_machine->setup_accelerated_heap(heap_begin, HEAP_SIZE);
 	g_machine->setup_linux({"benchmark_guest"}, {});
 
 	// Set up exit address for vmcalls
@@ -85,7 +88,7 @@ void initialize(const std::string& binary_path) {
 }
 
 // Get the machine instance
-Machine<LA64>& get_machine() {
+Machine& get_machine() {
 	if (!g_initialized) {
 		throw std::runtime_error("Machine not initialized. Call initialize() first.");
 	}

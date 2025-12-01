@@ -53,8 +53,8 @@ namespace loongarch
 		LA_SYS_fstatat = 291,
 	};
 
-	template <int W, typename... Args>
-	static inline void sysprint(Machine<W>& machine, const char* fmt, Args... args)
+	template <typename... Args>
+	static inline void sysprint(Machine& machine, const char* fmt, Args... args)
 	{
 		if (!machine.has_options() || !machine.options().verbose_syscalls) {
 			return;
@@ -68,8 +68,7 @@ namespace loongarch
 	}
 
 	// Exit syscall
-	template <int W>
-	static void syscall_exit(Machine<W>& machine)
+	static void syscall_exit(Machine& machine)
 	{
 		machine.stop();
 		sysprint(machine, "exit(status=%d)\n",
@@ -77,11 +76,10 @@ namespace loongarch
 	}
 
 	// Write syscall
-	template <int W>
-	static void syscall_write(Machine<W>& machine)
+	static void syscall_write(Machine& machine)
 	{
 		auto [fd, addr, len] =
-			machine.template sysargs<int, address_type<W>, size_t>();
+			machine.template sysargs<int, address_t, size_t>();
 
 		if (fd == 1 || fd == 2) { // stdout or stderr
 			const char* view = machine.memory.template memarray<char>(addr, len);
@@ -98,11 +96,10 @@ namespace loongarch
 	}
 
 	// Writev syscall (write multiple buffers)
-	template <int W>
-	static void syscall_writev(Machine<W>& machine)
+	static void syscall_writev(Machine& machine)
 	{
 		auto [fd, iov_addr, iovcnt] =
-			machine.template sysargs<int, address_type<W>, size_t>();
+			machine.template sysargs<int, address_t, size_t>();
 		if (iovcnt > 1024) {
 			throw MachineException(ILLEGAL_OPERATION, "iovcnt too large in writev syscall");
 		}
@@ -111,9 +108,9 @@ namespace loongarch
 			size_t total = 0;
 			for (size_t i = 0; i < iovcnt; i++) {
 				// Each iovec is { void* iov_base, size_t iov_len }
-				size_t iovec_offset = iov_addr + i * 2 * sizeof(address_type<W>);
-				auto base = machine.memory.template read<address_type<W>>(iovec_offset);
-				auto len = machine.memory.template read<address_type<W>>(iovec_offset + sizeof(address_type<W>));
+				size_t iovec_offset = iov_addr + i * 2 * sizeof(address_t);
+				auto base = machine.memory.template read<address_t>(iovec_offset);
+				auto len = machine.memory.template read<address_t>(iovec_offset + sizeof(address_t));
 
 				// Sanity check on length
 				if (len > 0 && len < 1024 * 1024) {
@@ -134,11 +131,10 @@ namespace loongarch
 	}
 
 	// Read syscall (sandboxed - no host access)
-	template <int W>
-	static void syscall_read(Machine<W>& machine)
+	static void syscall_read(Machine& machine)
 	{
 		auto [fd, addr, len] =
-			machine.template sysargs<int, address_type<W>, size_t>();
+			machine.template sysargs<int, address_t, size_t>();
 		(void)addr;
 		(void)len;
 
@@ -156,16 +152,14 @@ namespace loongarch
 	}
 
 	// Openat syscall (sandboxed - always fails)
-	template <int W>
-	static void syscall_openat(Machine<W>& machine)
+	static void syscall_openat(Machine& machine)
 	{
 		(void)machine;
 		machine.set_result(-LA_ENOENT);
 	}
 
 	// Close syscall
-	template <int W>
-	static void syscall_close(Machine<W>& machine)
+	static void syscall_close(Machine& machine)
 	{
 		auto [fd] = machine.template sysargs<int>();
 		// Allow closing stdio descriptors (ignore silently)
@@ -177,11 +171,10 @@ namespace loongarch
 	}
 
 	// Fstat syscall (sandboxed)
-	template <int W>
-	static void syscall_fstat(Machine<W>& machine)
+	static void syscall_fstat(Machine& machine)
 	{
 		auto [fd, statbuf] =
-			machine.template sysargs<int, address_type<W>>();
+			machine.template sysargs<int, address_t>();
 
 		// Only support stdio descriptors
 		if (fd >= 0 && fd <= 2 && statbuf != 0) {
@@ -195,16 +188,14 @@ namespace loongarch
 		machine.set_result(-LA_EBADF);
 	}
 	// Fstatat syscall (sandboxed)
-	template <int W>
-	static void syscall_fstatat(Machine<W>& machine)
+	static void syscall_fstatat(Machine& machine)
 	{
 		(void)machine;
 		machine.set_result(-LA_ENOSYS);
 	}
 
 	// Ioctl syscall (sandboxed)
-	template <int W>
-	static void syscall_ioctl(Machine<W>& machine)
+	static void syscall_ioctl(Machine& machine)
 	{
 		auto [fd] = machine.template sysargs<int>();
 		// Return ENOTTY for stdio (not a terminal in sandbox)
@@ -216,8 +207,7 @@ namespace loongarch
 	}
 
 	// Mprotect syscall
-	template <int W>
-	static void syscall_mprotect(Machine<W>& machine)
+	static void syscall_mprotect(Machine& machine)
 	{
 		(void)machine;
 		// Always succeed (memory protections not enforced in emulator)
@@ -225,11 +215,10 @@ namespace loongarch
 	}
 
 	// Madvise syscall
-	template <int W>
-	static void syscall_madvise(Machine<W>& machine)
+	static void syscall_madvise(Machine& machine)
 	{
 		auto [addr, length, advice] =
-			machine.template sysargs<address_type<W>, size_t, int>();
+			machine.template sysargs<address_t, size_t, int>();
 		// Always succeed (advice is ignored)
 		machine.set_result(0);
 		sysprint(machine, "madvise(addr=0x%llx, len=%llu, advice=%d) = %d\n",
@@ -238,11 +227,10 @@ namespace loongarch
 	}
 
 	// Clock_gettime syscall
-	template <int W>
-	static void syscall_clock_gettime(Machine<W>& machine)
+	static void syscall_clock_gettime(Machine& machine)
 	{
 		auto [clockid, tp] =
-			machine.template sysargs<int, address_type<W>>();
+			machine.template sysargs<int, address_t>();
 		if (tp != 0) {
 			struct timespec ts;
 			clock_gettime(clockid, &ts);
@@ -255,11 +243,10 @@ namespace loongarch
 	}
 
 	// gettimeofday syscall
-	template <int W>
-	static void syscall_gettimeofday(Machine<W>& machine)
+	static void syscall_gettimeofday(Machine& machine)
 	{
 		auto [tv_addr] =
-			machine.template sysargs<address_type<W>>();
+			machine.template sysargs<address_t>();
 		if (tv_addr != 0) {
 			struct timeval tv;
 			gettimeofday(&tv, nullptr);
@@ -272,8 +259,7 @@ namespace loongarch
 	}
 
 	// Gettid syscall
-	template <int W>
-	static void syscall_gettid(Machine<W>& machine)
+	static void syscall_gettid(Machine& machine)
 	{
 		machine.set_result(machine.gettid());
 		sysprint(machine, "gettid() = %d\n",
@@ -281,24 +267,21 @@ namespace loongarch
 	}
 
 	// Getpid syscall
-	template <int W>
-	static void syscall_getpid(Machine<W>& machine)
+	static void syscall_getpid(Machine& machine)
 	{
 		(void)machine;
 		machine.set_result(1);  // Fake PID
 	}
 
 	// Getuid/Geteuid/Getgid/Getegid syscalls
-	template <int W>
-	static void syscall_getuid(Machine<W>& machine)
+	static void syscall_getuid(Machine& machine)
 	{
 		(void)machine;
 		machine.set_result(1000);  // Fake UID
 	}
 
 	// Rt_sigaction syscall
-	template <int W>
-	static void syscall_rt_sigaction(Machine<W>& machine)
+	static void syscall_rt_sigaction(Machine& machine)
 	{
 		(void)machine;
 		// Ignore signal handlers in sandbox
@@ -306,8 +289,7 @@ namespace loongarch
 	}
 
 	// Rt_sigprocmask syscall
-	template <int W>
-	static void syscall_rt_sigprocmask(Machine<W>& machine)
+	static void syscall_rt_sigprocmask(Machine& machine)
 	{
 		(void)machine;
 		// Ignore signal masks in sandbox
@@ -315,11 +297,10 @@ namespace loongarch
 	}
 
 	// BRK syscall
-	template <int W>
-	static void syscall_brk(Machine<W>& machine)
+	static void syscall_brk(Machine& machine)
 	{
 		auto new_end = machine.cpu.reg(REG_A0);
-		static const address_type<W> BRK_MAX = 0x100000; // XXX: Fake
+		static const address_t BRK_MAX = 0x100000; // XXX: Fake
 		/// XXX: There is something wrong about brk() emulation.
 		machine.set_result(0);
 		return;
@@ -336,12 +317,11 @@ namespace loongarch
 		machine.set_result(new_end);
 		sysprint(machine, "brk(0x%llx) = 0x%llx\n",
 			static_cast<uint64_t>(new_end),
-			static_cast<uint64_t>(machine.template return_value<address_type<W>>()));
+			static_cast<uint64_t>(machine.template return_value<address_t>()));
 	}
 
 	// FCNTL syscall
-	template <int W>
-	static void syscall_fcntl(Machine<W>& machine)
+	static void syscall_fcntl(Machine& machine)
 	{
 		// int fd = machine.cpu.reg(REG_A0);
 		// int cmd = machine.cpu.reg(REG_A1);
@@ -351,19 +331,17 @@ namespace loongarch
 	}
 
 	// SET_TID_ADDRESS syscall
-	template <int W>
-	static void syscall_set_tid_address(Machine<W>& machine)
+	static void syscall_set_tid_address(Machine& machine)
 	{
 		// Store the address for thread exit notification
-		const address_type<W> tidptr = machine.cpu.reg(REG_A0);
+		const address_t tidptr = machine.cpu.reg(REG_A0);
 		machine.set_tid_address(tidptr);
 		// Return thread ID
 		machine.set_result(machine.gettid());
 	}
 
 	// SET_ROBUST_LIST syscall
-	template <int W>
-	static void syscall_set_robust_list(Machine<W>& machine)
+	static void syscall_set_robust_list(Machine& machine)
 	{
 		// This is used for robust futexes; we can ignore for single-threaded emulation
 		//machine.cpu.reg(REG_A0);  // head pointer
@@ -373,12 +351,11 @@ namespace loongarch
 	}
 
 	// READLINKAT syscall
-	template <int W>
-	static void syscall_readlinkat(Machine<W>& machine)
+	static void syscall_readlinkat(Machine& machine)
 	{
 		// int dirfd = machine.cpu.reg(REG_A0);  // AT_FDCWD = -100
-		const address_type<W> pathname_addr = machine.cpu.reg(REG_A1);
-		const address_type<W> buf_addr = machine.cpu.reg(REG_A2);
+		const address_t pathname_addr = machine.cpu.reg(REG_A1);
+		const address_t buf_addr = machine.cpu.reg(REG_A2);
 		const size_t bufsiz = machine.cpu.reg(REG_A3);
 
 		// Read the pathname
@@ -401,8 +378,7 @@ namespace loongarch
 	}
 
 	// GETRANDOM syscall
-	template <int W>
-	static void syscall_getrandom(Machine<W>& machine)
+	static void syscall_getrandom(Machine& machine)
 	{
 		auto buf_addr = machine.cpu.reg(REG_A0);
 		size_t buflen = machine.cpu.reg(REG_A1);
@@ -417,8 +393,7 @@ namespace loongarch
 	}
 
 	// PRLIMIT64 syscall (getrlimit/setrlimit)
-	template <int W>
-	static void syscall_prlimit64(Machine<W>& machine)
+	static void syscall_prlimit64(Machine& machine)
 	{
 		// pid_t pid = machine.cpu.reg(REG_A0);
 		int resource = machine.cpu.reg(REG_A1);
@@ -460,11 +435,10 @@ namespace loongarch
 	}
 
 	// MMAP syscall
-	template <int W>
-	static void syscall_mmap(Machine<W>& machine)
+	static void syscall_mmap(Machine& machine)
 	{
 		auto [addr, length, prot, flags, fd, offset] =
-			machine.template sysargs<address_type<W>, size_t, int, int, int, off_t>();
+			machine.template sysargs<address_t, size_t, int, int, int, off_t>();
 
 		// Simple implementation: allocate memory from our heap
 		if (addr == 0) {
@@ -480,8 +454,7 @@ namespace loongarch
 			static_cast<uint64_t>(offset),
 			static_cast<uint64_t>(machine.cpu.reg(REG_A0)));
 	}
-	template <int W>
-	static void syscall_munmap(Machine<W>& machine)
+	static void syscall_munmap(Machine& machine)
 	{
 		const auto addr  = machine.cpu.reg(REG_A0);
 		const auto length = machine.cpu.reg(REG_A1);
@@ -494,8 +467,7 @@ namespace loongarch
 	}
 
 	// Futex syscall (basic support for threading)
-	template <int W>
-	static void syscall_futex(Machine<W>& machine)
+	static void syscall_futex(Machine& machine)
 	{
 		// int* uaddr = machine.cpu.reg(REG_A0);
 		int futex_op = machine.cpu.reg(REG_A1);
@@ -519,14 +491,13 @@ namespace loongarch
 				machine.set_result(0);
 				return;
 			default:
-				machine.set_result(static_cast<address_type<W>>(-LA_ENOSYS));
+				machine.set_result(static_cast<address_t>(-LA_ENOSYS));
 				return;
 		}
 	}
 
 	// TGKILL syscall - used by abort() to send signal
-	template <int W>
-	static void syscall_tgkill(Machine<W>& machine)
+	static void syscall_tgkill(Machine& machine)
 	{
 		auto [tgid, tid, sig] = machine.template sysargs<int, int, int>();
 
@@ -542,8 +513,7 @@ namespace loongarch
 	}
 
 	// PRCTL syscall - process control
-	template <int W>
-	static void syscall_prctl(Machine<W>& machine)
+	static void syscall_prctl(Machine& machine)
 	{
 		int option = machine.cpu.reg(REG_A0);
 		sysprint(machine, "prctl(option=%d, ...) = 0 (stub)\n", option);
@@ -552,11 +522,10 @@ namespace loongarch
 	}
 
 	// PPOLL syscall (mark stdio as ready)
-	template <int W>
-	static void syscall_ppoll(Machine<W>& machine)
+	static void syscall_ppoll(Machine& machine)
 	{
 		auto [fds_addr, nfds] =
-			machine.template sysargs<address_type<W>, size_t>();
+			machine.template sysargs<address_t, size_t>();
 		// const auto timeout_addr = machine.cpu.reg(REG_A2);
 		if (nfds > 1024) {
 			throw MachineException(ILLEGAL_OPERATION, "nfds too large in ppoll syscall");
@@ -583,80 +552,69 @@ namespace loongarch
 		machine.set_result(0);
 	}
 
-	template <int W>
-	void Machine<W>::setup_linux_syscalls()
+	void Machine::setup_linux_syscalls()
 	{
 		// Process lifecycle
-		install_syscall_handler(LA_SYS_exit, syscall_exit<W>);
-		install_syscall_handler(LA_SYS_exit_group, syscall_exit<W>);
+		install_syscall_handler(LA_SYS_exit, syscall_exit);
+		install_syscall_handler(LA_SYS_exit_group, syscall_exit);
 		// I/O (sandboxed)
-		install_syscall_handler(LA_SYS_write, syscall_write<W>);
-		install_syscall_handler(LA_SYS_writev, syscall_writev<W>);
-		install_syscall_handler(LA_SYS_read, syscall_read<W>);
-		install_syscall_handler(LA_SYS_openat, syscall_openat<W>);
-		install_syscall_handler(LA_SYS_close, syscall_close<W>);
-		install_syscall_handler(LA_SYS_fstat, syscall_fstat<W>);
-		install_syscall_handler(LA_SYS_ioctl, syscall_ioctl<W>);
-		install_syscall_handler(LA_SYS_fcntl, syscall_fcntl<W>);
-		install_syscall_handler(LA_SYS_readlinkat, syscall_readlinkat<W>);
-		install_syscall_handler(LA_SYS_fstatat, syscall_fstatat<W>);
-		install_syscall_handler(LA_SYS_ppoll, syscall_ppoll<W>);
+		install_syscall_handler(LA_SYS_write, syscall_write);
+		install_syscall_handler(LA_SYS_writev, syscall_writev);
+		install_syscall_handler(LA_SYS_read, syscall_read);
+		install_syscall_handler(LA_SYS_openat, syscall_openat);
+		install_syscall_handler(LA_SYS_close, syscall_close);
+		install_syscall_handler(LA_SYS_fstat, syscall_fstat);
+		install_syscall_handler(LA_SYS_ioctl, syscall_ioctl);
+		install_syscall_handler(LA_SYS_fcntl, syscall_fcntl);
+		install_syscall_handler(LA_SYS_readlinkat, syscall_readlinkat);
+		install_syscall_handler(LA_SYS_fstatat, syscall_fstatat);
+		install_syscall_handler(LA_SYS_ppoll, syscall_ppoll);
 
 		// Memory management
-		install_syscall_handler(LA_SYS_brk, syscall_brk<W>);
-		install_syscall_handler(LA_SYS_mmap, syscall_mmap<W>);
-		install_syscall_handler(LA_SYS_mprotect, syscall_mprotect<W>);
-		install_syscall_handler(LA_SYS_madvise, syscall_madvise<W>);
-		install_syscall_handler(LA_SYS_munmap, syscall_munmap<W>);
+		install_syscall_handler(LA_SYS_brk, syscall_brk);
+		install_syscall_handler(LA_SYS_mmap, syscall_mmap);
+		install_syscall_handler(LA_SYS_mprotect, syscall_mprotect);
+		install_syscall_handler(LA_SYS_madvise, syscall_madvise);
+		install_syscall_handler(LA_SYS_munmap, syscall_munmap);
 
 		// Threading/synchronization
-		install_syscall_handler(LA_SYS_set_tid_address, syscall_set_tid_address<W>);
-		install_syscall_handler(LA_SYS_set_robust_list, syscall_set_robust_list<W>);
-		install_syscall_handler(LA_SYS_futex, syscall_futex<W>);
-		install_syscall_handler(LA_SYS_gettid, syscall_gettid<W>);
+		install_syscall_handler(LA_SYS_set_tid_address, syscall_set_tid_address);
+		install_syscall_handler(LA_SYS_set_robust_list, syscall_set_robust_list);
+		install_syscall_handler(LA_SYS_futex, syscall_futex);
+		install_syscall_handler(LA_SYS_gettid, syscall_gettid);
 
 		// Process info
-		install_syscall_handler(LA_SYS_getpid, syscall_getpid<W>);
-		install_syscall_handler(LA_SYS_getuid, syscall_getuid<W>);
-		install_syscall_handler(LA_SYS_geteuid, syscall_getuid<W>);
-		install_syscall_handler(LA_SYS_getgid, syscall_getuid<W>);
-		install_syscall_handler(LA_SYS_getegid, syscall_getuid<W>);
+		install_syscall_handler(LA_SYS_getpid, syscall_getpid);
+		install_syscall_handler(LA_SYS_getuid, syscall_getuid);
+		install_syscall_handler(LA_SYS_geteuid, syscall_getuid);
+		install_syscall_handler(LA_SYS_getgid, syscall_getuid);
+		install_syscall_handler(LA_SYS_getegid, syscall_getuid);
 
 		// Resource limits
-		install_syscall_handler(LA_SYS_prlimit64, syscall_prlimit64<W>);
+		install_syscall_handler(LA_SYS_prlimit64, syscall_prlimit64);
 
 		// Time
-		install_syscall_handler(LA_SYS_clock_gettime, syscall_clock_gettime<W>);
-		install_syscall_handler(LA_SYS_gettimeofday, syscall_gettimeofday<W>);
+		install_syscall_handler(LA_SYS_clock_gettime, syscall_clock_gettime);
+		install_syscall_handler(LA_SYS_gettimeofday, syscall_gettimeofday);
 
 		// Signals (ignored in sandbox)
-		install_syscall_handler(LA_SYS_rt_sigaction, syscall_rt_sigaction<W>);
-		install_syscall_handler(LA_SYS_rt_sigprocmask, syscall_rt_sigprocmask<W>);
+		install_syscall_handler(LA_SYS_rt_sigaction, syscall_rt_sigaction);
+		install_syscall_handler(LA_SYS_rt_sigprocmask, syscall_rt_sigprocmask);
 
 		// Other
-		install_syscall_handler(LA_SYS_getrandom, syscall_getrandom<W>);
+		install_syscall_handler(LA_SYS_getrandom, syscall_getrandom);
 
 		// Signals (abort handling)
-		install_syscall_handler(LA_SYS_tgkill, syscall_tgkill<W>);
+		install_syscall_handler(LA_SYS_tgkill, syscall_tgkill);
 
 		// Process control
-		install_syscall_handler(LA_SYS_prctl, syscall_prctl<W>);
+		install_syscall_handler(LA_SYS_prctl, syscall_prctl);
 	}
 
-	template <int W>
-	void Machine<W>::setup_minimal_syscalls()
+	void Machine::setup_minimal_syscalls()
 	{
 		// Setup basic syscalls for Newlib support
 		throw MachineException(FEATURE_DISABLED, "Minimal syscall setup not implemented yet");
 	}
-
-#ifdef LA_32
-	template void Machine<LA32>::setup_linux_syscalls();
-	template void Machine<LA32>::setup_minimal_syscalls();
-#endif
-#ifdef LA_64
-	template void Machine<LA64>::setup_linux_syscalls();
-	template void Machine<LA64>::setup_minimal_syscalls();
-#endif
 
 } // loongarch

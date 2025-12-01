@@ -5,9 +5,8 @@
 
 namespace loongarch {
 
-template <int W>
 template <typename T>
-inline T Memory<W>::read(address_t addr) const
+inline T Memory::read(address_t addr) const
 {
 	if constexpr (LA_MASKED_MEMORY_MASK) {
 		if constexpr (LA_MASKED_MEMORY_MASK == UINT32_MAX) {
@@ -23,9 +22,8 @@ inline T Memory<W>::read(address_t addr) const
 	return *reinterpret_cast<const T*>(&m_arena[addr]);
 }
 
-template <int W>
 template <typename T>
-inline void Memory<W>::write(address_t addr, T value)
+inline void Memory::write(address_t addr, T value)
 {
 	if constexpr (LA_MASKED_MEMORY_MASK) {
 		if constexpr (LA_MASKED_MEMORY_MASK == UINT32_MAX) {
@@ -41,9 +39,8 @@ inline void Memory<W>::write(address_t addr, T value)
 	*reinterpret_cast<T*>(&m_arena[addr]) = value;
 }
 
-template <int W>
 template <typename T>
-inline const T* Memory<W>::memarray(address_t addr, size_t count) const
+inline const T* Memory::memarray(address_t addr, size_t count) const
 {
 	if (LA_UNLIKELY(addr < m_rodata_start || addr + count * sizeof(T) >= m_arena_size)) {
 		throw MachineException(PROTECTION_FAULT, "Read from unmapped memory", addr);
@@ -52,9 +49,8 @@ inline const T* Memory<W>::memarray(address_t addr, size_t count) const
 	return reinterpret_cast<const T*>(&m_arena[addr]);
 }
 
-template <int W>
 template <typename T>
-inline T* Memory<W>::writable_memarray(address_t addr, size_t count)
+inline T* Memory::writable_memarray(address_t addr, size_t count)
 {
 	if (LA_UNLIKELY(!is_writable(addr, count * sizeof(T)))) {
 		throw MachineException(PROTECTION_FAULT, "Write to read-only memory", addr);

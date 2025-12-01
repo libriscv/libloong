@@ -7,7 +7,7 @@ It's currently a work in progress, but is able to boot into main() for full Linu
 ## Features
 
 - Fast LoongArch interpreter with decoder cache
-- Support for LA32 and LA64 architectures
+- Support for 64-bit LoongArch (LA64)
 - Support for vector LSX and LASX instructions
 - C and C++ API
 
@@ -25,11 +25,6 @@ make -j$(nproc)
 
 CMake configuration options:
 
-**Architecture Support:**
-- `LA_32=ON/OFF` - Enable LA32 (32-bit) support (default: ON)
-- `LA_64=ON/OFF` - Enable LA64 (64-bit) support (default: ON)
-
-**Features:**
 - `LA_DEBUG=ON/OFF` - Enable debug output (default: OFF)
 - `LA_BINARY_TRANSLATION=ON/OFF` - Enable binary translation (experimental, default: OFF)
 - `LA_THREADED=ON/OFF` - Enable threaded bytecode dispatch (default: ON)
@@ -53,7 +48,7 @@ int main() {
     std::vector<uint8_t> binary = load_file("program.elf");
 
     // Create a machine with 64MB memory
-    loongarch::Machine<loongarch::LA64> machine { binary, {
+    loongarch::Machine machine { binary, {
         .memory_max = 64 * 1024 * 1024
     }};
 
@@ -76,10 +71,10 @@ libloong follows the same design principles as libriscv:
 
 ```sh
 Function    Best Rate MB/s  Avg time     Min time     Max time
-Copy:           32493.5     0.005076     0.004924     0.005307
-Scale:          14347.2     0.013255     0.011152     0.016128
-Add:            17337.2     0.016473     0.013843     0.019231
-Triad:          14311.2     0.019644     0.016770     0.022518
+Copy:           32634.1     0.005007     0.004903     0.005219
+Scale:          15336.0     0.012081     0.010433     0.013761
+Add:            19884.1     0.015094     0.012070     0.017555
+Triad:          13502.2     0.021949     0.017775     0.024309
 
 CoreMark 1.0 : 2959.140192 / GCC14.2.0 -O3 -DPERFORMANCE_RUN=1   / Static
 ```

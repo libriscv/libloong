@@ -16,12 +16,12 @@ public:
 		: m_memory_size(memory_size)
 	{
 		// Create machine with custom arena (no ELF loading)
-		MachineOptions<LA64> options;
+		MachineOptions options;
 		options.verbose_loader = false;
 		options.verbose_syscalls = false;
 		options.memory_max = memory_size;
 
-		m_machine = std::make_unique<Machine<LA64>>(std::string_view{}, options);
+		m_machine = std::make_unique<Machine>(std::string_view{}, options);
 		m_machine->set_max_instructions(1'000'000ull);
 		// 64KB rodata starts at 0x10000, writable data at 0x20000 to end of arena
 		m_machine->memory.allocate_custom_arena(memory_size, 0x10000, 0x20000);
@@ -31,7 +31,7 @@ public:
 		m_machine->cpu.reg(REG_SP) = m_machine->memory.stack_address();
 
 		// Install minimal syscalls (just exit)
-		m_machine->install_syscall_handler(SYSCALL_EXIT, [](Machine<LA64>& m) {
+		m_machine->install_syscall_handler(SYSCALL_EXIT, [](Machine& m) {
 			m.stop();
 		});
 
@@ -255,8 +255,8 @@ public:
 	}
 
 	// Direct machine access
-	Machine<LA64>& machine() { return *m_machine; }
-	const Machine<LA64>& machine() const { return *m_machine; }
+	Machine& machine() { return *m_machine; }
+	const Machine& machine() const { return *m_machine; }
 
 	// Helper: Print register state (for debugging)
 	std::string dump_registers() const {
@@ -296,7 +296,7 @@ public:
 private:
 	static constexpr int SYSCALL_EXIT = 93;
 
-	std::unique_ptr<Machine<LA64>> m_machine;
+	std::unique_ptr<Machine> m_machine;
 	uint64_t m_memory_size;
 	uint64_t m_next_alloc_addr; // Next address for guest memory allocation
 };

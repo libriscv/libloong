@@ -24,8 +24,7 @@ static constexpr int SYS_native_strnlen = 501;
 static constexpr int SYS_native_strlen  = 500;
 static constexpr bool VERBOSE_PATCHING = false;
 
-template <int W>
-static inline void patch(Machine<W>& machine, const std::vector<std::string> symbols, const int syscall_number)
+static inline void patch(Machine& machine, const std::vector<std::string> symbols, const int syscall_number)
 {
 	for (const auto& sym : symbols) {
 		const auto addr = machine.address_of(sym);
@@ -36,7 +35,7 @@ static inline void patch(Machine<W>& machine, const std::vector<std::string> sym
 			}
 			// Patch the function prologue to invoke the syscall
 			// using syscall.imm bytecode
-			DecoderData<W> entry;
+			DecoderData entry;
 			entry.bytecode = LA64_BC_SYSCALLIMM;
 			entry.handler_idx = 0; // Invalid
 			entry.block_bytes = 0; // Diverges here
@@ -48,8 +47,7 @@ static inline void patch(Machine<W>& machine, const std::vector<std::string> sym
 	}
 }
 
-template <int W>
-void Machine<W>::setup_accelerated_syscalls()
+void Machine::setup_accelerated_syscalls()
 {
 	// Register accelerated syscalls here
 	// The goal is to:
@@ -60,7 +58,7 @@ void Machine<W>::setup_accelerated_syscalls()
 	//    accelerated syscall handler which performs the operation natively.
 
 	install_syscall_handler(SYS_native_memcpy,
-	[] (Machine<W>& machine) {
+	[] (Machine& machine) {
 		const address_t dest = machine.cpu.reg(REG_A0);
 		const address_t src  = machine.cpu.reg(REG_A1);
 		const size_t n       = machine.cpu.reg(REG_A2);
@@ -77,7 +75,7 @@ void Machine<W>::setup_accelerated_syscalls()
 	});
 
 	install_syscall_handler(SYS_native_memset,
-	[] (Machine<W>& machine) {
+	[] (Machine& machine) {
 		const address_t dest = machine.cpu.reg(REG_A0);
 		const int value      = machine.cpu.reg(REG_A1);
 		const size_t n       = machine.cpu.reg(REG_A2);
@@ -89,7 +87,7 @@ void Machine<W>::setup_accelerated_syscalls()
 	});
 
 	install_syscall_handler(SYS_native_memcmp,
-	[] (Machine<W>& machine) {
+	[] (Machine& machine) {
 		const address_t ptr1 = machine.cpu.reg(REG_A0);
 		const address_t ptr2 = machine.cpu.reg(REG_A1);
 		const size_t n       = machine.cpu.reg(REG_A2);
@@ -102,7 +100,7 @@ void Machine<W>::setup_accelerated_syscalls()
 	});
 
 	install_syscall_handler(SYS_native_memmove,
-	[] (Machine<W>& machine) {
+	[] (Machine& machine) {
 		const address_t dest = machine.cpu.reg(REG_A0);
 		const address_t src  = machine.cpu.reg(REG_A1);
 		const size_t n       = machine.cpu.reg(REG_A2);
@@ -115,7 +113,7 @@ void Machine<W>::setup_accelerated_syscalls()
 	});
 
 	install_syscall_handler(SYS_native_memchr,
-	[] (Machine<W>& machine) {
+	[] (Machine& machine) {
 		const address_t ptr = machine.cpu.reg(REG_A0);
 		const int value     = machine.cpu.reg(REG_A1);
 		const size_t n      = machine.cpu.reg(REG_A2);
@@ -132,20 +130,20 @@ void Machine<W>::setup_accelerated_syscalls()
 	});
 
 	install_syscall_handler(SYS_native_strlen,
-	[] (Machine<W>& machine) {
+	[] (Machine& machine) {
 		const address_t str_addr = machine.cpu.reg(REG_A0);
 		machine.set_result(machine.memory.strlen(str_addr));
 	});
 
 	install_syscall_handler(SYS_native_strnlen,
-	[] (Machine<W>& machine) {
+	[] (Machine& machine) {
 		const address_t str_addr = machine.cpu.reg(REG_A0);
 		const size_t maxlen      = machine.cpu.reg(REG_A1);
 		machine.set_result(machine.memory.strlen(str_addr, maxlen));
 	});
 
 	install_syscall_handler(SYS_native_strcmp,
-	[] (Machine<W>& machine) {
+	[] (Machine& machine) {
 		const address_t str1_addr = machine.cpu.reg(REG_A0);
 		const address_t str2_addr = machine.cpu.reg(REG_A1);
 		const size_t len1 = machine.memory.strlen(str1_addr);
@@ -166,7 +164,7 @@ void Machine<W>::setup_accelerated_syscalls()
 	});
 
 	install_syscall_handler(SYS_native_strncmp,
-	[] (Machine<W>& machine) {
+	[] (Machine& machine) {
 		const address_t str1_addr = machine.cpu.reg(REG_A0);
 		const address_t str2_addr = machine.cpu.reg(REG_A1);
 		const size_t n            = machine.cpu.reg(REG_A2);
@@ -178,22 +176,21 @@ void Machine<W>::setup_accelerated_syscalls()
 	});
 
 	// Iterate the symbol table and patch known functions
-	patch<W>(*this, {"__memcpy_lsx", "__memcpy_lasx", "__memcpy_aligned", "__memcpy_unaligned"}, SYS_native_memcpy);
-	patch<W>(*this, {"__memset_lsx", "__memset_lasx", "__memset_aligned", "__memset_unaligned"}, SYS_native_memset);
-	patch<W>(*this, {"__memcmp_lsx", "__memcmp_lasx", "__memcmp_aligned"}, SYS_native_memcmp);
-	patch<W>(*this, {"__memmove_lsx", "__memmove_lasx", "__memmove_aligned", "__memmove_unaligned"}, SYS_native_memmove);
-	patch<W>(*this, {"__memchr_lsx", "__memchr_lasx", "__memchr_aligned"}, SYS_native_memchr);
-	patch<W>(*this, {"__strlen_lsx", "__strlen_lasx", "__strlen_aligned"}, SYS_native_strlen);
-	patch<W>(*this, {"__strnlen_lsx", "__strnlen_lasx", "__strnlen_aligned"}, SYS_native_strnlen);
-	patch<W>(*this, {"__strcmp_lsx", "__strcmp_lasx", "__strcmp_aligned"}, SYS_native_strcmp);
-	patch<W>(*this, {"__strncmp_lsx", "__strncmp_lasx", "__strncmp_aligned"}, SYS_native_strncmp);
+	patch(*this, {"__memcpy_lsx", "__memcpy_lasx", "__memcpy_aligned", "__memcpy_unaligned"}, SYS_native_memcpy);
+	patch(*this, {"__memset_lsx", "__memset_lasx", "__memset_aligned", "__memset_unaligned"}, SYS_native_memset);
+	patch(*this, {"__memcmp_lsx", "__memcmp_lasx", "__memcmp_aligned"}, SYS_native_memcmp);
+	patch(*this, {"__memmove_lsx", "__memmove_lasx", "__memmove_aligned", "__memmove_unaligned"}, SYS_native_memmove);
+	patch(*this, {"__memchr_lsx", "__memchr_lasx", "__memchr_aligned"}, SYS_native_memchr);
+	patch(*this, {"__strlen_lsx", "__strlen_lasx", "__strlen_aligned"}, SYS_native_strlen);
+	patch(*this, {"__strnlen_lsx", "__strnlen_lasx", "__strnlen_aligned"}, SYS_native_strnlen);
+	patch(*this, {"__strcmp_lsx", "__strcmp_lasx", "__strcmp_aligned"}, SYS_native_strcmp);
+	patch(*this, {"__strncmp_lsx", "__strncmp_lasx", "__strncmp_aligned"}, SYS_native_strncmp);
 }
 
-template <int W>
-void Machine<W>::setup_accelerated_heap(address_t arena_base, size_t arena_size)
+void Machine::setup_accelerated_heap(address_t arena_base, size_t arena_size)
 {
 	if (!this->has_arena()) {
-		this->m_arena = std::make_unique<Arena>(arena_base, arena_size);
+		this->m_arena = std::make_unique<Arena>(arena_base, arena_base + arena_size);
 	}
 
 	// Setup accelerated malloc/free/realloc/calloc syscalls
@@ -201,7 +198,7 @@ void Machine<W>::setup_accelerated_heap(address_t arena_base, size_t arena_size)
 
 	// Malloc n+0
 	install_syscall_handler(syscall_base+0,
-	[] (Machine<W>& machine)
+	[] (Machine& machine)
 	{
 		const size_t len = machine.sysarg(0);
 		auto data = machine.arena().malloc(len);
@@ -210,23 +207,22 @@ void Machine<W>::setup_accelerated_heap(address_t arena_base, size_t arena_size)
 	});
 	// Calloc n+1
 	install_syscall_handler(syscall_base+1,
-	[] (Machine<W>& machine)
+	[] (Machine& machine)
 	{
 		const auto [count, size] =
-			machine.template sysargs<address_type<W>, address_type<W>> ();
+			machine.template sysargs<address_t, address_t> ();
 		const size_t len = count * size;
 		auto data = machine.arena().malloc(len);
 		HPRINT("SYSCALL calloc(%zu, %zu) = 0x%lX\n",
 			(size_t)count, (size_t)size, (long)data);
 		if (data != 0) {
-			// XXX: Not using memzero as it has known issues
 			machine.memory.memset(data, 0, len);
 		}
 		machine.set_result(data);
 	});
 	// Realloc n+2
 	install_syscall_handler(syscall_base+2,
-	[] (Machine<W>& machine)
+	[] (Machine& machine)
 	{
 		const auto src = machine.sysarg(0);
 		const auto newlen = machine.sysarg(1);
@@ -244,7 +240,7 @@ void Machine<W>::setup_accelerated_heap(address_t arena_base, size_t arena_size)
 	});
 	// Free n+3
 	install_syscall_handler(syscall_base+3,
-	[] (Machine<W>& machine)
+	[] (Machine& machine)
 	{
 		const auto ptr = machine.sysarg(0);
 		if (ptr != 0x0)
@@ -263,18 +259,18 @@ void Machine<W>::setup_accelerated_heap(address_t arena_base, size_t arena_size)
 	});
 	// Meminfo n+4
 	install_syscall_handler(syscall_base+4,
-	[] (Machine<W>& machine)
+	[] (Machine& machine)
 	{
 		const auto dst = machine.sysarg(0);
 		const auto& arena = machine.arena();
 		struct Result {
-			const address_type<W> bf;
-			const address_type<W> bu;
-			const address_type<W> cu;
+			const address_t bf;
+			const address_t bu;
+			const address_t cu;
 		} result = {
-			.bf = (address_type<W>) arena.bytes_free(),
-			.bu = (address_type<W>) arena.bytes_used(),
-			.cu = (address_type<W>) arena.chunks_used()
+			.bf = (address_t) arena.bytes_free(),
+			.bu = (address_t) arena.bytes_used(),
+			.cu = (address_t) arena.chunks_used()
 		};
 		int ret = (dst != 0) ? 0 : -1;
 		HPRINT("SYSCALL meminfo(0x%lX) = %d\n", (long)dst, ret);
@@ -283,18 +279,22 @@ void Machine<W>::setup_accelerated_heap(address_t arena_base, size_t arena_size)
 		}
 		machine.set_result(ret);
 	});
+
+	// Patch malloc/free/calloc/realloc symbols
+	patch(*this, {"malloc"},    syscall_base+0);
+	patch(*this, {"calloc"},    syscall_base+1);
+	patch(*this, {"realloc"},   syscall_base+2);
+	patch(*this, {"free"},      syscall_base+3);
 }
 
-template <int W>
-const Arena& Machine<W>::arena() const
+const Arena& Machine::arena() const
 {
 	if (!this->has_arena()) {
 		throw MachineException(FEATURE_DISABLED, "Native-performance heap not enabled");
 	}
 	return *this->m_arena;
 }
-template <int W>
-Arena& Machine<W>::arena()
+Arena& Machine::arena()
 {
 	if (!this->has_arena()) {
 		throw MachineException(FEATURE_DISABLED, "Native-performance heap not enabled");
@@ -302,10 +302,4 @@ Arena& Machine<W>::arena()
 	return *this->m_arena;
 }
 
-#ifdef LA_32
-	template struct Machine<LA32>;
-#endif
-#ifdef LA_64
-	template struct Machine<LA64>;
-#endif
 } // loongarch

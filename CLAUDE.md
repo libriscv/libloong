@@ -1,6 +1,8 @@
 # Project information
 
-This project is a custom high-performance LoongArch emulator with a flat memory arena as memory instead of virtual paging, designed otherwise in the same way as libriscv. Static LoongArch ELFs are loaded, executed and after execution one can vmcall functions in the guest.
+This project is a custom high-performance 64-bit LoongArch emulator with a flat memory arena as memory instead of virtual paging, designed otherwise in the same way as libriscv. Static 64-bit LoongArch ELFs are loaded, executed and after execution one can vmcall functions in the guest.
+
+**Note: Only 64-bit LoongArch (LA64) is supported. 32-bit support (LA32) has been removed.**
 
 ## Project structure
 

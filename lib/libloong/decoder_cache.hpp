@@ -4,11 +4,10 @@
 
 namespace loongarch
 {
-	template <int W> struct CPU;
+	struct CPU;
 
-	template <int W>
 	struct DecoderData {
-		using handler_t = void(*)(CPU<W>&, la_instruction);
+		using handler_t = void(*)(CPU&, la_instruction);
 
 		uint8_t bytecode;         // Bytecode for threaded dispatch
 		uint8_t handler_idx;      // Handler index (0-255)
@@ -43,15 +42,11 @@ namespace loongarch
 	private:
 		static inline std::vector<handler_t> m_handlers;
 	};
-	static_assert(sizeof(DecoderData<LA32>) == 8, "DecoderData<LA32> size incorrect");
+	static_assert(sizeof(DecoderData) == 8, "DecoderData size incorrect");
 
-	template <int W>
 	struct DecoderCache {
 		static constexpr int SHIFT = 2; // 4-byte instructions
-
-		using address_t = address_type<W>;
-
-		DecoderData<W>* cache = nullptr;
+		DecoderData* cache = nullptr;
 		size_t size = 0;
 	};
 

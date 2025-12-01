@@ -35,7 +35,7 @@ struct TestResult {
 	uint64_t instructions_executed;
 	std::string output;  // Captured stdout/stderr
 	bool reached_main = false;
-	address_type<LA64> final_pc = 0;
+	address_t final_pc = 0;
 };
 
 TestResult run_test(const std::string& name, const std::string& path, int expected_exit_code) {
@@ -51,12 +51,12 @@ TestResult run_test(const std::string& name, const std::string& path, int expect
 		std::string_view binary_view(reinterpret_cast<const char*>(binary.data()), binary.size());
 
 		// Create machine options
-		MachineOptions<LA64> options;
+		MachineOptions options;
 		options.verbose_loader = false;
 		options.memory_max = MAX_MEMORY;
 
 		// Create machine
-		Machine<LA64> machine(binary_view, options);
+		Machine machine(binary_view, options);
 
 		// Setup minimal environment
 		machine.setup_linux_syscalls();

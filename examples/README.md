@@ -91,7 +91,7 @@ std::vector<uint8_t> load_file(const char* filename) {
 }
 
 auto binary = load_file("hello");
-Machine<LA64> machine { binary };
+Machine machine { binary };
 ```
 
 3. Run the modified example with your binary.

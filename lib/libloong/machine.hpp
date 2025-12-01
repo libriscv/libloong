@@ -8,15 +8,13 @@
 
 namespace loongarch
 {
-	template <int W>
 	struct alignas(LA_MACHINE_ALIGNMENT) Machine
 	{
-		using address_t = address_type<W>;
-		using syscall_t = void(Machine<W>&);
+		using syscall_t = void(Machine&);
 
 		// Construction
-		Machine(std::string_view binary, const MachineOptions<W>& options = {});
-		Machine(const std::vector<uint8_t>& binary, const MachineOptions<W>& options = {});
+		Machine(std::string_view binary, const MachineOptions& options = {});
+		Machine(const std::vector<uint8_t>& binary, const MachineOptions& options = {});
 		Machine(const Machine&) = delete;
 		~Machine();
 
@@ -74,7 +72,7 @@ namespace loongarch
 
 		/// @brief Retrieve a tuple of arguments based on the given types.
 		/// Example: auto [str, i, f] = machine.sysargs<std::string, int, float>();
-		/// Example: auto [addr, len] = machine.sysargs<address_type<W>, unsigned>();
+		/// Example: auto [addr, len] = machine.sysargs<address_t, unsigned>();
 		/// Note: String views consume 2 registers each (address and length).
 		/// Example: auto [view] = machine.sysargs<std::string_view>();
 		/// @tparam ...Args A list of argument types.
@@ -104,11 +102,11 @@ namespace loongarch
 
 		// Symbol lookup (delegates to memory)
 		address_t address_of(const std::string& name) const;
-		const Symbol<W>* lookup_symbol(address_t addr) const;
+		const Symbol* lookup_symbol(address_t addr) const;
 
 		// Components
-		CPU<W> cpu;
-		Memory<W> memory;
+		CPU cpu;
+		Memory memory;
 
 		// Multi-threading support
 		struct ThreadData {
@@ -122,7 +120,7 @@ namespace loongarch
 
 		// Options
 		bool has_options() const noexcept { return m_options_ptr != nullptr; }
-		const MachineOptions<W>& options() const { return *m_options_ptr; }
+		const MachineOptions& options() const { return *m_options_ptr; }
 
 		// Optional custom native-performance heap
 		bool has_arena() const noexcept { return m_arena != nullptr; }
@@ -150,7 +148,7 @@ namespace loongarch
 		uint64_t      m_counter = 0;
 		uint64_t      m_max_instructions = 0;
 		mutable void* m_userdata = nullptr;
-		const MachineOptions<W>* m_options_ptr = nullptr;
+		const MachineOptions* m_options_ptr = nullptr;
 		ThreadData    m_threads;
 		std::unique_ptr<Arena> m_arena;
 		static inline std::array<syscall_t*, LA_SYSCALLS_MAX> m_syscall_handlers = {};

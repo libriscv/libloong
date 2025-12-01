@@ -6,8 +6,7 @@
 
 namespace loongarch {
 
-template <int W>
-void Memory<W>::binary_loader(const MachineOptions<W>& options)
+void Memory::binary_loader(const MachineOptions& options)
 {
 	if (this->m_binary.size() < sizeof(Elf::Header)) {
 		throw MachineException(INVALID_PROGRAM, "Binary too small");
@@ -134,11 +133,6 @@ void Memory<W>::binary_loader(const MachineOptions<W>& options)
 	//process_relocations(ehdr, options);
 }
 
-#ifdef LA_32
-template struct Memory<LA32>;
-#endif
-#ifdef LA_64
-template struct Memory<LA64>;
-#endif
+// Removed template instantiation
 
 } // namespace loongarch

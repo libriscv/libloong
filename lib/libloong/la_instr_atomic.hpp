@@ -6,10 +6,9 @@ namespace loongarch
 {
 	// Template implementations for atomic memory operations
 
-	template <int W>
 	struct AtomicImpl {
-		using cpu_t = CPU<W>;
-		using addr_t = address_type<W>;
+		using cpu_t = CPU;
+		using addr_t = address_t;
 
 		// AMSWAP.W: Atomic memory swap (32-bit)
 		// Format: amswap.w rd, rk, rj
@@ -144,10 +143,9 @@ namespace loongarch
 
 	// Template printers for atomic operations
 
-	template <int W>
 	struct AtomicPrinters {
-		using cpu_t = CPU<W>;
-		using addr_t = address_type<W>;
+		using cpu_t = CPU;
+		using addr_t = address_t;
 
 		static const char* reg_name(uint32_t reg) {
 			static const char* names[] = {

@@ -5,8 +5,7 @@
 
 namespace loongarch
 {
-	template <int W>
-	Machine<W>::Machine(std::string_view binary, const MachineOptions<W>& options)
+	Machine::Machine(std::string_view binary, const MachineOptions& options)
 		: cpu(*this), memory(*this, binary, options),
 		  m_arena(nullptr)
 	{
@@ -16,7 +15,7 @@ namespace loongarch
 		static std::once_flag init_flag;
 		std::call_once(init_flag, []() {
 			for (auto& handler : m_syscall_handlers) {
-				handler = [](Machine<W>& m) {
+				handler = [](Machine& m) {
 					const int sysnum = static_cast<int>(m.cpu.reg(REG_A7));
 					throw MachineException(UNIMPLEMENTED_SYSCALL,
 						"Unimplemented system call", sysnum);
@@ -25,20 +24,17 @@ namespace loongarch
 		});
 	}
 
-	template <int W>
-	Machine<W>::Machine(const std::vector<uint8_t>& binary, const MachineOptions<W>& options)
+	Machine::Machine(const std::vector<uint8_t>& binary, const MachineOptions& options)
 		: Machine(std::string_view(
 			reinterpret_cast<const char*>(binary.data()), binary.size()), options)
 	{
 	}
 
-	template <int W>
-	Machine<W>::~Machine()
+	Machine::~Machine()
 	{
 	}
 
-	template <int W>
-	void Machine<W>::setup_linux(
+	void Machine::setup_linux(
 		const std::vector<std::string>& args,
 		const std::vector<std::string>& env)
 	{
@@ -139,50 +135,38 @@ namespace loongarch
 		cpu.reg(REG_SP) = sp;
 	}
 
-	template <int W>
-	address_type<W> Machine<W>::address_of(const std::string& name) const
+	address_t Machine::address_of(const std::string& name) const
 	{
 		return memory.address_of(name);
 	}
 
-	template <int W>
-	const Symbol<W>* Machine<W>::lookup_symbol(address_t addr) const
+	const Symbol* Machine::lookup_symbol(address_t addr) const
 	{
 		return memory.lookup_symbol(addr);
 	}
 
-	template <int W>
-	void Machine<W>::print(const char* data, size_t len)
+	void Machine::print(const char* data, size_t len)
 	{
 		fwrite(data, 1, len, stdout);
 	}
 
-	template <int W>
-	void Machine<W>::print(std::string_view str)
+	void Machine::print(std::string_view str)
 	{
 		print(str.data(), str.size());
 	}
 
-	template <int W>
-	size_t Machine<W>::serialize_to(std::vector<uint8_t>& vec) const
+	size_t Machine::serialize_to(std::vector<uint8_t>& vec) const
 	{
 		// Serialization not yet implemented
 		(void)vec;
 		return 0;
 	}
 
-	template <int W>
-	int Machine<W>::deserialize_from(const std::vector<uint8_t>& vec)
+	int Machine::deserialize_from(const std::vector<uint8_t>& vec)
 	{
 		// Deserialization not yet implemented
 		(void)vec;
 		return -1;
 	}
 
-#ifdef LA_32
-	template struct Machine<LA32>;
-#endif
-#ifdef LA_64
-	template struct Machine<LA64>;
-#endif
 } // loongarch

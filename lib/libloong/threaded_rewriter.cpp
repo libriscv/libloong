@@ -15,8 +15,7 @@
 
 namespace loongarch {
 
-template <int W>
-uint32_t DecodedExecuteSegment<W>::optimize_bytecode(uint8_t& bytecode, address_t pc, uint32_t instruction_bits) const
+uint32_t DecodedExecuteSegment::optimize_bytecode(uint8_t& bytecode, address_t pc, uint32_t instruction_bits) const
 {
 	const la_instruction original{instruction_bits};
 
@@ -24,7 +23,7 @@ uint32_t DecodedExecuteSegment<W>::optimize_bytecode(uint8_t& bytecode, address_
 		// Bytecodes with optimized field access
 		case LA64_BC_B:
 		case LA64_BC_BL: {
-			const auto offset = InstructionHelpers<W>::sign_extend_26(original.i26.offs()) << 2;
+			const auto offset = InstructionHelpers::sign_extend_26(original.i26.offs()) << 2;
 			// This is a local branch, so it better be within the segment
 			if (this->is_within(pc + offset)) {
 				// The offset is the optimized instruction
@@ -41,7 +40,7 @@ uint32_t DecodedExecuteSegment<W>::optimize_bytecode(uint8_t& bytecode, address_
 		case LA64_BC_BLTU:
 		case LA64_BC_BGEU: {
 			// These use ri16 format: rd, rj, offs16
-			const auto offset = InstructionHelpers<W>::sign_extend_16(original.ri16.imm) << 2;
+			const auto offset = InstructionHelpers::sign_extend_16(original.ri16.imm) << 2;
 			// Validate branch target
 			if (this->is_within(pc + offset)) {
 				auto fi = *(FasterLA64_RI16_Branch *)&instruction_bits;
@@ -776,7 +775,7 @@ uint32_t DecodedExecuteSegment<W>::optimize_bytecode(uint8_t& bytecode, address_
 		case LA64_BC_BEQZ:
 		case LA64_BC_BNEZ: {
 			// BEQZ/BNEZ use ri21 format: rj, offs21
-			const auto offset = InstructionHelpers<W>::sign_extend_21(original.ri21.offs_lo, original.ri21.offs_hi) << 2;
+			const auto offset = InstructionHelpers::sign_extend_21(original.ri21.offs_lo, original.ri21.offs_hi) << 2;
 			// Check if branch target is within segment
 			if (this->is_within(pc + offset)) {
 				auto fi = *(FasterLA64_RI21_Branch *)&instruction_bits;
@@ -791,7 +790,7 @@ uint32_t DecodedExecuteSegment<W>::optimize_bytecode(uint8_t& bytecode, address_
 		case LA64_BC_BCEQZ:
 		case LA64_BC_BCNEZ: {
 			// BCEQZ/BCNEZ use bits[7:5] for condition flag (cj), offs21 for offset
-			const auto offset = InstructionHelpers<W>::sign_extend_21(original.ri21.offs_lo, original.ri21.offs_hi) << 2;
+			const auto offset = InstructionHelpers::sign_extend_21(original.ri21.offs_lo, original.ri21.offs_hi) << 2;
 			// Check if branch target is within segment
 			if (this->is_within(pc + offset)) {
 				auto fi = *(FasterLA64_RI21_Branch *)&instruction_bits;
@@ -809,10 +808,4 @@ uint32_t DecodedExecuteSegment<W>::optimize_bytecode(uint8_t& bytecode, address_
 	}
 }
 
-#ifdef LA_32
-	template struct DecodedExecuteSegment<32>;
-#endif
-#ifdef LA_64
-	template struct DecodedExecuteSegment<64>;
-#endif
-} // namespace loongarch
+} // loongarch

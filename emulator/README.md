@@ -4,7 +4,7 @@ A high-performance command-line emulator for executing LoongArch ELF binaries.
 
 ## Overview
 
-`laemu` (LoongArch Emulator) is a userspace emulator that runs LoongArch LA32 and LA64 binaries on any host platform. It provides full Linux syscall emulation, allowing native execution of statically-linked LoongArch programs.
+`laemu` (LoongArch Emulator) is a userspace emulator that runs 64-bit LoongArch binaries on any host platform. It provides full Linux syscall emulation, allowing native execution of statically-linked LoongArch programs.
 
 ## Building
 
@@ -40,8 +40,6 @@ For help and all available options:
 - `--masked-memory-bits N` - Set masked memory arena size to 2^N bytes
   - Example: `--masked-memory-bits 32` for 4GB arena
   - Default: 0 (disabled, full address range)
-- `--no-la32` - Disable LA32 (32-bit) support
-- `--no-la64` - Disable LA64 (64-bit) support
 - `--binary-translation` - Enable binary translation (experimental)
 - `--no-threaded` - Disable threaded dispatch optimization
 
@@ -79,8 +77,6 @@ make
 - `NATIVE=ON` - Enable native CPU optimizations (`-march=native`)
 - `LTO=ON` - Enable link-time optimization (default: ON)
 - `LA_MASKED_MEMORY_BITS=N` - Set masked memory arena to 2^N bytes (0 = disabled)
-- `LA_32=ON/OFF` - Enable/disable LA32 support (default: ON)
-- `LA_64=ON/OFF` - Enable/disable LA64 support (default: ON)
 - `LA_DEBUG=ON/OFF` - Enable debug output (default: OFF)
 - `LA_BINARY_TRANSLATION=ON/OFF` - Enable binary translation (default: OFF)
 - `LA_THREADED=ON/OFF` - Enable threaded dispatch (default: ON)
@@ -110,7 +106,7 @@ laemu [options] <program> [args...]
 | `-f <num>` | `--fuel <num>` | Maximum instructions to execute (default: 2000000000)<br/>Use 0 for unlimited |
 | `-m <size>` | `--memory <size>` | Maximum memory in MiB (default: 512) |
 
-**Note:** The emulator automatically detects LA32/LA64 architecture from the ELF binary header.
+**Note:** The emulator automatically detects architecture from the ELF binary header.
 
 ### Examples
 
@@ -213,9 +209,9 @@ VERBOSE=1 TIMING=1 ./laemu program.elf
 - Threaded bytecode dispatch for maximum speed
 
 ### Compatibility
-- Full Linux syscall emulation
+- Linux syscall emulation
 - Static binary support
-- LA32 and LA64 architectures
+- LA64 architectures
 - Cross-platform (Linux, macOS, Windows)
 
 ### Execution Control
@@ -226,7 +222,7 @@ VERBOSE=1 TIMING=1 ./laemu program.elf
 - Bytecode usage statistics with `--stats`
 
 ### Memory Management
-- **Flat Memory Arena**: Uses a single contiguous memory region instead of virtual paging
+- **Flat Memory Arena**: Uses a single contiguous memory region
 - **Masked Memory Bits**: Optional power-of-two memory size restriction
   - When enabled (e.g., `--masked-memory-bits 32`), memory addresses are masked to fit within 2^N bytes
   - Example: `--masked-memory-bits 32` creates a 4GB arena where addresses wrap around
@@ -285,38 +281,16 @@ loongarch64-linux-gnu-gcc -static myapp.c -o myapp.elf
 ./laemu --verbose myapp.elf
 ```
 
-## Performance
-
-Despite being an interpreter, laemu achieves impressive performance:
-
-**STREAM Benchmark Results:**
-```
-Function    Best Rate MB/s  Avg time     Min time     Max time
-Copy:            4635.9     0.038666     0.034513     0.046993
-Scale:           2513.6     0.080806     0.063653     0.085414
-Add:             6428.1     0.040918     0.037336     0.048907
-Triad:           4948.8     0.049776     0.048497     0.057069
-```
-
-For optimal performance, build with:
-```bash
-cmake .. -DCMAKE_BUILD_TYPE=Release -DNATIVE=ON -DLTO=ON
-```
-
 ## Binary Requirements
 
 The emulator supports:
 - **Statically-linked** LoongArch ELF binaries
-- **LA32** and **LA64** architectures
+- **LA64** architecture
 - Linux syscall ABI
 
 Compile guest programs with:
 ```bash
-# LA64 (64-bit)
-loongarch64-linux-gnu-gcc -static program.c -o program.elf
-
-# LA32 (32-bit) - if supported
-loongarch32-linux-gnu-gcc -static program.c -o program32.elf
+loongarch64-linux-gnu-gcc -static -Wl,-Ttext-segment=0x200000 program.c -o program.elf
 ```
 
 ## Troubleshooting
@@ -324,10 +298,6 @@ loongarch32-linux-gnu-gcc -static program.c -o program32.elf
 ### "Failed to open file"
 - Check the file path
 - Ensure the file exists and is readable
-
-### "LA32/LA64 support not compiled in"
-- The binary was compiled without support for that architecture
-- Rebuild with the appropriate flags
 
 ### "Execution timeout"
 - Program exceeded instruction limit
@@ -389,7 +359,7 @@ The emulator is built on libloong:
 ```
 laemu (CLI)
     ↓
-Machine<LA64/LA32>
+Machine
     ↓
 ┌─────────────┬──────────────┐
 │ CPU         │ Memory       │

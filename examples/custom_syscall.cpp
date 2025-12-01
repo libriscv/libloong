@@ -6,7 +6,7 @@ using namespace loongarch;
 
 // Custom syscall handler: print a debug message
 static constexpr int SYSCALL_EXIT = 93;
-static void syscall_exit(Machine<LA64>& machine)
+static void syscall_exit(Machine& machine)
 {
 	// Get exit code from a0
 	auto exit_code = machine.cpu.reg(REG_A0);
@@ -20,7 +20,7 @@ int main()
 	std::cout << "================================\n\n";
 
 	try {
-		Machine<LA64> machine { std::string_view{}, {}};
+		Machine machine { std::string_view{}, {}};
 		machine.memory.allocate_custom_arena(16ull << 20, 0x10000, 0x20000);
 		machine.cpu.reg(REG_SP) = 0x800000; // Initialize stack pointer
 

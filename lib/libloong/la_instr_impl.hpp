@@ -5,10 +5,9 @@
 
 namespace loongarch {
 
-template <int W>
 struct InstrImpl {
-	using cpu_t = CPU<W>;
-	using addr_t = address_type<W>;
+	using cpu_t = CPU;
+	using addr_t = address_t;
 	using saddr_t = std::make_signed_t<addr_t>;
 
 	// === Arithmetic Instructions ===
@@ -44,12 +43,12 @@ struct InstrImpl {
 	}
 
 	static void ADDI_W(cpu_t& cpu, la_instruction instr) {
-		int32_t result = (int32_t)cpu.reg(instr.ri12.rj) + InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		int32_t result = (int32_t)cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		cpu.reg(instr.ri12.rd) = (int64_t)result;
 	}
 
 	static void ADDI_D(cpu_t& cpu, la_instruction instr) {
-		cpu.reg(instr.ri12.rd) = cpu.reg(instr.ri12.rj) + InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		cpu.reg(instr.ri12.rd) = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
 	}
 
 	// === Division/Modulo Instructions ===
@@ -265,63 +264,63 @@ struct InstrImpl {
 	// === Load/Store Instructions ===
 
 	static void LD_B(cpu_t& cpu, la_instruction instr) {
-		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		cpu.reg(instr.ri12.rd) = (int64_t)cpu.memory().template read<int8_t>(addr);
 	}
 
 	static void LD_H(cpu_t& cpu, la_instruction instr) {
-		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		cpu.reg(instr.ri12.rd) = (int64_t)cpu.memory().template read<int16_t>(addr);
 	}
 
 	static void LD_W(cpu_t& cpu, la_instruction instr) {
-		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		cpu.reg(instr.ri12.rd) = (int64_t)cpu.memory().template read<int32_t>(addr);
 	}
 
 	static void LD_D(cpu_t& cpu, la_instruction instr) {
-		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		cpu.reg(instr.ri12.rd) = cpu.memory().template read<int64_t>(addr);
 	}
 
 	static void LD_BU(cpu_t& cpu, la_instruction instr) {
-		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		cpu.reg(instr.ri12.rd) = (uint64_t)cpu.memory().template read<uint8_t>(addr);
 	}
 
 	static void LD_HU(cpu_t& cpu, la_instruction instr) {
-		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		cpu.reg(instr.ri12.rd) = (uint64_t)cpu.memory().template read<uint16_t>(addr);
 	}
 
 	static void LD_WU(cpu_t& cpu, la_instruction instr) {
-		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		cpu.reg(instr.ri12.rd) = (uint64_t)cpu.memory().template read<uint32_t>(addr);
 	}
 
 	static void ST_B(cpu_t& cpu, la_instruction instr) {
-		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		cpu.memory().template write<uint8_t>(addr, cpu.reg(instr.ri12.rd));
 	}
 
 	static void ST_H(cpu_t& cpu, la_instruction instr) {
-		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		cpu.memory().template write<uint16_t>(addr, cpu.reg(instr.ri12.rd));
 	}
 
 	static void ST_W(cpu_t& cpu, la_instruction instr) {
-		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		cpu.memory().template write<uint32_t>(addr, cpu.reg(instr.ri12.rd));
 	}
 
 	static void ST_D(cpu_t& cpu, la_instruction instr) {
-		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		cpu.memory().template write<uint64_t>(addr, cpu.reg(instr.ri12.rd));
 	}
 
 	static void LDPTR_W(cpu_t& cpu, la_instruction instr) {
 		// LDPTR.W uses 14-bit signed offset << 2 (word-aligned)
-		int64_t offset = InstructionHelpers<W>::sign_extend_14(instr.ri14.imm) << 2;
+		int64_t offset = InstructionHelpers::sign_extend_14(instr.ri14.imm) << 2;
 		auto addr = cpu.reg(instr.ri14.rj) + offset;
 		// Sign-extend the 32-bit value to 64 bits
 		cpu.reg(instr.ri14.rd) = (int64_t)(int32_t)cpu.memory().template read<uint32_t>(addr);
@@ -329,21 +328,21 @@ struct InstrImpl {
 
 	static void LDPTR_D(cpu_t& cpu, la_instruction instr) {
 		// LDPTR.D uses 14-bit signed offset << 2 (word-aligned)
-		int64_t offset = InstructionHelpers<W>::sign_extend_14(instr.ri14.imm) << 2;
+		int64_t offset = InstructionHelpers::sign_extend_14(instr.ri14.imm) << 2;
 		auto addr = cpu.reg(instr.ri14.rj) + offset;
 		cpu.reg(instr.ri14.rd) = cpu.memory().template read<uint64_t>(addr);
 	}
 
 	static void STPTR_W(cpu_t& cpu, la_instruction instr) {
 		// STPTR.W uses 14-bit signed offset << 2 (word-aligned)
-		int64_t offset = InstructionHelpers<W>::sign_extend_14(instr.ri14.imm) << 2;
+		int64_t offset = InstructionHelpers::sign_extend_14(instr.ri14.imm) << 2;
 		auto addr = cpu.reg(instr.ri14.rj) + offset;
 		cpu.memory().template write<uint32_t>(addr, cpu.reg(instr.ri14.rd));
 	}
 
 	static void STPTR_D(cpu_t& cpu, la_instruction instr) {
 		// STPTR.D uses 14-bit signed offset << 2 (word-aligned)
-		int64_t offset = InstructionHelpers<W>::sign_extend_14(instr.ri14.imm) << 2;
+		int64_t offset = InstructionHelpers::sign_extend_14(instr.ri14.imm) << 2;
 		auto addr = cpu.reg(instr.ri14.rj) + offset;
 		cpu.memory().template write<uint64_t>(addr, cpu.reg(instr.ri14.rd));
 	}
@@ -351,7 +350,7 @@ struct InstrImpl {
 	// === Floating-point Load/Store Instructions ===
 
 	static void FLD_S(cpu_t& cpu, la_instruction instr) {
-		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		uint32_t val = cpu.memory().template read<uint32_t>(addr);
 		auto& vr = cpu.registers().getvr(instr.ri12.rd);
 		vr.wu[0] = val;
@@ -360,13 +359,13 @@ struct InstrImpl {
 	}
 
 	static void FST_S(cpu_t& cpu, la_instruction instr) {
-		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		const auto& vr = cpu.registers().getvr(instr.ri12.rd);
 		cpu.memory().template write<uint32_t>(addr, vr.wu[0]);
 	}
 
 	static void FLD_D(cpu_t& cpu, la_instruction instr) {
-		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		uint64_t val = cpu.memory().template read<uint64_t>(addr);
 		auto& vr = cpu.registers().getvr(instr.ri12.rd);
 		vr.du[0] = val;
@@ -374,7 +373,7 @@ struct InstrImpl {
 	}
 
 	static void FST_D(cpu_t& cpu, la_instruction instr) {
-		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		const auto& vr = cpu.registers().getvr(instr.ri12.rd);
 		cpu.memory().template write<uint64_t>(addr, vr.du[0]);
 	}
@@ -439,7 +438,7 @@ struct InstrImpl {
 	static void BEQZ(cpu_t& cpu, la_instruction instr) {
 		// BEQZ uses ri21 format: rj at bits[9:5], 21-bit offset split across bits[25:10] and [4:0]
 		if (cpu.reg(instr.ri21.rj) == 0) {
-			auto offset = InstructionHelpers<W>::sign_extend_21(instr.ri21.offs_lo, instr.ri21.offs_hi) << 2;
+			auto offset = InstructionHelpers::sign_extend_21(instr.ri21.offs_lo, instr.ri21.offs_hi) << 2;
 			cpu.increment_pc(offset-4);
 		}
 	}
@@ -447,68 +446,68 @@ struct InstrImpl {
 	static void BNEZ(cpu_t& cpu, la_instruction instr) {
 		// BNEZ uses ri21 format: rj at bits[9:5], 21-bit offset split across bits[25:10] and [4:0]
 		if (cpu.reg(instr.ri21.rj) != 0) {
-			auto offset = InstructionHelpers<W>::sign_extend_21(instr.ri21.offs_lo, instr.ri21.offs_hi) << 2;
+			auto offset = InstructionHelpers::sign_extend_21(instr.ri21.offs_lo, instr.ri21.offs_hi) << 2;
 			cpu.increment_pc(offset-4);
 		}
 	}
 
 	static void BEQ(cpu_t& cpu, la_instruction instr) {
 		if (cpu.reg(instr.ri16.rj) == cpu.reg(instr.ri16.rd)) {
-			auto offset = InstructionHelpers<W>::sign_extend_16(instr.ri16.imm) << 2;
+			auto offset = InstructionHelpers::sign_extend_16(instr.ri16.imm) << 2;
 			cpu.increment_pc(offset-4);
 		}
 	}
 
 	static void BNE(cpu_t& cpu, la_instruction instr) {
 		if (cpu.reg(instr.ri16.rj) != cpu.reg(instr.ri16.rd)) {
-			auto offset = InstructionHelpers<W>::sign_extend_16(instr.ri16.imm) << 2;
+			auto offset = InstructionHelpers::sign_extend_16(instr.ri16.imm) << 2;
 			cpu.increment_pc(offset-4);
 		}
 	}
 
 	static void BLT(cpu_t& cpu, la_instruction instr) {
 		if ((int64_t)cpu.reg(instr.ri16.rj) < (int64_t)cpu.reg(instr.ri16.rd)) {
-			auto offset = InstructionHelpers<W>::sign_extend_16(instr.ri16.imm) << 2;
+			auto offset = InstructionHelpers::sign_extend_16(instr.ri16.imm) << 2;
 			cpu.increment_pc(offset-4);
 		}
 	}
 
 	static void BGE(cpu_t& cpu, la_instruction instr) {
 		if ((int64_t)cpu.reg(instr.ri16.rj) >= (int64_t)cpu.reg(instr.ri16.rd)) {
-			auto offset = InstructionHelpers<W>::sign_extend_16(instr.ri16.imm) << 2;
+			auto offset = InstructionHelpers::sign_extend_16(instr.ri16.imm) << 2;
 			cpu.increment_pc(offset-4);
 		}
 	}
 
 	static void BLTU(cpu_t& cpu, la_instruction instr) {
 		if ((uint64_t)cpu.reg(instr.ri16.rj) < (uint64_t)cpu.reg(instr.ri16.rd)) {
-			auto offset = InstructionHelpers<W>::sign_extend_16(instr.ri16.imm) << 2;
+			auto offset = InstructionHelpers::sign_extend_16(instr.ri16.imm) << 2;
 			cpu.increment_pc(offset-4);
 		}
 	}
 
 	static void BGEU(cpu_t& cpu, la_instruction instr) {
 		if ((uint64_t)cpu.reg(instr.ri16.rj) >= (uint64_t)cpu.reg(instr.ri16.rd)) {
-			auto offset = InstructionHelpers<W>::sign_extend_16(instr.ri16.imm) << 2;
+			auto offset = InstructionHelpers::sign_extend_16(instr.ri16.imm) << 2;
 			cpu.increment_pc(offset-4);
 		}
 	}
 
 	static void B(cpu_t& cpu, la_instruction instr) {
-		auto offset = InstructionHelpers<W>::sign_extend_26(instr.i26.offs()) << 2;
+		auto offset = InstructionHelpers::sign_extend_26(instr.i26.offs()) << 2;
 		cpu.increment_pc(offset-4);
 	}
 
 	static void BL(cpu_t& cpu, la_instruction instr) {
 		cpu.reg(REG_RA) = cpu.pc() + 4;
-		auto offset = InstructionHelpers<W>::sign_extend_26(instr.i26.offs()) << 2;
+		auto offset = InstructionHelpers::sign_extend_26(instr.i26.offs()) << 2;
 		cpu.increment_pc(offset-4);
 	}
 
 	static void JIRL(cpu_t& cpu, la_instruction instr) {
 		auto next_pc = cpu.pc() + 4;
 		auto base = cpu.reg(instr.ri16.rj);
-		auto offset = InstructionHelpers<W>::sign_extend_16(instr.ri16.imm) << 2;
+		auto offset = InstructionHelpers::sign_extend_16(instr.ri16.imm) << 2;
 		auto target = base + offset;
 
 		if (instr.ri16.rd != 0) {
@@ -530,20 +529,20 @@ struct InstrImpl {
 		const uint32_t lower = cpu.reg(instr.ri20.rd);
 
 		// Sign-extend the 20-bit immediate to 32 bits, then place at bits [51:32]
-		int32_t si20 = InstructionHelpers<W>::sign_extend_20(instr.ri20.imm);
+		int32_t si20 = InstructionHelpers::sign_extend_20(instr.ri20.imm);
 		int64_t imm_ext = (int64_t)si20 << 32;
 
 		cpu.reg(instr.ri20.rd) = imm_ext | lower;
 	}
 
 	static void PCADDI(cpu_t& cpu, la_instruction instr) {
-		int32_t si20 = InstructionHelpers<W>::sign_extend_20(instr.ri20.imm);
+		int32_t si20 = InstructionHelpers::sign_extend_20(instr.ri20.imm);
 		int64_t offset = (int64_t)(si20 << 2);
 		cpu.reg(instr.ri20.rd) = cpu.pc() + offset;
 	}
 
 	static void PCADDU12I(cpu_t& cpu, la_instruction instr) {
-		int32_t si20 = InstructionHelpers<W>::sign_extend_20(instr.ri20.imm);
+		int32_t si20 = InstructionHelpers::sign_extend_20(instr.ri20.imm);
 		int64_t offset = (int64_t)(si20 << 12);
 		cpu.reg(instr.ri20.rd) = cpu.pc() + offset;
 	}
@@ -555,7 +554,7 @@ struct InstrImpl {
 	}
 
 	static void PCADDU18I(cpu_t& cpu, la_instruction instr) {
-		int32_t si20 = InstructionHelpers<W>::sign_extend_20(instr.ri20.imm);
+		int32_t si20 = InstructionHelpers::sign_extend_20(instr.ri20.imm);
 		int64_t offset = (int64_t)(si20 << 18);
 		cpu.reg(instr.ri20.rd) = cpu.pc() + offset;
 	}
@@ -639,20 +638,20 @@ struct InstrImpl {
 	// === Load-Linked / Store-Conditional ===
 
 	static void LL_W(cpu_t& cpu, la_instruction instr) {
-		auto addr = cpu.reg(instr.ri14.rj) + (InstructionHelpers<W>::sign_extend_14(instr.ri14.imm) << 2);
+		auto addr = cpu.reg(instr.ri14.rj) + (InstructionHelpers::sign_extend_14(instr.ri14.imm) << 2);
 		cpu.reg(instr.ri14.rd) = (int64_t)(int32_t)cpu.memory().template read<uint32_t>(addr);
 		// In single-threaded mode, we always succeed
 		cpu.set_ll_bit(true);
 	}
 
 	static void LL_D(cpu_t& cpu, la_instruction instr) {
-		auto addr = cpu.reg(instr.ri14.rj) + (InstructionHelpers<W>::sign_extend_14(instr.ri14.imm) << 2);
+		auto addr = cpu.reg(instr.ri14.rj) + (InstructionHelpers::sign_extend_14(instr.ri14.imm) << 2);
 		cpu.reg(instr.ri14.rd) = cpu.memory().template read<uint64_t>(addr);
 		cpu.set_ll_bit(true);
 	}
 
 	static void SC_W(cpu_t& cpu, la_instruction instr) {
-		auto addr = cpu.reg(instr.ri14.rj) + (InstructionHelpers<W>::sign_extend_14(instr.ri14.imm) << 2);
+		auto addr = cpu.reg(instr.ri14.rj) + (InstructionHelpers::sign_extend_14(instr.ri14.imm) << 2);
 		if (cpu.ll_bit()) {
 			cpu.memory().template write<uint32_t>(addr, cpu.reg(instr.ri14.rd));
 			cpu.reg(instr.ri14.rd) = 1; // Success
@@ -663,7 +662,7 @@ struct InstrImpl {
 	}
 
 	static void SC_D(cpu_t& cpu, la_instruction instr) {
-		auto addr = cpu.reg(instr.ri14.rj) + (InstructionHelpers<W>::sign_extend_14(instr.ri14.imm) << 2);
+		auto addr = cpu.reg(instr.ri14.rj) + (InstructionHelpers::sign_extend_14(instr.ri14.imm) << 2);
 		if (cpu.ll_bit()) {
 			cpu.memory().template write<uint64_t>(addr, cpu.reg(instr.ri14.rd));
 			cpu.reg(instr.ri14.rd) = 1; // Success
@@ -752,13 +751,13 @@ struct InstrImpl {
 
 	static void SLTI(cpu_t& cpu, la_instruction instr) {
 		int64_t a = static_cast<int64_t>(cpu.reg(instr.ri12.rj));
-		int64_t b = InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		int64_t b = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		cpu.reg(instr.ri12.rd) = (a < b) ? 1 : 0;
 	}
 
 	static void SLTUI(cpu_t& cpu, la_instruction instr) {
 		uint64_t a = cpu.reg(instr.ri12.rj);
-		uint64_t b = static_cast<uint64_t>(InstructionHelpers<W>::sign_extend_12(instr.ri12.imm));
+		uint64_t b = static_cast<uint64_t>(InstructionHelpers::sign_extend_12(instr.ri12.imm));
 		cpu.reg(instr.ri12.rd) = (a < b) ? 1 : 0;
 	}
 
@@ -1437,7 +1436,7 @@ struct InstrImpl {
 	static void VLD(cpu_t& cpu, la_instruction instr) {
 		// VLD vd, rj, si12
 		// Load 128-bit vector from memory
-		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		auto& vr = cpu.registers().getvr(instr.ri12.rd);
 		vr.du[0] = cpu.memory().template read<uint64_t>(addr);
 		vr.du[1] = cpu.memory().template read<uint64_t>(addr + 8);
@@ -1449,7 +1448,7 @@ struct InstrImpl {
 	static void VST(cpu_t& cpu, la_instruction instr) {
 		// VST vd, rj, si12
 		// Store 128-bit vector to memory
-		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		const auto& vr = cpu.registers().getvr(instr.ri12.rd);
 		cpu.memory().template write<uint64_t>(addr, vr.du[0]);
 		cpu.memory().template write<uint64_t>(addr + 8, vr.du[1]);
@@ -1458,7 +1457,7 @@ struct InstrImpl {
 	static void XVLD(cpu_t& cpu, la_instruction instr) {
 		// XVLD xd, rj, si12
 		// Load 256-bit LASX vector from memory
-		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		auto& vr = cpu.registers().getvr(instr.ri12.rd);
 		vr.du[0] = cpu.memory().template read<uint64_t>(addr);
 		vr.du[1] = cpu.memory().template read<uint64_t>(addr + 8);
@@ -1469,7 +1468,7 @@ struct InstrImpl {
 	static void XVST(cpu_t& cpu, la_instruction instr) {
 		// XVST xd, rj, si12
 		// Store 256-bit LASX vector to memory
-		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		const auto& vr = cpu.registers().getvr(instr.ri12.rd);
 		cpu.memory().template write<uint64_t>(addr, vr.du[0]);
 		cpu.memory().template write<uint64_t>(addr + 8, vr.du[1]);

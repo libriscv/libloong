@@ -38,7 +38,7 @@ static void fuzz_instruction_set(const uint8_t* data, size_t len)
 	try
 	{
 		// Create machine with custom arena
-		Machine<LA64> machine { std::string_view{}, {} };
+		Machine machine { std::string_view{}, {} };
 		machine.memory.allocate_custom_arena(16ull << 20, 0x10000, 0x20000);
 
 		// Initialize stack pointer

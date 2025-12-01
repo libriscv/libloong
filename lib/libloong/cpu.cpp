@@ -4,30 +4,35 @@
 
 namespace loongarch
 {
-	template <int W>
-	std::shared_ptr<DecodedExecuteSegment<W>>& CPU<W>::empty_execute_segment() noexcept {
-		static std::shared_ptr<DecodedExecuteSegment<W>> empty_shared =
-			std::make_shared<DecodedExecuteSegment<W>>(0, 0);
+	// memory() methods - must be here to avoid circular dependency
+	Memory& CPU::memory() noexcept {
+		return machine().memory;
+	}
+
+	const Memory& CPU::memory() const noexcept {
+		return machine().memory;
+	}
+
+	std::shared_ptr<DecodedExecuteSegment>& CPU::empty_execute_segment() noexcept {
+		static std::shared_ptr<DecodedExecuteSegment> empty_shared =
+			std::make_shared<DecodedExecuteSegment>(0, 0);
 		return empty_shared;
 	}
 
-	template <int W>
-	CPU<W>::CPU(Machine<W>& machine)
+	CPU::CPU(Machine& machine)
 		: m_machine(machine), m_exec(empty_execute_segment().get())
 	{
 		// Don't call reset() here - memory isn't loaded yet!
 		// reset() will be called by Machine after memory is initialized
 	}
 
-	template <int W>
-	CPU<W>::CPU(Machine<W>& machine, const Machine<W>& other)
+	CPU::CPU(Machine& machine, const Machine& other)
 		: m_machine(machine), m_exec(other.cpu.m_exec)
 	{
 		m_regs = other.cpu.m_regs;
 	}
 
-	template <int W>
-	void CPU<W>::reset()
+	void CPU::reset()
 	{
 		m_regs.reset();
 		m_regs.pc = machine().memory.start_address();
@@ -36,8 +41,7 @@ namespace loongarch
 		m_regs.get(REG_SP) = machine().memory.stack_address();
 	}
 
-	template <int W>
-	void CPU<W>::trigger_exception(ExceptionType type, address_t data)
+	void CPU::trigger_exception(ExceptionType type, address_t data)
 	{
 		const char* msg = "Unknown exception";
 		switch (type) {
@@ -57,28 +61,24 @@ namespace loongarch
 		throw MachineException(type, msg, data);
 	}
 
-	template <int W>
-	typename CPU<W>::format_t CPU<W>::read_current_instruction() const
+	typename CPU::format_t CPU::read_current_instruction() const
 	{
 		return memory().template read<uint32_t>(pc());
 	}
 
-	template <int W>
-	void CPU<W>::execute(format_t instr)
+	void CPU::execute(format_t instr)
 	{
 		const auto& handler = decode(instr);
 		handler.handler(*this, instr);
 	}
 
-	template <int W>
-	bool CPU<W>::is_executable(address_t addr) const noexcept
+	bool CPU::is_executable(address_t addr) const noexcept
 	{
 		auto segment = memory().exec_segment_for(addr);
 		return segment != nullptr;
 	}
 
-	template <int W>
-	DecodedExecuteSegment<W>& CPU<W>::init_execute_area(
+	DecodedExecuteSegment& CPU::init_execute_area(
 		const void* data, address_t begin, address_t length)
 	{
 		auto& segment = machine().memory.create_execute_segment(
@@ -87,8 +87,7 @@ namespace loongarch
 		return segment;
 	}
 
-	template <int W>
-	typename CPU<W>::NextExecuteReturn CPU<W>::next_execute_segment(address_t pc)
+	typename CPU::NextExecuteReturn CPU::next_execute_segment(address_t pc)
 	{
 		auto segment = machine().memory.exec_segment_for(pc);
 		if (!segment) {
@@ -99,8 +98,7 @@ namespace loongarch
 		return {this->m_exec, pc};
 	}
 
-	template <int W>
-	std::string CPU<W>::to_string(format_t format) const
+	std::string CPU::to_string(format_t format) const
 	{
 		char buffer[256];
 		const auto& handler = decode(format);
@@ -116,8 +114,7 @@ namespace loongarch
 		return std::string(buffer);
 	}
 
-	template <int W>
-	void CPU<W>::init_slowpath_execute_area(const void* data, address_t begin, address_t length)
+	void CPU::init_slowpath_execute_area(const void* data, address_t begin, address_t length)
 	{
 		// Slow-path decodes by reading from guest memory.
 		// Write directly into guest memory, bypassing permissions
@@ -126,8 +123,7 @@ namespace loongarch
 		registers().pc = begin;
 	}
 
-	template <int W>
-	std::string CPU<W>::current_instruction_to_string() const
+	std::string CPU::current_instruction_to_string() const
 	{
 		try {
 			return to_string(read_current_instruction());
@@ -136,8 +132,7 @@ namespace loongarch
 		}
 	}
 
-	template <int W>
-	uint32_t CPU<W>::install_ebreak_at(address_t addr)
+	uint32_t CPU::install_ebreak_at(address_t addr)
 	{
 		// Read current instruction
 		uint32_t old_instr = memory().template read<uint32_t>(addr);
@@ -146,8 +141,7 @@ namespace loongarch
 		return old_instr;
 	}
 
-	template <int W>
-	void CPU<W>::step_one(bool use_instruction_counter)
+	void CPU::step_one(bool use_instruction_counter)
 	{
 		auto instr = read_current_instruction();
 		execute(instr);
@@ -157,40 +151,30 @@ namespace loongarch
 		}
 	}
 
-	template <int W>
-	void CPU<W>::simulate_precise()
+	void CPU::simulate_precise()
 	{
 		while (machine().instruction_counter() < machine().max_instructions()) {
 			step_one(true);
 		}
 	}
 
-	template <int W>
-	std::string Registers<W>::to_string() const
+	std::string Registers::to_string() const
 	{
 		char buffer[4096];
 		size_t offset = 0;
 
 		offset += snprintf(buffer + offset, sizeof(buffer) - offset,
-		                   "PC: 0x%0*lx\n", W / 4, long(pc));
+		                   "PC: 0x%0*lx\n", 16, long(pc));
 		for (size_t i = 0; i < 32; i += 4) {
 			offset += snprintf(buffer + offset, sizeof(buffer) - offset,
 			                   "%-5s: 0x%0*lx  %-5s: 0x%0*lx  %-5s: 0x%0*lx  %-5s: 0x%0*lx\n",
-			                   la_regname(i + 0), W / 4, long(get(i + 0)),
-			                   la_regname(i + 1), W / 4, long(get(i + 1)),
-			                   la_regname(i + 2), W / 4, long(get(i + 2)),
-			                   la_regname(i + 3), W / 4, long(get(i + 3)));
+			                   la_regname(i + 0), 16, long(get(i + 0)),
+			                   la_regname(i + 1), 16, long(get(i + 1)),
+			                   la_regname(i + 2), 16, long(get(i + 2)),
+			                   la_regname(i + 3), 16, long(get(i + 3)));
 		}
 
 		return std::string(buffer);
 	}
 
-#ifdef LA_32
-	template struct CPU<LA32>;
-	template struct Registers<LA32>;
-#endif
-#ifdef LA_64
-	template struct CPU<LA64>;
-	template struct Registers<LA64>;
-#endif
 } // loongarch

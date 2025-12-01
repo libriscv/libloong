@@ -8,10 +8,9 @@
 
 namespace loongarch
 {
-	template <int W>
-	std::vector<typename Machine<W>::BytecodeStats> Machine<W>::collect_bytecode_statistics() const
+	std::vector<typename Machine::BytecodeStats> Machine::collect_bytecode_statistics() const
 	{
-		using handler_t = typename DecoderData<W>::handler_t;
+		using handler_t = typename DecoderData::handler_t;
 
 		// Count bytecode usage from main execute segment
 		std::unordered_map<uint8_t, uint64_t> bytecode_counts;
@@ -83,11 +82,4 @@ namespace loongarch
 		return stats;
 	}
 
-#ifdef LA_32
-	template std::vector<Machine<LA32>::BytecodeStats> Machine<LA32>::collect_bytecode_statistics() const;
-#endif
-#ifdef LA_64
-	template std::vector<Machine<LA64>::BytecodeStats> Machine<LA64>::collect_bytecode_statistics() const;
-#endif
-
-} // namespace loongarch
+} // loongarch

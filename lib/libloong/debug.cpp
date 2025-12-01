@@ -6,8 +6,7 @@
 
 namespace loongarch
 {
-	template <int W>
-	void DebugMachine<W>::simulate(uint64_t max_instructions)
+	void DebugMachine::simulate(uint64_t max_instructions)
 	{
 		this->machine.set_max_instructions(max_instructions);
 		while (!this->machine.stopped()) {
@@ -23,9 +22,8 @@ namespace loongarch
 		}
 	}
 
-	template <int W>
-	long DebugMachine<W>::vmcall(
-		address_type<W> func_addr,
+	long DebugMachine::vmcall(
+		address_t func_addr,
 		uint64_t max_instructions,
 		const std::vector<std::string>& arguments)
 	{
@@ -42,10 +40,10 @@ namespace loongarch
 		// Set PC to function address
 		this->machine.cpu.jump(func_addr);
 		// Push arguments onto stack
-		address_type<W> sp = this->machine.memory.stack_address();
+		address_t sp = this->machine.memory.stack_address();
 		int reg = 0;
 		for (const auto& argument : arguments) {
-			address_type<W> arg_addr = this->machine.stack_push(sp, argument.c_str(), argument.size() + 1);
+			address_t arg_addr = this->machine.stack_push(sp, argument.c_str(), argument.size() + 1);
 			this->machine.cpu.reg(REG_A0 + reg++) = arg_addr;
 		}
 		this->machine.cpu.reg(REG_SP) = sp;
@@ -55,14 +53,12 @@ namespace loongarch
 		return this->machine.template return_value<long>();
 	}
 
-	template <int W>
-	void DebugMachine<W>::print_registers()
+	void DebugMachine::print_registers()
 	{
 		printf("%s\n", machine.cpu.registers().to_string().c_str());
 	}
 
-	template <int W>
-	void DebugMachine<W>::print_instruction()
+	void DebugMachine::print_instruction()
 	{
 		auto pc = machine.cpu.pc();
 		const auto* symbol = machine.lookup_symbol(pc);
@@ -119,8 +115,7 @@ namespace loongarch
 		}
 	}
 
-	template <int W>
-	std::string DebugMachine<W>::demangle(const char* mangled)
+	std::string DebugMachine::demangle(const char* mangled)
 	{
 		int status;
 		std::unique_ptr<char, void(*)(void*)> demangled(
@@ -134,8 +129,7 @@ namespace loongarch
 		return std::string(mangled);
 	}
 
-	template <int W>
-	std::string DebugMachine<W>::get_objdump_line(const address_type<W> pc)
+	std::string DebugMachine::get_objdump_line(const address_t pc)
 	{
 		// Attempt to get objdump line for current PC
 		// Note: This requires the binary to have debug symbols
@@ -172,8 +166,7 @@ namespace loongarch
 		return "";
 	}
 
-	template <int W>
-	bool DebugMachine<W>::compare_instructions(const std::string& our_instr, const std::string& objdump_instr)
+	bool DebugMachine::compare_instructions(const std::string& our_instr, const std::string& objdump_instr)
 	{
 		// Extract the actual instruction from objdump output (remove ";; ACTUAL: " prefix)
 		std::string objdump_clean;
@@ -268,11 +261,5 @@ namespace loongarch
 		// Return true if mnemonic matches (operand differences are just warnings)
 		return true;
 	}
-
-#ifdef LA_32
-	template struct DebugMachine<LA32>;
-#endif
-#ifdef LA_64
-	template struct DebugMachine<LA64>;
-#endif
+// Removed template instantiation
 } // loongarch

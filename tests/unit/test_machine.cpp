@@ -335,7 +335,7 @@ TEST_CASE("System call argument helpers", "[machine][syscall][sysargs]") {
 		static int test_arg0 = 0, test_arg2 = 0;
 		static long test_arg1 = 0;
 
-		machine.machine().install_syscall_handler(500, [](Machine<LA64>& m) {
+		machine.machine().install_syscall_handler(500, [](Machine& m) {
 			test_arg0 = m.sysarg<int>(0);
 			test_arg1 = m.sysarg<long>(1);
 			test_arg2 = m.sysarg<unsigned>(2);
@@ -364,7 +364,7 @@ TEST_CASE("System call argument helpers", "[machine][syscall][sysargs]") {
 
 		static bool test_passed = false;
 
-		machine.machine().install_syscall_handler(501, [](Machine<LA64>& m) {
+		machine.machine().install_syscall_handler(501, [](Machine& m) {
 			auto [a, b, c] = m.sysargs<int, long, unsigned>();
 			test_passed = (a == 10 && b == -20 && c == 30);
 			m.set_result<int>(0);
@@ -396,7 +396,7 @@ TEST_CASE("System call argument helpers", "[machine][syscall][sysargs]") {
 
 		static bool test_passed = false;
 
-		machine.machine().install_syscall_handler(502, [](Machine<LA64>& m) {
+		machine.machine().install_syscall_handler(502, [](Machine& m) {
 			auto [str] = m.sysargs<std::string>();
 			test_passed = (str == "Hello, World!");
 			m.set_result<int>(0);
@@ -426,7 +426,7 @@ TEST_CASE("System call argument helpers", "[machine][syscall][sysargs]") {
 
 		static bool test_passed = false;
 
-		machine.machine().install_syscall_handler(503, [](Machine<LA64>& m) {
+		machine.machine().install_syscall_handler(503, [](Machine& m) {
 			auto [view] = m.sysargs<std::string_view>();
 			test_passed = (view == "Test String" && view.size() == 11);
 			m.set_result<int>(0);
@@ -457,7 +457,7 @@ TEST_CASE("System call argument helpers", "[machine][syscall][sysargs]") {
 
 		static bool test_passed = false;
 
-		machine.machine().install_syscall_handler(504, [](Machine<LA64>& m) {
+		machine.machine().install_syscall_handler(504, [](Machine& m) {
 			auto [num, str, flag] = m.sysargs<int, std::string, bool>();
 			test_passed = (num == 42 && str == "Mixed" && flag == true);
 			m.set_result<int>(0);

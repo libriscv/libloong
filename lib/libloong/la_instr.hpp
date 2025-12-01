@@ -257,11 +257,7 @@ namespace Opcode {
 	constexpr uint32_t REVB_4H    = 0x00003400;  // Reverse bytes in 4 halfwords (op22=0x00000D)
 } // Opcode
 
-template <int W>
-struct InstructionHelpers {
-	using address_t = address_type<W>;
-
-	// Sign extend immediate values
+struct InstructionHelpers {	// Sign extend immediate values
 	static constexpr int32_t sign_extend_12(uint32_t val) {
 		return int32_t(val << 20) >> 20;
 	}

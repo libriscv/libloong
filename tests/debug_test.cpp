@@ -11,7 +11,7 @@
 #endif
 
 using namespace loongarch;
-static std::unique_ptr<Machine<LA64>> machine;
+static std::unique_ptr<Machine> machine;
 
 struct DebugOptions {
 	std::string binary_path;
@@ -187,20 +187,20 @@ int main(int argc, char* argv[])
 		std::string_view binary_view(reinterpret_cast<const char*>(binary.data()), binary.size());
 
 		// Create machine options
-		MachineOptions<LA64> options;
+		MachineOptions options;
 		options.memory_max = opts.memory_max;
 		options.verbose_loader = opts.verbose_loader;
 		options.verbose_syscalls = opts.verbose_syscalls;
 
 		// Create machine
-		machine = std::make_unique<Machine<LA64>>(binary_view, options);
+		machine = std::make_unique<Machine>(binary_view, options);
 
 		// Setup minimal environment with program name
 		machine->setup_linux_syscalls();
 		machine->setup_linux({"program"}, {"LC_TYPE=C", "LC_ALL=C", "USER=groot"});
 
 		// Create debug wrapper
-		DebugMachine<LA64> debug_machine(*machine);
+		DebugMachine debug_machine(*machine);
 		debug_machine.filename = opts.binary_path;
 		debug_machine.compare_objdump = opts.compare_objdump;
 		debug_machine.stop_on_objdump_mismatch = opts.compare_objdump; // Automatically stop on mismatch when comparing
@@ -259,7 +259,7 @@ int main(int argc, char* argv[])
 			<< " (type=" << static_cast<int>(me.type())
 			<< ", data=0x" << std::hex << me.data() << std::dec << ")" << std::endl;
 		if (machine) {
-			DebugMachine<LA64> debug_machine(*machine);
+			DebugMachine debug_machine(*machine);
 			debug_machine.print_registers();
 		}
 		return 1;

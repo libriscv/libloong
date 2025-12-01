@@ -18,10 +18,8 @@ namespace loongarch
 	}
 
 	// Register file for LoongArch
-	template <int W>
 	struct alignas(64) Registers
 	{
-		using address_t = address_type<W>;
 		using register_t = address_t;
 
 		// General purpose registers

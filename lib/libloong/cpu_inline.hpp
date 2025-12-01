@@ -5,29 +5,20 @@ namespace loongarch
 	// Inline implementations for CPU methods
 
 #if (defined(__GNUG__) || defined(__clang__)) && defined(__linux__)
-	template <int W> LA_ALWAYS_INLINE
-	Machine<W>& CPU<W>::machine() noexcept { return *reinterpret_cast<Machine<W>*> (this); }
-	template <int W> LA_ALWAYS_INLINE
-	const Machine<W>& CPU<W>::machine() const noexcept { return *reinterpret_cast<const Machine<W>*> (this); }
+	LA_ALWAYS_INLINE
+	Machine& CPU::machine() noexcept { return *reinterpret_cast<Machine*> (this); }
+	LA_ALWAYS_INLINE
+	const Machine& CPU::machine() const noexcept { return *reinterpret_cast<const Machine*> (this); }
 #else
-	template <int W> LA_ALWAYS_INLINE
-	Machine<W>& CPU<W>::machine() noexcept { return this->m_machine; }
-	template <int W> LA_ALWAYS_INLINE
-	const Machine<W>& CPU<W>::machine() const noexcept { return this->m_machine; }
+	LA_ALWAYS_INLINE
+	Machine& CPU::machine() noexcept { return this->m_machine; }
+	LA_ALWAYS_INLINE
+	const Machine& CPU::machine() const noexcept { return this->m_machine; }
 #endif
 
-	template <int W>
-	inline Memory<W>& CPU<W>::memory() noexcept {
-		return machine().memory;
-	}
+	// memory() methods moved to cpu.cpp to avoid circular dependency
 
-	template <int W>
-	inline const Memory<W>& CPU<W>::memory() const noexcept {
-		return machine().memory;
-	}
-
-	template <int W>
-	inline void CPU<W>::jump(address_t addr) {
+	inline void CPU::jump(address_t addr) {
 		if (LA_UNLIKELY(!is_executable(addr))) {
 			trigger_exception(EXECUTION_SPACE_PROTECTION_FAULT, addr);
 		}

@@ -10,17 +10,15 @@
 
 namespace loongarch
 {
-	template <int W> struct Symbol;
+	struct Symbol;
 
-	template <int W>
 	struct alignas(LA_MACHINE_ALIGNMENT) Memory
 	{
-		using address_t = address_type<W>;
 		static constexpr address_t LA_MASKED_MEMORY_SIZE = 1ull << LA_MASKED_MEMORY_BITS;
 		static constexpr address_t LA_MASKED_MEMORY_MASK = LA_MASKED_MEMORY_SIZE - 1;
 
-		Memory(Machine<W>& machine, std::string_view binary, const MachineOptions<W>& options);
-		Memory(Machine<W>& machine, const Machine<W>& other, const MachineOptions<W>& options);
+		Memory(Machine& machine, std::string_view binary, const MachineOptions& options);
+		Memory(Machine& machine, const Machine& other, const MachineOptions& options);
 		~Memory();
 
 		// Memory access
@@ -48,12 +46,12 @@ namespace loongarch
 		void mmap_deallocate(address_t addr, size_t size);
 
 		// Execute segments
-		DecodedExecuteSegment<W>& create_execute_segment(
-			const MachineOptions<W>& options,
+		DecodedExecuteSegment& create_execute_segment(
+			const MachineOptions& options,
 			const void* data, address_t addr, size_t len,
 			bool is_initial, bool is_likely_jit = false);
 
-		std::shared_ptr<DecodedExecuteSegment<W>> exec_segment_for(address_t pc) const;
+		std::shared_ptr<DecodedExecuteSegment> exec_segment_for(address_t pc) const;
 		size_t execute_segments_count() const noexcept { return m_exec.size() + (m_main_exec_segment ? 1 : 0); }
 		void evict_execute_segments();
 
@@ -83,12 +81,12 @@ namespace loongarch
 		size_t memory_usage_counter() const noexcept { return m_arena_size; }
 
 		// Machine reference
-		Machine<W>& machine() noexcept { return m_machine; }
-		const Machine<W>& machine() const noexcept { return m_machine; }
+		Machine& machine() noexcept { return m_machine; }
+		const Machine& machine() const noexcept { return m_machine; }
 
 		// Symbol lookup
 		address_t address_of(const std::string& name) const;
-		const Symbol<W>* lookup_symbol(address_t addr) const;
+		const Symbol* lookup_symbol(address_t addr) const;
 
 		// ELF information for auxv
 		address_t elf_phdr_addr() const noexcept { return m_elf_phdr_addr; }
@@ -98,7 +96,7 @@ namespace loongarch
 		void reset();
 
 	private:
-		Machine<W>& m_machine;
+		Machine& m_machine;
 
 		// Single memory arena (mmap'd on POSIX, new[] otherwise)
 		uint8_t* m_arena = nullptr;
@@ -111,8 +109,8 @@ namespace loongarch
 		std::string_view m_binary; // Non-owning reference to binary data
 
 		// Execute segments
-		std::shared_ptr<DecodedExecuteSegment<W>> m_main_exec_segment;
-		std::vector<std::shared_ptr<DecodedExecuteSegment<W>>> m_exec;
+		std::shared_ptr<DecodedExecuteSegment> m_main_exec_segment;
+		std::vector<std::shared_ptr<DecodedExecuteSegment>> m_exec;
 
 		// Memory layout
 		address_t m_start_address = 0;
@@ -128,16 +126,16 @@ namespace loongarch
 		uint16_t m_elf_phnum = 0;
 
 		// ELF loader
-		void binary_loader(const MachineOptions<W>& options);
-		void parse_symbols(const Elf::Header* ehdr, const MachineOptions<W>& options);
+		void binary_loader(const MachineOptions& options);
+		void parse_symbols(const Elf::Header* ehdr, const MachineOptions& options);
 		void parse_symbol_table(const Elf::SectionHeader* symtab,
 		                        const Elf::SectionHeader* strtab,
-		                        const MachineOptions<W>& options);
-		void process_relocations(const Elf::Header* ehdr, const MachineOptions<W>& options);
-		void process_rela_section(size_t offset, size_t size, const MachineOptions<W>& options);
+		                        const MachineOptions& options);
+		void process_relocations(const Elf::Header* ehdr, const MachineOptions& options);
+		void process_rela_section(size_t offset, size_t size, const MachineOptions& options);
 
 		// Symbol storage
-		std::vector<Symbol<W>> m_symbols;
+		std::vector<Symbol> m_symbols;
 
 		// Arena helpers
 		void allocate_arena(size_t size);

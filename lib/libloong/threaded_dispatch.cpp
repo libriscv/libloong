@@ -20,7 +20,7 @@
 	goto check_jump;
 #define NEXT_BLOCK_UNCHECKED(len) \
 	pc += len; \
-	decoder += len >> DecoderCache<W>::SHIFT; \
+	decoder += len >> DecoderCache::SHIFT; \
 	pc += decoder->block_bytes; \
 	counter += decoder->instruction_count(); \
 	EXECUTE_INSTR();
@@ -33,8 +33,7 @@
 
 namespace loongarch
 {
-	template <int W>
-	bool CPU<W>::simulate(address_t pc, uint64_t inscounter, uint64_t maxcounter)
+	bool CPU::simulate(address_t pc, uint64_t inscounter, uint64_t maxcounter)
 	{
 		constexpr bool TRACE_DISPATCH = false;  // Disable for normal execution
 		machine().set_max_instructions(UINT64_MAX);
@@ -42,13 +41,13 @@ namespace loongarch
 		// Include computed goto table
 		#include "threaded_bytecode_array.hpp"
 
-		DecodedExecuteSegment<W>* exec = this->m_exec;
+		DecodedExecuteSegment* exec = this->m_exec;
 		address_t current_begin = exec->exec_begin();
 		address_t current_end   = exec->exec_end();
 
 		// Offset the cache pointer so we can use cache[pc >> SHIFT] directly
-		DecoderData<W>* exec_decoder = exec->decoder_cache() - (current_begin >> DecoderCache<W>::SHIFT);
-		DecoderData<W>* decoder;
+		DecoderData* exec_decoder = exec->decoder_cache() - (current_begin >> DecoderCache::SHIFT);
+		DecoderData* decoder;
 
 		uint64_t counter = inscounter;
 		uint64_t max_counter = maxcounter;
@@ -58,7 +57,7 @@ namespace loongarch
 			goto new_execute_segment;
 
 continue_segment:
-		decoder = &exec_decoder[pc >> DecoderCache<W>::SHIFT];
+		decoder = &exec_decoder[pc >> DecoderCache::SHIFT];
 
 		pc += decoder->block_bytes;
 		counter += decoder->instruction_count();
@@ -97,7 +96,7 @@ new_execute_segment:
 		current_begin = exec->exec_begin();
 		current_end   = exec->exec_end();
 		// Offset the cache pointer for the new segment
-		exec_decoder  = exec->decoder_cache() - (current_begin >> DecoderCache<W>::SHIFT);
+		exec_decoder  = exec->decoder_cache() - (current_begin >> DecoderCache::SHIFT);
 
 		if (counter < max_counter)
 			goto continue_segment;
@@ -128,11 +127,6 @@ check_jump:
 		goto continue_segment;
 	}
 
-#ifdef LA_32
-	template bool CPU<LA32>::simulate(address_type<LA32>, uint64_t, uint64_t);
-#endif
-#ifdef LA_64
-	template bool CPU<LA64>::simulate(address_type<LA64>, uint64_t, uint64_t);
-#endif
+	// Removed template instantiation
 
 } // namespace loongarch

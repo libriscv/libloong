@@ -2,17 +2,14 @@
 
 ## Core Classes
 
-### Machine<W>
+### Machine
 
 The main emulator class that contains CPU and Memory.
 
-#### Template Parameters
-- `W` - Address width (LA32 = 4 bytes, LA64 = 8 bytes)
-
 #### Constructor
 ```cpp
-Machine(std::string_view binary, const MachineOptions<W>& options = {});
-Machine(const std::vector<uint8_t>& binary, const MachineOptions<W>& options = {});
+Machine(std::string_view binary, const MachineOptions& options = {});
+Machine(const std::vector<uint8_t>& binary, const MachineOptions& options = {});
 ```
 
 #### Methods
@@ -41,12 +38,12 @@ Machine(const std::vector<uint8_t>& binary, const MachineOptions<W>& options = {
 - `void set_max_instructions(uint64_t val)` - Set instruction limit
 
 #### Public Members
-- `CPU<W> cpu` - CPU state
-- `Memory<W> memory` - Memory subsystem
+- `CPU cpu` - CPU state
+- `Memory memory` - Memory subsystem
 
 ---
 
-### CPU<W>
+### CPU
 
 CPU emulation with registers and execution.
 
@@ -59,26 +56,26 @@ CPU emulation with registers and execution.
 - `void step_one(bool use_instruction_counter = true)` - Execute one instruction
 
 **Register access:**
-- `Registers<W>& registers()` - Get register file
+- `Registers& registers()` - Get register file
 - `auto& reg(uint32_t idx)` - Access general register
 - `address_t pc() const` - Get program counter
 - `void jump(address_t addr)` - Jump to address
 
 **Memory:**
-- `Memory<W>& memory()` - Get memory subsystem
+- `Memory& memory()` - Get memory subsystem
 
 **Exceptions:**
 - `static void trigger_exception(ExceptionType type, address_t data = 0)` - Trigger exception
 
 ---
 
-### Memory<W>
+### Memory
 
 Memory management and paging.
 
 #### Constructor
 ```cpp
-Memory(Machine<W>& machine, std::string_view binary, const MachineOptions<W>& options);
+Memory(Machine& machine, std::string_view binary, const MachineOptions& options);
 ```
 
 #### Methods
@@ -106,7 +103,7 @@ Memory(Machine<W>& machine, std::string_view binary, const MachineOptions<W>& op
 
 ---
 
-### Registers<W>
+### Registers
 
 Register file for LoongArch CPU.
 
@@ -147,7 +144,7 @@ REG_FP   = 22  // Frame pointer
 
 ## Options
 
-### MachineOptions<W>
+### MachineOptions
 ```cpp
 struct MachineOptions {
     size_t memory_max = 64 * 1024 * 1024;  // Max memory
@@ -185,8 +182,5 @@ class MachineException : public std::runtime_error {
 ## Syscall Handler Type
 
 ```cpp
-template <int W>
-using syscall_t = address_type<W>(Machine<W>&);
+using syscall_t = void(Machine&);
 ```
-
-Handler receives machine reference and returns result in A0 register.

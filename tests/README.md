@@ -154,7 +154,7 @@ sudo apt-get install binutils-loongarch64-linux-gnu
 
 ## Architecture
 
-The debugger wraps `Machine<LA64>` with `DebugMachine<LA64>`, which:
+The debugger wraps `Machine` with `DebugMachine`, which:
 1. Hooks into instruction execution
 2. Disassembles each instruction
 3. Tracks register changes

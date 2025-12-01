@@ -7,12 +7,8 @@
 
 namespace loongarch
 {
-	// LoongArch address widths
-	static constexpr int LA32 = 4;
-	static constexpr int LA64 = 8;
 	#define LA_SYSCALLS_MAX  512
 
-	template <int W = LA64>
 	struct MachineOptions {
 		size_t memory_max = 256 * 1024 * 1024; // 256 MB default
 		size_t stack_size = 2 * 1024 * 1024;   // 2 MB default stack
@@ -22,28 +18,17 @@ namespace loongarch
 		bool verbose_syscalls = false;
 	};
 
-	// Address types
-	template <int W>
-	struct address_type_helper {
-		using type = uint32_t;
-	};
-	template <>
-	struct address_type_helper<8> {
-		using type = uint64_t;
-	};
-	template <int W>
-	using address_type = typename address_type_helper<W>::type;
-
-	template <int W>
-	using signed_address_type = typename std::make_signed<address_type<W>>::type;
+	// Address types for 64-bit LoongArch
+	using address_t = uint64_t;
+	using saddress_t = int64_t;
 
 	// Forward declarations
-	template <int W> struct Machine;
-	template <int W> struct CPU;
-	template <int W> struct Memory;
-	template <int W> struct Registers;
-	template <int W> struct DecodedExecuteSegment;
-	template <int W> struct DecoderCache;
+	struct Machine;
+	struct CPU;
+	struct Memory;
+	struct Registers;
+	struct DecodedExecuteSegment;
+	struct DecoderCache;
 	union la_instruction;
 
 	// Machine exceptions

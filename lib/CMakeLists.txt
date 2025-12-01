@@ -5,8 +5,6 @@
 cmake_minimum_required(VERSION 3.5)
 project(loong CXX)
 
-option(LA_32  "32-bit loong support" ON)
-option(LA_64  "64-bit loong support" ON)
 option(LA_DEBUG "Enable debug output" OFF)
 option(LA_BINARY_TRANSLATION "Enable binary translation" OFF)
 option(LA_THREADED "Enable threaded support" ON)
@@ -23,6 +21,7 @@ set(loong_VERSION_MINOR 1)
 set(SOURCES
 	libloong/cpu.cpp
 	libloong/elf_loader.cpp
+	libloong/la64.cpp
 	libloong/machine.cpp
 	libloong/machine_accelerate.cpp
 	libloong/machine_bytecode_stats.cpp
@@ -36,14 +35,6 @@ set(SOURCES
 	libloong/posix/threads.cpp
 	libloong/linux/syscalls.cpp
 )
-
-# Architecture-specific implementations
-if (LA_32)
-	list(APPEND SOURCES libloong/la32.cpp)
-endif()
-if (LA_64)
-	list(APPEND SOURCES libloong/la64.cpp)
-endif()
 
 # Dispatch implementations
 if (FALSE AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND NOT MSVC)

@@ -28,7 +28,7 @@ int main(int argc, char* argv[]) {
     try {
         auto binary = load_file(argv[1]);
 
-        loongarch::Machine<loongarch::LA64> machine { binary };
+        loongarch::Machine machine { binary };
         machine.setup_linux_syscalls();
         machine.setup_linux({argv[1]}, {"LC_ALL=C"});
 
@@ -49,7 +49,7 @@ int main(int argc, char* argv[]) {
 #include <iostream>
 
 // Custom syscall: print a debug message
-uint64_t debug_print_syscall(loongarch::Machine<loongarch::LA64>& machine) {
+uint64_t debug_print_syscall(loongarch::Machine& machine) {
     auto msg_addr = machine.cpu.reg(loongarch::REG_A0);
     auto msg_len = machine.cpu.reg(loongarch::REG_A1);
 
@@ -65,7 +65,7 @@ uint64_t debug_print_syscall(loongarch::Machine<loongarch::LA64>& machine) {
 int main() {
     std::vector<uint8_t> binary = /* ... */;
 
-    loongarch::Machine<loongarch::LA64> machine { binary };
+    loongarch::Machine machine { binary };
 
     // Install custom syscall at number 1000
     machine.install_syscall_handler(1000, debug_print_syscall);
@@ -84,7 +84,7 @@ int main() {
 int main() {
     std::vector<uint8_t> binary = /* ... */;
 
-    loongarch::Machine<loongarch::LA64> machine { binary };
+    loongarch::Machine machine { binary };
     loongarch::setup_linux_syscalls(machine);
 
     // Call a guest function by address with arguments
@@ -106,7 +106,7 @@ int main() {
 #include <iostream>
 #include <iomanip>
 
-void dump_memory(loongarch::Machine<loongarch::LA64>& machine,
+void dump_memory(loongarch::Machine& machine,
                  uint64_t addr, size_t len) {
     std::cout << "Memory at 0x" << std::hex << addr << ":\n";
     for (size_t i = 0; i < len; i += 16) {
@@ -123,7 +123,7 @@ void dump_memory(loongarch::Machine<loongarch::LA64>& machine,
 int main() {
     std::vector<uint8_t> binary = /* ... */;
 
-    loongarch::Machine<loongarch::LA64> machine { binary };
+    loongarch::Machine machine { binary };
 
     // Dump stack memory
     dump_memory(machine, machine.cpu.reg(loongarch::REG_SP), 256);
@@ -142,9 +142,9 @@ int main() {
 int main() {
     std::vector<uint8_t> binary = /* ... */;
 
-    loongarch::Machine<loongarch::LA64> machine { binary };
+    loongarch::Machine machine { binary };
     loongarch::setup_linux_syscalls(machine);
-    loongarch::DebugMachine<loongarch::LA64> debug { machine };
+    loongarch::DebugMachine debug { machine };
 
     // Execute 100 instructions with debug output
     for (int i = 0; i < 100; i++) {
@@ -174,7 +174,7 @@ int main() {
 int main() {
     std::vector<uint8_t> binary = /* ... */;
 
-    loongarch::Machine<loongarch::LA64> machine { binary };
+    loongarch::Machine machine { binary };
     loongarch::setup_linux_syscalls(machine);
     machine.setup_linux({"program"}, {});
 
@@ -208,7 +208,7 @@ int main() {
 int main() {
     std::vector<uint8_t> binary = /* ... */;
 
-    loongarch::Machine<loongarch::LA64> machine { binary };
+    loongarch::Machine machine { binary };
     loongarch::setup_linux_syscalls(machine);
 
     // Run for a while

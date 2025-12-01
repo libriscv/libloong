@@ -48,8 +48,7 @@ static std::vector<uint8_t> load_file(const char* filename)
 	return buffer;
 }
 
-template <int W>
-static void print_bytecode_statistics(const Machine<W>& machine)
+static void print_bytecode_statistics(const Machine& machine)
 {
 	printf("\n=== Bytecode Usage Statistics ===\n\n");
 
@@ -78,7 +77,7 @@ static void print_bytecode_statistics(const Machine<W>& machine)
 			// Decode the instruction to get its printer
 			loongarch::la_instruction instr;
 			instr.whole = stat.sample_instruction;
-			const auto& decoded = loongarch::CPU<W>::decode(instr);
+			const auto& decoded = loongarch::CPU::decode(instr);
 
 			if (decoded.printer) {
 				char buffer[256];
@@ -122,13 +121,12 @@ static void print_bytecode_statistics(const Machine<W>& machine)
 	printf("\nTotal instructions in cache: %" PRIu64 "\n", total);
 }
 
-template <int W>
 static int run_program(const std::vector<uint8_t>& binary, const EmulatorOptions& opts)
 {
-	std::unique_ptr<Machine<W>> machine;
+	std::unique_ptr<Machine> machine;
 	try {
 		// Create machine
-		machine = std::make_unique<Machine<W>>(binary, MachineOptions<W>{
+		machine = std::make_unique<Machine>(binary, MachineOptions{
 			.memory_max = opts.memory_max,
 			.verbose_loader = opts.verbose,
 			.verbose_syscalls = opts.verbose,
@@ -401,19 +399,9 @@ int main(int argc, char* argv[])
 
 		// Run program with detected architecture
 		if (is_32bit) {
-#ifdef LA_32
-			return run_program<LA32>(binary, opts);
-#else
-			fprintf(stderr, "Error: LA32 support not compiled in\n");
-			return 1;
-#endif
+			fprintf(stderr, "Error: 32-bit LoongArch is not supported!\n");
 		} else { // is_64bit
-#ifdef LA_64
-			return run_program<LA64>(binary, opts);
-#else
-			fprintf(stderr, "Error: LA64 support not compiled in\n");
-			return 1;
-#endif
+			return run_program(binary, opts);
 		}
 
 	} catch (const std::exception& e) {

@@ -50,11 +50,9 @@ static inline const char* cond_names(uint32_t cond) {
 	}
 }
 
-// Template instruction printers shared between LA32 and LA64
-template <int W>
 struct InstrPrinters {
-	using cpu_t = CPU<W>;
-	using addr_t = address_type<W>;
+	using cpu_t = CPU;
+	using addr_t = address_t;
 
 	static int INVALID(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		return snprintf(buf, len, "ILLEGAL 0x%08x", instr.whole);
@@ -91,7 +89,7 @@ struct InstrPrinters {
 	}
 
 	static int ADDI_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		int32_t imm = InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		int32_t imm = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		// Check for li.w pseudo-instruction (addi.w rd, $zero, imm)
 		if (instr.ri12.rj == 0) {
 			return snprintf(buf, len, "li.w %s, %d", reg_name(instr.ri12.rd), imm);
@@ -101,7 +99,7 @@ struct InstrPrinters {
 	}
 
 	static int ADDI_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		int32_t imm = InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		int32_t imm = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		// Check for li.d pseudo-instruction (addi.d rd, $zero, imm)
 		if (instr.ri12.rj == 0) {
 			return snprintf(buf, len, "li.d %s, %d", reg_name(instr.ri12.rd), imm);
@@ -323,91 +321,91 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 	// === Load/Store Instructions ===
 
 	static int LD_B(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		int32_t imm = InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		int32_t imm = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		return snprintf(buf, len, "ld.b %s, %s, %d",
 			reg_name(instr.ri12.rd), reg_name(instr.ri12.rj), imm);
 	}
 
 	static int LD_H(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		int32_t imm = InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		int32_t imm = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		return snprintf(buf, len, "ld.h %s, %s, %d",
 			reg_name(instr.ri12.rd), reg_name(instr.ri12.rj), imm);
 	}
 
 	static int LD_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		int32_t imm = InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		int32_t imm = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		return snprintf(buf, len, "ld.w %s, %s, %d",
 			reg_name(instr.ri12.rd), reg_name(instr.ri12.rj), imm);
 	}
 
 	static int LD_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		int32_t imm = InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		int32_t imm = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		return snprintf(buf, len, "ld.d %s, %s, %d",
 			reg_name(instr.ri12.rd), reg_name(instr.ri12.rj), imm);
 	}
 
 	static int LD_BU(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		int32_t imm = InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		int32_t imm = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		return snprintf(buf, len, "ld.bu %s, %s, %d",
 			reg_name(instr.ri12.rd), reg_name(instr.ri12.rj), imm);
 	}
 
 	static int LD_HU(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		int32_t imm = InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		int32_t imm = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		return snprintf(buf, len, "ld.hu %s, %s, %d",
 			reg_name(instr.ri12.rd), reg_name(instr.ri12.rj), imm);
 	}
 
 	static int LD_WU(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		int32_t imm = InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		int32_t imm = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		return snprintf(buf, len, "ld.wu %s, %s, %d",
 			reg_name(instr.ri12.rd), reg_name(instr.ri12.rj), imm);
 	}
 
 	static int ST_B(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		int32_t imm = InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		int32_t imm = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		return snprintf(buf, len, "st.b %s, %s, %d",
 			reg_name(instr.ri12.rd), reg_name(instr.ri12.rj), imm);
 	}
 
 	static int ST_H(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		int32_t imm = InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		int32_t imm = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		return snprintf(buf, len, "st.h %s, %s, %d",
 			reg_name(instr.ri12.rd), reg_name(instr.ri12.rj), imm);
 	}
 
 	static int ST_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		int32_t imm = InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		int32_t imm = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		return snprintf(buf, len, "st.w %s, %s, %d",
 			reg_name(instr.ri12.rd), reg_name(instr.ri12.rj), imm);
 	}
 
 	static int ST_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		int32_t imm = InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		int32_t imm = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		return snprintf(buf, len, "st.d %s, %s, %d",
 			reg_name(instr.ri12.rd), reg_name(instr.ri12.rj), imm);
 	}
 
 	static int LDPTR_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		int32_t imm = InstructionHelpers<W>::sign_extend_14(instr.ri14.imm) << 2;
+		int32_t imm = InstructionHelpers::sign_extend_14(instr.ri14.imm) << 2;
 		return snprintf(buf, len, "ldptr.w %s, %s, %d",
 			reg_name(instr.ri14.rd), reg_name(instr.ri14.rj), imm);
 	}
 
 	static int LDPTR_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		int32_t imm = InstructionHelpers<W>::sign_extend_14(instr.ri14.imm) << 2;
+		int32_t imm = InstructionHelpers::sign_extend_14(instr.ri14.imm) << 2;
 		return snprintf(buf, len, "ldptr.d %s, %s, %d",
 			reg_name(instr.ri14.rd), reg_name(instr.ri14.rj), imm);
 	}
 
 	static int STPTR_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		int32_t imm = InstructionHelpers<W>::sign_extend_14(instr.ri14.imm) << 2;
+		int32_t imm = InstructionHelpers::sign_extend_14(instr.ri14.imm) << 2;
 		return snprintf(buf, len, "stptr.w %s, %s, %d",
 			reg_name(instr.ri14.rd), reg_name(instr.ri14.rj), imm);
 	}
 
 	static int STPTR_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		int32_t imm = InstructionHelpers<W>::sign_extend_14(instr.ri14.imm) << 2;
+		int32_t imm = InstructionHelpers::sign_extend_14(instr.ri14.imm) << 2;
 		return snprintf(buf, len, "stptr.d %s, %s, %d",
 			reg_name(instr.ri14.rd), reg_name(instr.ri14.rj), imm);
 	}
@@ -415,25 +413,25 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 	// === Floating-point Load/Store Instructions ===
 
 	static int FLD_S(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		int32_t imm = InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		int32_t imm = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		return snprintf(buf, len, "fld.s $f%d, %s, %d",
 			instr.ri12.rd, reg_name(instr.ri12.rj), imm);
 	}
 
 	static int FST_S(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		int32_t imm = InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		int32_t imm = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		return snprintf(buf, len, "fst.s $f%d, %s, %d",
 			instr.ri12.rd, reg_name(instr.ri12.rj), imm);
 	}
 
 	static int FLD_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		int32_t imm = InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		int32_t imm = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		return snprintf(buf, len, "fld.d $f%d, %s, %d",
 			instr.ri12.rd, reg_name(instr.ri12.rj), imm);
 	}
 
 	static int FST_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		int32_t imm = InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		int32_t imm = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		return snprintf(buf, len, "fst.d $f%d, %s, %d",
 			instr.ri12.rd, reg_name(instr.ri12.rj), imm);
 	}
@@ -484,7 +482,7 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 
 	static int BEQZ(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t pc) {
 		// BEQZ uses ri21 format: rj at bits[9:5], 21-bit offset split across bits[25:10] and [4:0]
-		int32_t offset = InstructionHelpers<W>::sign_extend_21(instr.ri21.offs_lo, instr.ri21.offs_hi) << 2;
+		int32_t offset = InstructionHelpers::sign_extend_21(instr.ri21.offs_lo, instr.ri21.offs_hi) << 2;
 		addr_t target = pc + offset;
 		return snprintf(buf, len, "beqz %s, 0x%lx",
 			reg_name(instr.ri21.rj), (unsigned long)target);
@@ -492,28 +490,28 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 
 	static int BNEZ(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t pc) {
 		// BNEZ uses ri21 format: rj at bits[9:5], 21-bit offset split across bits[25:10] and [4:0]
-		int32_t offset = InstructionHelpers<W>::sign_extend_21(instr.ri21.offs_lo, instr.ri21.offs_hi) << 2;
+		int32_t offset = InstructionHelpers::sign_extend_21(instr.ri21.offs_lo, instr.ri21.offs_hi) << 2;
 		addr_t target = pc + offset;
 		return snprintf(buf, len, "bnez %s, 0x%lx",
 			reg_name(instr.ri21.rj), (unsigned long)target);
 	}
 
 	static int BEQ(char* buf, size_t len, const cpu_t& cpu, la_instruction instr, addr_t pc) {
-		int32_t offset = InstructionHelpers<W>::sign_extend_16(instr.ri16.imm) << 2;
+		int32_t offset = InstructionHelpers::sign_extend_16(instr.ri16.imm) << 2;
 		addr_t target = pc + offset;
 		return snprintf(buf, len, "beq %s, %s, 0x%lx",
 			reg_name(instr.ri16.rj), reg_name(instr.ri16.rd), (unsigned long)target);
 	}
 
 	static int BNE(char* buf, size_t len, const cpu_t& cpu, la_instruction instr, addr_t pc) {
-		int32_t offset = InstructionHelpers<W>::sign_extend_16(instr.ri16.imm) << 2;
+		int32_t offset = InstructionHelpers::sign_extend_16(instr.ri16.imm) << 2;
 		addr_t target = pc + offset;
 		return snprintf(buf, len, "bne %s, %s, 0x%lx",
 			reg_name(instr.ri16.rj), reg_name(instr.ri16.rd), (unsigned long)target);
 	}
 
 	static int BLT(char* buf, size_t len, const cpu_t& cpu, la_instruction instr, addr_t pc) {
-		int32_t offset = InstructionHelpers<W>::sign_extend_16(instr.ri16.imm) << 2;
+		int32_t offset = InstructionHelpers::sign_extend_16(instr.ri16.imm) << 2;
 		addr_t target = pc + offset;
 		if (instr.ri16.rd == 0) {
 			// BLT rd, $zero, target is equivalent to BLTZ rd, target
@@ -529,7 +527,7 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 	}
 
 	static int BGE(char* buf, size_t len, const cpu_t& cpu, la_instruction instr, addr_t pc) {
-		int32_t offset = InstructionHelpers<W>::sign_extend_16(instr.ri16.imm) << 2;
+		int32_t offset = InstructionHelpers::sign_extend_16(instr.ri16.imm) << 2;
 		addr_t target = pc + offset;
 		if (instr.ri16.rd == 0) {
 			// BGE rd, $zero, target is equivalent to BGEZ rd, target
@@ -545,33 +543,33 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 	}
 
 	static int BLTU(char* buf, size_t len, const cpu_t& cpu, la_instruction instr, addr_t pc) {
-		int32_t offset = InstructionHelpers<W>::sign_extend_16(instr.ri16.imm) << 2;
+		int32_t offset = InstructionHelpers::sign_extend_16(instr.ri16.imm) << 2;
 		addr_t target = pc + offset;
 		return snprintf(buf, len, "bltu %s, %s, 0x%lx",
 			reg_name(instr.ri16.rj), reg_name(instr.ri16.rd), (unsigned long)target);
 	}
 
 	static int BGEU(char* buf, size_t len, const cpu_t& cpu, la_instruction instr, addr_t pc) {
-		int32_t offset = InstructionHelpers<W>::sign_extend_16(instr.ri16.imm) << 2;
+		int32_t offset = InstructionHelpers::sign_extend_16(instr.ri16.imm) << 2;
 		addr_t target = pc + offset;
 		return snprintf(buf, len, "bgeu %s, %s, 0x%lx",
 			reg_name(instr.ri16.rj), reg_name(instr.ri16.rd), (unsigned long)target);
 	}
 
 	static int B(char* buf, size_t len, const cpu_t& cpu, la_instruction instr, addr_t pc) {
-		int32_t offset = InstructionHelpers<W>::sign_extend_26(instr.i26.offs()) << 2;
+		int32_t offset = InstructionHelpers::sign_extend_26(instr.i26.offs()) << 2;
 		addr_t target = pc + offset;
 		return snprintf(buf, len, "b 0x%lx", (unsigned long)target);
 	}
 
 	static int BL(char* buf, size_t len, const cpu_t& cpu, la_instruction instr, addr_t pc) {
-		int32_t offset = InstructionHelpers<W>::sign_extend_26(instr.i26.offs()) << 2;
+		int32_t offset = InstructionHelpers::sign_extend_26(instr.i26.offs()) << 2;
 		addr_t target = pc + offset;
 		return snprintf(buf, len, "bl 0x%lx", (unsigned long)target);
 	}
 
 	static int JIRL(char* buf, size_t len, const cpu_t& cpu, la_instruction instr, addr_t pc) {
-		int32_t offset = InstructionHelpers<W>::sign_extend_16(instr.ri16.imm) << 2;
+		int32_t offset = InstructionHelpers::sign_extend_16(instr.ri16.imm) << 2;
 		// Check for ret pseudo-instruction (jirl $zero, $ra, 0)
 		if (instr.ri16.rd == 0 && instr.ri16.rj == REG_RA && offset == 0) {
 			return snprintf(buf, len, "ret");
@@ -597,7 +595,7 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 	}
 
 	static int PCADDI(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t pc) {
-		int32_t si20 = InstructionHelpers<W>::sign_extend_20(instr.ri20.imm);
+		int32_t si20 = InstructionHelpers::sign_extend_20(instr.ri20.imm);
 		int64_t offset = (int64_t)(si20 << 2);
 		addr_t target = pc + offset;
 		return snprintf(buf, len, "pcaddi %s, %d  # 0x%lx",
@@ -605,7 +603,7 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 	}
 
 	static int PCADDU12I(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t pc) {
-		int32_t si20 = InstructionHelpers<W>::sign_extend_20(instr.ri20.imm);
+		int32_t si20 = InstructionHelpers::sign_extend_20(instr.ri20.imm);
 		int64_t offset = (int64_t)(si20 << 12);
 		addr_t target = pc + offset;
 		return snprintf(buf, len, "pcaddu12i %s, 0x%x  # 0x%lx",
@@ -621,7 +619,7 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 	}
 
 	static int PCADDU18I(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t pc) {
-		int32_t si20 = InstructionHelpers<W>::sign_extend_20(instr.ri20.imm);
+		int32_t si20 = InstructionHelpers::sign_extend_20(instr.ri20.imm);
 		int64_t offset = (int64_t)(si20 << 18);
 		addr_t target = pc + offset;
 		return snprintf(buf, len, "pcaddu18i %s, 0x%x  # 0x%lx",
@@ -629,7 +627,7 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 	}
 
 	static int LU52I_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		const int16_t signed_imm = InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		const int16_t signed_imm = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		return snprintf(buf, len, "lu52i.d %s, %s, %d",
 			reg_name(instr.ri12.rd), reg_name(instr.ri12.rj), signed_imm);
 	}
@@ -678,25 +676,25 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 	// === LL/SC Atomics ===
 
 	static int LL_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		int32_t imm = InstructionHelpers<W>::sign_extend_14(instr.ri14.imm) << 2;
+		int32_t imm = InstructionHelpers::sign_extend_14(instr.ri14.imm) << 2;
 		return snprintf(buf, len, "ll.w %s, %s, %d",
 			reg_name(instr.ri14.rd), reg_name(instr.ri14.rj), imm);
 	}
 
 	static int LL_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		int32_t imm = InstructionHelpers<W>::sign_extend_14(instr.ri14.imm) << 2;
+		int32_t imm = InstructionHelpers::sign_extend_14(instr.ri14.imm) << 2;
 		return snprintf(buf, len, "ll.d %s, %s, %d",
 			reg_name(instr.ri14.rd), reg_name(instr.ri14.rj), imm);
 	}
 
 	static int SC_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		int32_t imm = InstructionHelpers<W>::sign_extend_14(instr.ri14.imm) << 2;
+		int32_t imm = InstructionHelpers::sign_extend_14(instr.ri14.imm) << 2;
 		return snprintf(buf, len, "sc.w %s, %s, %d",
 			reg_name(instr.ri14.rd), reg_name(instr.ri14.rj), imm);
 	}
 
 	static int SC_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		int32_t imm = InstructionHelpers<W>::sign_extend_14(instr.ri14.imm) << 2;
+		int32_t imm = InstructionHelpers::sign_extend_14(instr.ri14.imm) << 2;
 		return snprintf(buf, len, "sc.d %s, %s, %d",
 			reg_name(instr.ri14.rd), reg_name(instr.ri14.rj), imm);
 	}
@@ -773,13 +771,13 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 	// === Comparison Immediate Instructions ===
 
 	static int SLTI(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		int32_t imm = InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		int32_t imm = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		return snprintf(buf, len, "slti %s, %s, %d",
 			reg_name(instr.ri12.rd), reg_name(instr.ri12.rj), imm);
 	}
 
 	static int SLTUI(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		int32_t imm = InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		int32_t imm = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		return snprintf(buf, len, "sltui %s, %s, %d",
 			reg_name(instr.ri12.rd), reg_name(instr.ri12.rj), imm);
 	}
@@ -915,25 +913,25 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 	// === LSX Vector Load/Store ===
 
 	static int VLD(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		int32_t imm = InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		int32_t imm = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		return snprintf(buf, len, "vld $vr%u, %s, %d",
 			instr.ri12.rd, reg_name(instr.ri12.rj), imm);
 	}
 
 	static int VST(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		int32_t imm = InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		int32_t imm = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		return snprintf(buf, len, "vst $vr%u, %s, %d",
 			instr.ri12.rd, reg_name(instr.ri12.rj), imm);
 	}
 
 	static int XVLD(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		int32_t imm = InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		int32_t imm = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		return snprintf(buf, len, "xvld $xr%u, %s, %d",
 			instr.ri12.rd, reg_name(instr.ri12.rj), imm);
 	}
 
 	static int XVST(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		int32_t imm = InstructionHelpers<W>::sign_extend_12(instr.ri12.imm);
+		int32_t imm = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		return snprintf(buf, len, "xvst $xr%u, %s, %d",
 			instr.ri12.rd, reg_name(instr.ri12.rj), imm);
 	}

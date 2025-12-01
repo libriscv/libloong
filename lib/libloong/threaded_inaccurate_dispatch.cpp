@@ -20,7 +20,7 @@
 	goto check_jump;
 #define NEXT_BLOCK_UNCHECKED(len) \
 	pc += len; \
-	decoder += len >> DecoderCache<W>::SHIFT; \
+	decoder += len >> DecoderCache::SHIFT; \
 	pc += decoder->block_bytes; \
 	EXECUTE_INSTR();
 #define PERFORM_BRANCH(offset)           \
@@ -28,8 +28,7 @@
 
 namespace loongarch
 {
-	template <int W>
-	void CPU<W>::simulate_inaccurate(address_t pc)
+	void CPU::simulate_inaccurate(address_t pc)
 	{
 #ifndef NDEBUG
 		constexpr bool TRACE_DISPATCH = false;  // Set to true to enable dispatch tracing
@@ -40,13 +39,13 @@ namespace loongarch
 		// Include computed goto table
 		#include "threaded_bytecode_array.hpp"
 
-		DecodedExecuteSegment<W>* exec = this->m_exec;
+		DecodedExecuteSegment* exec = this->m_exec;
 		address_t current_begin = exec->exec_begin();
 		address_t current_end   = exec->exec_end();
 
 		// Offset the cache pointer so we can use cache[pc >> SHIFT] directly
-		DecoderData<W>* exec_decoder = exec->decoder_cache() - (current_begin >> DecoderCache<W>::SHIFT);
-		DecoderData<W>* decoder;
+		DecoderData* exec_decoder = exec->decoder_cache() - (current_begin >> DecoderCache::SHIFT);
+		DecoderData* decoder;
 
 		// Inaccurate mode doesn't track counter/max_counter but needs them for compatibility
 		uint64_t max_counter = UINT64_MAX;
@@ -61,7 +60,7 @@ namespace loongarch
 			goto new_execute_segment;
 
 continue_segment:
-		decoder = &exec_decoder[pc >> DecoderCache<W>::SHIFT];
+		decoder = &exec_decoder[pc >> DecoderCache::SHIFT];
 
 		if constexpr (TRACE_DISPATCH) {
 			printf("  [dispatch] PC=0x%lx bytecode=%d block_bytes=%d instr_count=%d instr=0x%08x max_instr=%lu\n",
@@ -105,7 +104,7 @@ new_execute_segment:
 		current_begin = exec->exec_begin();
 		current_end   = exec->exec_end();
 		// Offset the cache pointer for the new segment
-		exec_decoder  = exec->decoder_cache() - (current_begin >> DecoderCache<W>::SHIFT);
+		exec_decoder  = exec->decoder_cache() - (current_begin >> DecoderCache::SHIFT);
 
 		if constexpr (TRACE_DISPATCH) {
 			printf("  [new_execute_segment] Segment [0x%lx, 0x%lx), max_instructions=%lu\n",
@@ -132,12 +131,5 @@ check_jump:
 
 		goto continue_segment;
 	}
-
-#ifdef LA_32
-	template void CPU<LA32>::simulate_inaccurate(address_type<LA32>);
-#endif
-#ifdef LA_64
-	template void CPU<LA64>::simulate_inaccurate(address_type<LA64>);
-#endif
 
 } // namespace loongarch

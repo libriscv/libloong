@@ -13,12 +13,10 @@
 
 namespace loongarch
 {
-template <int W>
-extern void populate_decoder_cache(DecodedExecuteSegment<W>& segment, address_type<W> exec_begin, const uint8_t* code, size_t code_size);
+extern void populate_decoder_cache(DecodedExecuteSegment& segment, address_t exec_begin, const uint8_t* code, size_t code_size);
 
-template <int W>
-Memory<W>::Memory(Machine<W>& machine,
-	std::string_view binary, const MachineOptions<W>& options)
+Memory::Memory(Machine& machine,
+	std::string_view binary, const MachineOptions& options)
 	: m_machine(machine), m_binary(binary)
 {
 	if (!binary.empty()) {
@@ -26,22 +24,19 @@ Memory<W>::Memory(Machine<W>& machine,
 	}
 }
 
-template <int W>
-Memory<W>::Memory(Machine<W>& machine, const Machine<W>& other, const MachineOptions<W>& options)
+Memory::Memory(Machine& machine, const Machine& other, const MachineOptions& options)
 	: m_machine(machine)
 {
 	(void)other; (void)options;
 	throw MachineException(FEATURE_DISABLED, "Fork constructor not yet implemented");
 }
 
-template <int W>
-Memory<W>::~Memory()
+Memory::~Memory()
 {
 	free_arena();
 }
 
-template <int W>
-void Memory<W>::allocate_arena(size_t size)
+void Memory::allocate_arena(size_t size)
 {
 	if constexpr (LA_MASKED_MEMORY_BITS) {
 		size = LA_MASKED_MEMORY_SIZE;
@@ -64,8 +59,7 @@ void Memory<W>::allocate_arena(size_t size)
 #endif
 	this->m_arena_size = size;
 }
-template <int W>
-void Memory<W>::allocate_custom_arena(size_t size, address_t rodata_start, address_t data_start)
+void Memory::allocate_custom_arena(size_t size, address_t rodata_start, address_t data_start)
 {
 	if constexpr (LA_MASKED_MEMORY_BITS) {
 		throw MachineException(FEATURE_DISABLED, "Custom arena allocation is not supported with masked memory");
@@ -84,8 +78,7 @@ void Memory<W>::allocate_custom_arena(size_t size, address_t rodata_start, addre
 	this->m_data_start = data_start;
 }
 
-template <int W>
-void Memory<W>::free_arena()
+void Memory::free_arena()
 {
 	if (!this->m_arena) return;
 #ifdef __unix__
@@ -97,8 +90,7 @@ void Memory<W>::free_arena()
 	this->m_arena_size = 0;
 }
 
-template <int W>
-void Memory<W>::parse_symbols(const Elf::Header* ehdr, const MachineOptions<W>& options)
+void Memory::parse_symbols(const Elf::Header* ehdr, const MachineOptions& options)
 {
 	// Validate section header table
 	if (ehdr->shoff + ehdr->shnum * sizeof(Elf::SectionHeader) > m_binary.size()) {
@@ -145,10 +137,9 @@ void Memory<W>::parse_symbols(const Elf::Header* ehdr, const MachineOptions<W>& 
 	}
 }
 
-template <int W>
-void Memory<W>::parse_symbol_table(const Elf::SectionHeader* symtab,
+void Memory::parse_symbol_table(const Elf::SectionHeader* symtab,
                                     const Elf::SectionHeader* strtab,
-                                    const MachineOptions<W>& options)
+                                    const MachineOptions& options)
 {
 	// Validate section offsets and sizes
 	if (symtab->offset + symtab->size > m_binary.size() ||
@@ -184,8 +175,7 @@ void Memory<W>::parse_symbol_table(const Elf::SectionHeader* symtab,
 	}
 }
 
-template <int W>
-void Memory<W>::process_relocations(const Elf::Header* ehdr, const MachineOptions<W>& options)
+void Memory::process_relocations(const Elf::Header* ehdr, const MachineOptions& options)
 {
 	// For static binaries, look for .rela.dyn section in section headers
 	if (ehdr->shoff == 0 || ehdr->shnum == 0) {
@@ -206,8 +196,7 @@ void Memory<W>::process_relocations(const Elf::Header* ehdr, const MachineOption
 	}
 }
 
-template <int W>
-void Memory<W>::process_rela_section(size_t offset, size_t size, const MachineOptions<W>& options)
+void Memory::process_rela_section(size_t offset, size_t size, const MachineOptions& options)
 {
 	const size_t num_entries = size / sizeof(Elf::Rela);
 	auto* rela = const_cast<Elf::Rela*>(reinterpret_cast<const Elf::Rela*>(m_binary.data() + offset));
@@ -220,8 +209,7 @@ void Memory<W>::process_rela_section(size_t offset, size_t size, const MachineOp
 	}
 }
 
-template <int W>
-size_t Memory<W>::strlen(address_t addr, size_t maxlen) const
+size_t Memory::strlen(address_t addr, size_t maxlen) const
 {
 	const address_t end_addr = std::min(addr + maxlen, m_arena_size);
 	if (end_addr <= addr) return 0;
@@ -230,23 +218,20 @@ size_t Memory<W>::strlen(address_t addr, size_t maxlen) const
 	return ::strnlen(ptr, size);
 }
 
-template <int W>
-std::string Memory<W>::memstring(address_t addr, size_t maxlen) const
+std::string Memory::memstring(address_t addr, size_t maxlen) const
 {
 	const size_t len = this->strlen(addr, maxlen);
 	const char* ptr = memarray<char>(addr, len);
 	return std::string(ptr, len);
 }
 
-template <int W>
-std::string_view Memory<W>::memview(address_t addr, size_t len) const
+std::string_view Memory::memview(address_t addr, size_t len) const
 {
 	const char* ptr = memarray<char>(addr, len);
 	return std::string_view(ptr, len);
 }
 
-template <int W>
-typename Memory<W>::address_t Memory<W>::mmap_allocate(size_t size)
+address_t Memory::mmap_allocate(size_t size)
 {
 	size = (size + 4095) & ~size_t(4095); // Align to page size
 	const address_t result = this->m_mmap_address;
@@ -254,8 +239,7 @@ typename Memory<W>::address_t Memory<W>::mmap_allocate(size_t size)
 	return result;
 }
 
-template <int W>
-void Memory<W>::mmap_deallocate(address_t addr, size_t size)
+void Memory::mmap_deallocate(address_t addr, size_t size)
 {
 	// Allow relaxation of mmap area by moving m_mmap_address back
 	if (addr + size == this->m_mmap_address) {
@@ -263,9 +247,8 @@ void Memory<W>::mmap_deallocate(address_t addr, size_t size)
 	}
 }
 
-template <int W>
-DecodedExecuteSegment<W>& Memory<W>::create_execute_segment(
-	const MachineOptions<W>& options, const void* data, address_t addr, size_t len,
+DecodedExecuteSegment& Memory::create_execute_segment(
+	const MachineOptions& options, const void* data, address_t addr, size_t len,
 	bool is_initial, bool is_likely_jit)
 {
 	(void)options; (void)is_likely_jit;
@@ -273,7 +256,7 @@ DecodedExecuteSegment<W>& Memory<W>::create_execute_segment(
 		throw MachineException(INVALID_PROGRAM, "Execute segment length is not 4-byte aligned");
 	}
 
-	auto segment = std::make_shared<DecodedExecuteSegment<W>>(addr, addr + len);
+	auto segment = std::make_shared<DecodedExecuteSegment>(addr, addr + len);
 
 	populate_decoder_cache(*segment, addr, static_cast<const uint8_t*>(data), len);
 
@@ -286,8 +269,7 @@ DecodedExecuteSegment<W>& Memory<W>::create_execute_segment(
 	return *segment;
 }
 
-template <int W>
-std::shared_ptr<DecodedExecuteSegment<W>> Memory<W>::exec_segment_for(address_t pc) const
+std::shared_ptr<DecodedExecuteSegment> Memory::exec_segment_for(address_t pc) const
 {
 	if (m_main_exec_segment && m_main_exec_segment->is_within(pc)) {
 		return m_main_exec_segment;
@@ -298,16 +280,14 @@ std::shared_ptr<DecodedExecuteSegment<W>> Memory<W>::exec_segment_for(address_t 
 	return nullptr;
 }
 
-template <int W>
-void Memory<W>::evict_execute_segments()
+void Memory::evict_execute_segments()
 {
-	machine().cpu.set_execute_segment(*CPU<W>::empty_execute_segment());
+	machine().cpu.set_execute_segment(*CPU::empty_execute_segment());
 	m_exec.clear();
 	m_main_exec_segment.reset();
 }
 
-template <int W>
-void Memory<W>::reset()
+void Memory::reset()
 {
 	if (m_arena) {
 #ifdef MADV_DONTNEED
@@ -319,8 +299,7 @@ void Memory<W>::reset()
 	evict_execute_segments();
 }
 
-template <int W>
-address_type<W> Memory<W>::address_of(const std::string& name) const
+address_t Memory::address_of(const std::string& name) const
 {
 	for (const auto& sym : m_symbols) {
 		if (sym.name == name) {
@@ -330,10 +309,9 @@ address_type<W> Memory<W>::address_of(const std::string& name) const
 	return 0;
 }
 
-template <int W>
-const Symbol<W>* Memory<W>::lookup_symbol(address_t addr) const
+const Symbol* Memory::lookup_symbol(address_t addr) const
 {
-	const Symbol<W>* best_match = nullptr;
+	const Symbol* best_match = nullptr;
 	for (const auto& sym : m_symbols) {
 		// Check if address is within symbol range
 		if (addr >= sym.address && addr < sym.address + sym.size) {
@@ -348,12 +326,5 @@ const Symbol<W>* Memory<W>::lookup_symbol(address_t addr) const
 	}
 	return best_match;
 }
-
-#ifdef LA_32
-template struct Memory<LA32>;
-#endif
-#ifdef LA_64
-template struct Memory<LA64>;
-#endif
 
 } // loongarch

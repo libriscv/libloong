@@ -9,10 +9,8 @@ BUILD_DIR="${SCRIPT_DIR}/.build"
 # Parse arguments
 BUILD_TYPE="Release"
 NATIVE=""
-LTO=""
+LTO="-DLTO=ON"
 MASKED_MEMORY_BITS=""
-LA_32="-DLA_32=ON"
-LA_64="-DLA_64=ON"
 LA_DEBUG=""
 LA_BINARY_TRANSLATION=""
 LA_THREADED="-DLA_THREADED=ON"
@@ -40,14 +38,6 @@ while [[ $# -gt 0 ]]; do
 			MASKED_MEMORY_BITS="-DLA_MASKED_MEMORY_BITS=$2"
 			shift 2
 			;;
-		--no-la32)
-			LA_32="-DLA_32=OFF"
-			shift
-			;;
-		--no-la64)
-			LA_64="-DLA_64=OFF"
-			shift
-			;;
 		--binary-translation)
 			LA_BINARY_TRANSLATION="-DLA_BINARY_TRANSLATION=ON"
 			shift
@@ -67,8 +57,6 @@ while [[ $# -gt 0 ]]; do
 			echo "Library Options:"
 			echo "  --masked-memory-bits N    Set masked memory arena size to 2^N bytes (0=disabled)"
 			echo "                            Example: --masked-memory-bits 32 (4GB arena)"
-			echo "  --no-la32                 Disable LA32 (32-bit) support"
-			echo "  --no-la64                 Disable LA64 (64-bit) support"
 			echo "  --binary-translation      Enable binary translation (experimental)"
 			echo "  --no-threaded             Disable threaded dispatch"
 			echo ""
@@ -92,8 +80,6 @@ echo "Building LoongArch emulator..."
 echo "  Build type: $BUILD_TYPE"
 [ -n "$NATIVE" ] && echo "  Native optimization: ON" || echo "  Native optimization: OFF"
 echo "  LTO: ${LTO#-DLTO=}"
-echo "  LA32 support: ${LA_32#-DLA_32=}"
-echo "  LA64 support: ${LA_64#-DLA_64=}"
 [ -n "$LA_DEBUG" ] && echo "  Debug mode: ON" || echo "  Debug mode: OFF"
 [ -n "$LA_BINARY_TRANSLATION" ] && echo "  Binary translation: ON" || echo "  Binary translation: OFF"
 echo "  Threaded dispatch: ${LA_THREADED#-DLA_THREADED=}"
@@ -120,8 +106,6 @@ cmake .. \
 	-DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
 	$NATIVE \
 	$LTO \
-	$LA_32 \
-	$LA_64 \
 	$LA_DEBUG \
 	$LA_BINARY_TRANSLATION \
 	$LA_THREADED \

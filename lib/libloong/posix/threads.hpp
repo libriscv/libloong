@@ -5,7 +5,6 @@ namespace loongarch
 {
 	// Setup POSIX-like threading syscalls
 	// This provides basic threading support for single-threaded emulation
-	template <int W>
-	void setup_posix_threads(Machine<W>& machine);
+	void setup_posix_threads(Machine& machine);
 
 } // namespace loongarch

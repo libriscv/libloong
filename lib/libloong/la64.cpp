@@ -8,19 +8,19 @@ namespace loongarch
 {
 	// LA64 instruction table using template implementations
 
-	using Impl = InstrImpl<LA64>;
-	using Printers = InstrPrinters<LA64>;
-	using AtomicI = AtomicImpl<LA64>;
-	using AtomicP = AtomicPrinters<LA64>;
+	using Impl = InstrImpl;
+	using Printers = InstrPrinters;
+	using AtomicI = AtomicImpl;
+	using AtomicP = AtomicPrinters;
 
 	// Helper macro to create instruction descriptors
 	// All instructions must have printers for debugging
 	#define INSTRUCTION(name) \
-		static constexpr CPU<LA64>::instruction_t instr64_##name { Impl::name, Printers::name }
+		static constexpr CPU::instruction_t instr64_##name { Impl::name, Printers::name }
 
 	// Macro to create instruction with custom printer
 	#define INSTRUCTION_P(name, printer) \
-		static constexpr CPU<LA64>::instruction_t instr64_##name { Impl::name, Printers::printer }
+		static constexpr CPU::instruction_t instr64_##name { Impl::name, Printers::printer }
 
 	#define DECODED_INSTR(name) instr64_##name
 
@@ -107,16 +107,16 @@ namespace loongarch
 	INSTRUCTION(FST_D);
 
 	// Atomic operations (using separate template class)
-	static constexpr CPU<LA64>::instruction_t instr64_AMSWAP_W { AtomicI::AMSWAP_W, AtomicP::AMSWAP_W };
-	static constexpr CPU<LA64>::instruction_t instr64_AMSWAP_D { AtomicI::AMSWAP_D, AtomicP::AMSWAP_D };
-	static constexpr CPU<LA64>::instruction_t instr64_AMADD_W { AtomicI::AMADD_W, AtomicP::AMADD_W };
-	static constexpr CPU<LA64>::instruction_t instr64_AMADD_D { AtomicI::AMADD_D, AtomicP::AMADD_D };
-	static constexpr CPU<LA64>::instruction_t instr64_AMAND_W { AtomicI::AMAND_W, AtomicP::AMAND_W };
-	static constexpr CPU<LA64>::instruction_t instr64_AMAND_D { AtomicI::AMAND_D, AtomicP::AMAND_D };
-	static constexpr CPU<LA64>::instruction_t instr64_AMOR_W { AtomicI::AMOR_W, AtomicP::AMOR_W };
-	static constexpr CPU<LA64>::instruction_t instr64_AMOR_D { AtomicI::AMOR_D, AtomicP::AMOR_D };
-	static constexpr CPU<LA64>::instruction_t instr64_AMXOR_W { AtomicI::AMXOR_W, AtomicP::AMXOR_W };
-	static constexpr CPU<LA64>::instruction_t instr64_AMXOR_D { AtomicI::AMXOR_D, AtomicP::AMXOR_D };
+	static constexpr CPU::instruction_t instr64_AMSWAP_W { AtomicI::AMSWAP_W, AtomicP::AMSWAP_W };
+	static constexpr CPU::instruction_t instr64_AMSWAP_D { AtomicI::AMSWAP_D, AtomicP::AMSWAP_D };
+	static constexpr CPU::instruction_t instr64_AMADD_W { AtomicI::AMADD_W, AtomicP::AMADD_W };
+	static constexpr CPU::instruction_t instr64_AMADD_D { AtomicI::AMADD_D, AtomicP::AMADD_D };
+	static constexpr CPU::instruction_t instr64_AMAND_W { AtomicI::AMAND_W, AtomicP::AMAND_W };
+	static constexpr CPU::instruction_t instr64_AMAND_D { AtomicI::AMAND_D, AtomicP::AMAND_D };
+	static constexpr CPU::instruction_t instr64_AMOR_W { AtomicI::AMOR_W, AtomicP::AMOR_W };
+	static constexpr CPU::instruction_t instr64_AMOR_D { AtomicI::AMOR_D, AtomicP::AMOR_D };
+	static constexpr CPU::instruction_t instr64_AMXOR_W { AtomicI::AMXOR_W, AtomicP::AMXOR_W };
+	static constexpr CPU::instruction_t instr64_AMXOR_D { AtomicI::AMXOR_D, AtomicP::AMXOR_D };
 
 	// Branches
 	INSTRUCTION(BEQZ);
@@ -406,8 +406,7 @@ namespace loongarch
 	INSTRUCTION(FCMP_COND_D);
 
 	// Decode function
-	template <>
-	const CPU<LA64>::instruction_t& CPU<LA64>::decode(format_t instr)
+	const CPU::instruction_t& CPU::decode(format_t instr)
 	{
 		uint32_t opcode = instr.whole & 0xFC000000;
 		uint32_t op6 = opcode >> 26;
@@ -1247,14 +1246,12 @@ namespace loongarch
 		return DECODED_INSTR(UNIMPLEMENTED);
 	}
 
-	template <>
-	const CPU<LA64>::instruction_t& CPU<LA64>::get_invalid_instruction() noexcept
+	const CPU::instruction_t& CPU::get_invalid_instruction() noexcept
 	{
 		return DECODED_INSTR(INVALID);
 	}
 
-	template <>
-	const CPU<LA64>::instruction_t& CPU<LA64>::get_unimplemented_instruction() noexcept
+	const CPU::instruction_t& CPU::get_unimplemented_instruction() noexcept
 	{
 		return DECODED_INSTR(UNIMPLEMENTED);
 	}

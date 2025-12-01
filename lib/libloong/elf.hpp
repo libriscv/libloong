@@ -111,10 +111,9 @@ namespace loongarch
 	static constexpr uint8_t ST_TYPE(uint8_t info) { return info & 0xf; }
 };
 
-template <int W>
 struct Symbol {
-	address_type<W> address;
-	address_type<W> size;
+	address_t address;
+	address_t size;
 	std::string name;
 };
 

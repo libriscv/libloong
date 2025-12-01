@@ -22,7 +22,7 @@ int main()
 
 	try {
 		// Create a 64-bit LoongArch machine with 16MB memory
-		Machine<LA64> machine { fake_elf, {
+		Machine machine { fake_elf, {
 			.memory_max = 16 * 1024 * 1024,
 			.verbose_loader = true
 		}};

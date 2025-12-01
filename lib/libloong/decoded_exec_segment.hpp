@@ -4,11 +4,7 @@
 
 namespace loongarch
 {
-	template <int W>
-	struct DecodedExecuteSegment {
-		using address_t = address_type<W>;
-
-		DecodedExecuteSegment(address_t begin, address_t end)
+	struct DecodedExecuteSegment {		DecodedExecuteSegment(address_t begin, address_t end)
 			: m_exec_begin(begin), m_exec_end(end) {}
 
 		~DecodedExecuteSegment() {
@@ -36,7 +32,7 @@ namespace loongarch
 		auto* decoder_cache() const noexcept { return m_decoder_cache.cache; }
 		size_t decoder_cache_size() const noexcept { return m_decoder_cache.size; }
 
-		void set_decoder_cache(DecoderData<W>* cache, size_t size) noexcept {
+		void set_decoder_cache(DecoderData* cache, size_t size) noexcept {
 			m_decoder_cache.cache = cache;
 			m_decoder_cache.size = size;
 		}
@@ -44,7 +40,7 @@ namespace loongarch
 		size_t size_bytes() const noexcept { return m_exec_end - m_exec_begin; }
 		bool empty() const noexcept { return m_exec_begin >= m_exec_end; }
 
-		void set(address_t entry_addr, const DecoderData<W>& data);
+		void set(address_t entry_addr, const DecoderData& data);
 
 		bool is_stale() const noexcept { return m_stale; }
 		void set_stale(bool stale) noexcept { m_stale = stale; }
@@ -56,7 +52,7 @@ namespace loongarch
 	private:
 		address_t m_exec_begin;
 		address_t m_exec_end;
-		DecoderCache<W> m_decoder_cache;
+		DecoderCache m_decoder_cache;
 		bool m_stale = false;
 		bool m_execute_only = false;
 	};

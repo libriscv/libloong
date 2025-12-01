@@ -8,13 +8,12 @@
 
 namespace loongarch
 {
-	template <int W> struct Machine;
-	template <int W> struct Memory;
+	struct Machine;
+	struct Memory;
 
-	template <int W>
 	struct Instruction {
-		using handler_t = void(*)(CPU<W>&, la_instruction);
-		using printer_t = int(*)(char*, size_t, const CPU<W>&, la_instruction, address_type<W>);
+		using handler_t = void(*)(CPU&, la_instruction);
+		using printer_t = int(*)(char*, size_t, const CPU&, la_instruction, address_t);
 
 		handler_t handler;
 		printer_t printer;
@@ -23,17 +22,14 @@ namespace loongarch
 			: handler(h), printer(p) {}
 	};
 
-	template <int W>
 	struct CPU
 	{
-		using address_t = address_type<W>;
-		using saddress_t = std::make_signed_t<address_t>;
 		using format_t = la_instruction;
-		using instruction_t = Instruction<W>;
-		using breakpoint_t = std::function<void(CPU<W>&)>;
+		using instruction_t = Instruction;
+		using breakpoint_t = std::function<void(CPU&)>;
 
-		CPU(Machine<W>& machine);
-		CPU(Machine<W>& machine, const Machine<W>& other);
+		CPU(Machine& machine);
+		CPU(Machine& machine, const Machine& other);
 
 		void reset();
 
@@ -66,11 +62,11 @@ namespace loongarch
 		void set_ll_bit(bool value) noexcept { m_ll_bit = value; }
 
 		// Machine access
-		Machine<W>& machine() noexcept;
-		const Machine<W>& machine() const noexcept;
+		Machine& machine() noexcept;
+		const Machine& machine() const noexcept;
 
-		Memory<W>& memory() noexcept;
-		const Memory<W>& memory() const noexcept;
+		Memory& memory() noexcept;
+		const Memory& memory() const noexcept;
 
 		// Instruction execution
 		void execute(format_t instr);
@@ -79,19 +75,19 @@ namespace loongarch
 		void init_slowpath_execute_area(const void* data, address_t begin, address_t length);
 
 		// Execute segments
-		DecodedExecuteSegment<W>& init_execute_area(const void* data, address_t begin, address_t length);
-		void set_execute_segment(DecodedExecuteSegment<W>& seg) noexcept { m_exec = &seg; }
+		DecodedExecuteSegment& init_execute_area(const void* data, address_t begin, address_t length);
+		void set_execute_segment(DecodedExecuteSegment& seg) noexcept { m_exec = &seg; }
 		auto& current_execute_segment() noexcept { return *m_exec; }
 		auto& current_execute_segment() const noexcept { return *m_exec; }
 
 		// next_execute_segment() never fails; it throws on error
 		struct NextExecuteReturn {
-			DecodedExecuteSegment<W>* exec;
+			DecodedExecuteSegment* exec;
 			address_t pc;
 		};
 		NextExecuteReturn next_execute_segment(address_t pc);
 
-		static std::shared_ptr<DecodedExecuteSegment<W>>& empty_execute_segment() noexcept;
+		static std::shared_ptr<DecodedExecuteSegment>& empty_execute_segment() noexcept;
 		bool is_executable(address_t addr) const noexcept;
 
 		// Exception handling
@@ -109,9 +105,9 @@ namespace loongarch
 		static const instruction_t& get_unimplemented_instruction() noexcept;
 
 	private:
-		Registers<W> m_regs;
-		Machine<W>& m_machine;
-		DecodedExecuteSegment<W>* m_exec;
+		Registers m_regs;
+		Machine& m_machine;
+		DecodedExecuteSegment* m_exec;
 		bool m_ll_bit = false; // LL/SC linked-load bit
 	};
 

@@ -34,8 +34,7 @@ namespace loongarch
 
 	// Clone syscall
 	// LoongArch ABI: clone(flags, stack, parent_tid, tls, child_tid)
-	template <int W>
-	static void syscall_clone(Machine<W>& machine)
+	static void syscall_clone(Machine& machine)
 	{
 		auto flags = machine.cpu.reg(REG_A0);
 		auto stack = machine.cpu.reg(REG_A1);
@@ -68,8 +67,7 @@ namespace loongarch
 	}
 
 	// Clone3 syscall (extended clone interface)
-	template <int W>
-	static void syscall_clone3(Machine<W>& machine)
+	static void syscall_clone3(Machine& machine)
 	{
 		auto args_addr = machine.cpu.reg(REG_A0);
 		auto size = machine.cpu.reg(REG_A1);
@@ -113,8 +111,7 @@ namespace loongarch
 	}
 
 	// Set TID address syscall
-	template <int W>
-	static void syscall_set_tid_address(Machine<W>& machine)
+	static void syscall_set_tid_address(Machine& machine)
 	{
 		auto tidptr = machine.cpu.reg(REG_A0);
 		machine.set_tid_address(tidptr);
@@ -122,15 +119,13 @@ namespace loongarch
 	}
 
 	// Gettid syscall
-	template <int W>
-	static void syscall_gettid(Machine<W>& machine)
+	static void syscall_gettid(Machine& machine)
 	{
 		machine.set_result(machine.gettid());
 	}
 
 	// Exit syscall with thread cleanup
-	template <int W>
-	static void syscall_exit(Machine<W>& machine)
+	static void syscall_exit(Machine& machine)
 	{
 		// Clear TID at the registered address (CLONE_CHILD_CLEARTID)
 		auto clear_addr = machine.get_tid_address();
@@ -143,8 +138,7 @@ namespace loongarch
 	}
 
 	// Futex syscall
-	template <int W>
-	static void syscall_futex(Machine<W>& machine)
+	static void syscall_futex(Machine& machine)
 	{
 		auto uaddr = machine.cpu.reg(REG_A0);
 		int futex_op = machine.cpu.reg(REG_A1);
@@ -197,8 +191,7 @@ namespace loongarch
 	}
 
 	// Tgkill syscall
-	template <int W>
-	static void syscall_tgkill(Machine<W>& machine)
+	static void syscall_tgkill(Machine& machine)
 	{
 		// int tgid = machine.cpu.reg(REG_A0);
 		int tid = machine.cpu.reg(REG_A1);
@@ -214,8 +207,7 @@ namespace loongarch
 	}
 
 	// Tkill syscall
-	template <int W>
-	static void syscall_tkill(Machine<W>& machine)
+	static void syscall_tkill(Machine& machine)
 	{
 		int tid = machine.cpu.reg(REG_A0);
 		// int sig = machine.cpu.reg(REG_A1);
@@ -227,35 +219,26 @@ namespace loongarch
 		machine.set_result(0);
 	}
 
-	template <int W>
-	void setup_posix_threads(Machine<W>& machine)
+	void setup_posix_threads(Machine& machine)
 	{
 		// Thread creation
-		machine.install_syscall_handler(LA_SYS_clone, syscall_clone<W>);
-		machine.install_syscall_handler(LA_SYS_clone3, syscall_clone3<W>);
+		machine.install_syscall_handler(LA_SYS_clone, syscall_clone);
+		machine.install_syscall_handler(LA_SYS_clone3, syscall_clone3);
 
 		// Thread identification
-		machine.install_syscall_handler(LA_SYS_set_tid_address, syscall_set_tid_address<W>);
-		machine.install_syscall_handler(LA_SYS_gettid, syscall_gettid<W>);
+		machine.install_syscall_handler(LA_SYS_set_tid_address, syscall_set_tid_address);
+		machine.install_syscall_handler(LA_SYS_gettid, syscall_gettid);
 
 		// Thread synchronization
-		machine.install_syscall_handler(LA_SYS_futex, syscall_futex<W>);
+		machine.install_syscall_handler(LA_SYS_futex, syscall_futex);
 
 		// Thread termination
-		machine.install_syscall_handler(LA_SYS_exit, syscall_exit<W>);
-		machine.install_syscall_handler(LA_SYS_exit_group, syscall_exit<W>);
+		machine.install_syscall_handler(LA_SYS_exit, syscall_exit);
+		machine.install_syscall_handler(LA_SYS_exit_group, syscall_exit);
 
 		// Thread signals
-		machine.install_syscall_handler(LA_SYS_tgkill, syscall_tgkill<W>);
-		machine.install_syscall_handler(LA_SYS_tkill, syscall_tkill<W>);
+		machine.install_syscall_handler(LA_SYS_tgkill, syscall_tgkill);
+		machine.install_syscall_handler(LA_SYS_tkill, syscall_tkill);
 	}
 
-	// Explicit template instantiations
-#ifdef LA_32
-	template void setup_posix_threads<LA32>(Machine<LA32>&);
-#endif
-#ifdef LA_64
-	template void setup_posix_threads<LA64>(Machine<LA64>&);
-#endif
-
-} // namespace loongarch
+} // loongarch

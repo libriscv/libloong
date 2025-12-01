@@ -137,7 +137,7 @@ INSTRUCTION(LA64_BC_ST_W, la64_st_w)
 INSTRUCTION(LA64_BC_PCADDI, la64_pcaddi)
 {
 	VIEW_INSTR();
-	const int32_t si20 = InstructionHelpers<W>::sign_extend_20(instr.ri20.imm);
+	const int32_t si20 = InstructionHelpers::sign_extend_20(instr.ri20.imm);
 	const int64_t offset = (si20 << 2);
 	REG(instr.ri20.rd) = RECONSTRUCT_PC() + offset;
 	NEXT_INSTR();
@@ -972,7 +972,7 @@ INSTRUCTION(LA64_BC_LD_WU, la64_ld_wu)
 INSTRUCTION(LA64_BC_PCADDU12I, la64_pcaddu12i)
 {
 	VIEW_INSTR();
-	const int64_t si20 = InstructionHelpers<W>::sign_extend_20(instr.ri20.imm);
+	const int64_t si20 = InstructionHelpers::sign_extend_20(instr.ri20.imm);
 	const int64_t offset = si20 << 12;
 	REG(instr.ri20.rd) = RECONSTRUCT_PC() + offset;
 	NEXT_INSTR();
@@ -982,7 +982,7 @@ INSTRUCTION(LA64_BC_PCADDU12I, la64_pcaddu12i)
 INSTRUCTION(LA64_BC_PCADDU18I, la64_pcaddu18i)
 {
 	VIEW_INSTR();
-	const int64_t si20 = InstructionHelpers<W>::sign_extend_20(instr.ri20.imm);
+	const int64_t si20 = InstructionHelpers::sign_extend_20(instr.ri20.imm);
 	const int64_t offset = si20 << 18;
 	REG(instr.ri20.rd) = RECONSTRUCT_PC() + offset;
 	NEXT_INSTR();

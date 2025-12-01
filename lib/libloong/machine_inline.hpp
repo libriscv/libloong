@@ -4,14 +4,12 @@ namespace loongarch
 {
 	// Inline machine methods
 
-	template <int W>
-	inline bool Machine<W>::simulate(uint64_t max_instructions, uint64_t counter)
+	inline bool Machine::simulate(uint64_t max_instructions, uint64_t counter)
 	{
 		return cpu.simulate(cpu.pc(), counter, max_instructions);
 	}
 
-	template <int W>
-	inline void Machine<W>::system_call(unsigned syscall_number)
+	inline void Machine::system_call(unsigned syscall_number)
 	{
 		if (syscall_number < m_syscall_handlers.size()) {
 			auto* handler = m_syscall_handlers[syscall_number];
@@ -21,31 +19,28 @@ namespace loongarch
 		throw MachineException(ILLEGAL_OPERATION, "Unknown system call", syscall_number);
 	}
 
-	template <int W>
-	inline void Machine<W>::unchecked_system_call(unsigned syscall_number)
+	inline void Machine::unchecked_system_call(unsigned syscall_number)
 	{
 		m_syscall_handlers[syscall_number](*this);
 	}
 
-	template <int W>
-	inline void Machine<W>::install_syscall_handler(unsigned syscall_number, syscall_t* handler)
+	inline void Machine::install_syscall_handler(unsigned syscall_number, syscall_t* handler)
 	{
 		if (syscall_number < m_syscall_handlers.size()) {
 			m_syscall_handlers[syscall_number] = handler;
 		}
 	}
 
-	template <int W>
 	template <typename T>
-	inline void Machine<W>::set_result(const T& value)
+	inline void Machine::set_result(const T& value)
 	{
 		if constexpr (std::is_integral_v<remove_cvref_t<T>>) {
 			cpu.reg(REG_A0) = static_cast<address_t>(value);
 		} else if constexpr (std::is_floating_point_v<remove_cvref_t<T>>) {
 			if constexpr (sizeof(T) == 4) {
-				cpu.reg_f(REG_A0).f32 = static_cast<float>(value);
+				cpu.registers().getfl32(REG_FA0) = static_cast<float>(value);
 			} else if constexpr (sizeof(T) == 8) {
-				cpu.reg_f(REG_A0).f64 = static_cast<double>(value);
+				cpu.registers().getfl64(REG_FA0) = static_cast<double>(value);
 			} else {
 				static_assert(sizeof(T) == 4 || sizeof(T) == 8, "Unsupported floating point size");
 			}
@@ -54,9 +49,8 @@ namespace loongarch
 		}
 	}
 
-	template <int W>
 	template <typename T>
-	inline T Machine<W>::return_value() const
+	inline T Machine::return_value() const
 	{
 		static_assert(std::is_integral_v<T> || std::is_floating_point_v<T>,
 			"Return value type must be integral or floating point");
@@ -64,9 +58,9 @@ namespace loongarch
 			return static_cast<T>(cpu.reg(REG_A0));
 		} else if constexpr (std::is_floating_point_v<T>) {
 			if constexpr (sizeof(T) == 4) {
-				return static_cast<T>(cpu.reg_f(REG_A0).f32);
+				return static_cast<T>(cpu.registers().getfl32(REG_FA0));
 			} else if constexpr (sizeof(T) == 8) {
-				return static_cast<T>(cpu.reg_f(REG_A0).f64);
+				return static_cast<T>(cpu.registers().getfl64(REG_FA0));
 			} else {
 				static_assert(sizeof(T) == 4 || sizeof(T) == 8, "Unsupported floating point size");
 			}
@@ -74,16 +68,15 @@ namespace loongarch
 		return T{};
 	}
 
-	template <int W>
 	template <typename T>
-	inline T Machine<W>::sysarg(int idx) const
+	inline T Machine::sysarg(int idx) const
 	{
 		if constexpr (std::is_integral_v<T> && !std::is_enum_v<T>)
 			return static_cast<T>(cpu.reg(REG_A0 + idx));
 		else if constexpr (std::is_same_v<T, float>)
-			return cpu.reg_f(REG_FA0 + idx).f32;
+			return cpu.registers().getfl32(REG_FA0 + idx);
 		else if constexpr (std::is_same_v<T, double>)
-			return cpu.reg_f(REG_FA0 + idx).f64;
+			return cpu.registers().getfl64(REG_FA0 + idx);
 		else if constexpr (std::is_enum_v<T>)
 			return static_cast<T>(cpu.reg(REG_A0 + idx));
 		else if constexpr (std::is_same_v<T, std::basic_string_view<char>>)
@@ -102,9 +95,8 @@ namespace loongarch
 			static_assert(always_false<T>, "Unknown type");
 	}
 
-	template <int W>
 	template<typename... Args, std::size_t... Indices>
-	inline auto Machine<W>::resolve_args(std::index_sequence<Indices...>) const
+	inline auto Machine::resolve_args(std::index_sequence<Indices...>) const
 	{
 		std::tuple<std::decay_t<Args>...> retval;
 		size_t i = 0;
@@ -112,7 +104,7 @@ namespace loongarch
 		([&] {
 			if constexpr (std::is_integral_v<Args>) {
 				std::get<Indices>(retval) = sysarg<Args>(i++);
-				if constexpr (sizeof(Args) > W) i++; // uses 2 registers
+				if constexpr (sizeof(Args) > sizeof(address_t)) i++; // uses 2 registers
 			}
 			else if constexpr (std::is_floating_point_v<Args>)
 				std::get<Indices>(retval) = sysarg<Args>(f++);
@@ -131,9 +123,8 @@ namespace loongarch
 		return retval;
 	}
 
-	template <int W>
 	template<typename... Args>
-	inline auto Machine<W>::sysargs() const {
+	inline auto Machine::sysargs() const {
 		return resolve_args<Args...>(std::index_sequence_for<Args...>{});
 	}
 

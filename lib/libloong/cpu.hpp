@@ -66,8 +66,8 @@ namespace loongarch
 		void set_ll_bit(bool value) noexcept { m_ll_bit = value; }
 
 		// Machine access
-		Machine<W>& machine() noexcept { return m_machine; }
-		const Machine<W>& machine() const noexcept { return m_machine; }
+		Machine<W>& machine() noexcept;
+		const Machine<W>& machine() const noexcept;
 
 		Memory<W>& memory() noexcept;
 		const Memory<W>& memory() const noexcept;

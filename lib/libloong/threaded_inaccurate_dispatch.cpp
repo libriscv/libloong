@@ -36,7 +36,6 @@ namespace loongarch
 #else
 		constexpr bool TRACE_DISPATCH = false;
 #endif
-		machine().set_max_instructions(UINT64_MAX);
 
 		// Include computed goto table
 		#include "threaded_bytecode_array.hpp"
@@ -50,7 +49,6 @@ namespace loongarch
 		DecoderData<W>* decoder;
 
 		// Inaccurate mode doesn't track counter/max_counter but needs them for compatibility
-		uint64_t counter = 0;
 		uint64_t max_counter = UINT64_MAX;
 
 		if constexpr (TRACE_DISPATCH) {
@@ -114,7 +112,7 @@ new_execute_segment:
 				(unsigned long)current_begin, (unsigned long)current_end, machine().max_instructions());
 		}
 
-		if (machine().max_instructions())
+		if (max_counter)
 			goto continue_segment;
 		// Fall through
 
@@ -126,7 +124,7 @@ stop_execution:
 		return;
 
 check_jump:
-		if (machine().max_instructions() == 0)
+		if (max_counter == 0)
 			goto stop_execution;
 
 		if (LA_UNLIKELY(!(pc >= current_begin && pc < current_end)))

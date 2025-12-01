@@ -76,10 +76,10 @@ libloong follows the same design principles as libriscv:
 
 ```sh
 Function    Best Rate MB/s  Avg time     Min time     Max time
-Copy:           31152.6     0.005426     0.005136     0.006163
-Scale:          11295.5     0.015909     0.014165     0.019006
-Add:            12703.8     0.021021     0.018892     0.023903
-Triad:          12253.0     0.021743     0.019587     0.023320
+Copy:           32493.5     0.005076     0.004924     0.005307
+Scale:          14347.2     0.013255     0.011152     0.016128
+Add:            17337.2     0.016473     0.013843     0.019231
+Triad:          14311.2     0.019644     0.016770     0.022518
 
 CoreMark 1.0 : 2959.140192 / GCC14.2.0 -O3 -DPERFORMANCE_RUN=1   / Static
 ```

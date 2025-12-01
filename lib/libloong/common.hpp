@@ -11,7 +11,6 @@ namespace loongarch
 	static constexpr int LA32 = 4;
 	static constexpr int LA64 = 8;
 	#define LA_SYSCALLS_MAX  512
-	#define LA_PAGE_SIZE     0x1000  // 4 KB pages
 
 	template <int W = LA64>
 	struct MachineOptions {

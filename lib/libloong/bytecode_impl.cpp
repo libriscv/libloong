@@ -735,12 +735,11 @@ INSTRUCTION(LA64_BC_SYSCALL, la64_syscall)
 {
 	// Save PC for syscall handler
 	REGISTERS().pc = pc;
-	// Save instruction counter
-	MACHINE().set_instruction_counter(counter);
+	// Save instruction counters
+	MACHINE().set_max_instructions(max_counter);
 	// Execute the system call (syscall number is in REG_A7)
 	MACHINE().system_call(REG(REG_A7));
 	// Restore counters
-	counter = MACHINE().instruction_counter();
 	max_counter = MACHINE().max_instructions();
 
 	if (LA_UNLIKELY(max_counter == 0 || pc != REGISTERS().pc))
@@ -757,6 +756,7 @@ INSTRUCTION(LA64_BC_SYSCALLIMM, la64_syscall_imm)
 {
 	// Save PC for syscall handler
 	REGISTERS().pc = pc;
+	MACHINE().set_max_instructions(max_counter);
 	// Execute syscall from verified immediate
 	MACHINE().unchecked_system_call(DECODER().instr);
 	// Restore max counter
@@ -1110,7 +1110,6 @@ INSTRUCTION(LA64_BC_INVALID, execute_invalid)
 {
 	// Reconstruct PC and trigger exception
 	REGISTERS().pc = pc - DECODER().block_bytes;
-	MACHINE().set_instruction_counter(counter);
 	// Trigger invalid instruction exception
 	CPU().trigger_exception(ILLEGAL_OPCODE, DECODER().instr);
 }

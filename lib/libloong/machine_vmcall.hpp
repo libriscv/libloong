@@ -39,7 +39,7 @@ namespace loongarch
 	}
 
 	// Setup call arguments according to LoongArch calling convention
-	template <int W, typename... Args>
+	template <int W, typename... Args> constexpr
 	inline void setup_call(Machine<W>& machine, address_type<W> exit_addr, Args&&... args)
 	{
 		using address_t = address_type<W>;
@@ -122,10 +122,6 @@ namespace loongarch
 	{
 		// Use the exit address set via memory.set_exit_address()
 		const address_t exit_addr = memory.exit_address();
-		if (exit_addr == 0) {
-			throw MachineException(INVALID_PROGRAM,
-				"vmcall: No exit address set. Call memory.set_exit_address() first", 0);
-		}
 
 		// Setup the call with arguments
 		setup_call(*this, exit_addr, std::forward<Args>(args)...);
@@ -175,10 +171,6 @@ namespace loongarch
 	{
 		// Use the exit address set via memory.set_exit_address()
 		const address_t exit_addr = memory.exit_address();
-		if (exit_addr == 0) {
-			throw MachineException(INVALID_PROGRAM,
-				"preempt: No exit address set. Call memory.set_exit_address() first", 0);
-		}
 
 		// Optionally save CPU registers
 		Registers<W> saved_regs;

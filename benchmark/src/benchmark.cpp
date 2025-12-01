@@ -11,7 +11,6 @@ using namespace loongarch;
 // Global machine instance and binary
 static std::unique_ptr<Machine> g_machine;
 static std::vector<uint8_t> g_binary;
-static bool g_initialized = false;
 static uint64_t empty_addr = 0;
 
 // Load the guest binary from file
@@ -34,7 +33,7 @@ static std::vector<uint8_t> load_binary(const std::string& path) {
 
 // Initialize the machine with the guest binary
 void initialize(const std::string& binary_path) {
-	if (g_initialized) {
+	if (g_machine != nullptr) {
 		return;
 	}
 
@@ -57,7 +56,7 @@ void initialize(const std::string& binary_path) {
 
 	// Setup Linux syscalls
 	g_machine->setup_linux_syscalls();
-	static constexpr uint32_t HEAP_SIZE = 16ull << 20; // 16 MB heap
+	static constexpr uint32_t HEAP_SIZE = 32ull << 20; // 32 MB heap
 	const auto heap_begin = g_machine->memory.mmap_allocate(HEAP_SIZE);
 	g_machine->setup_accelerated_heap(heap_begin, HEAP_SIZE);
 	g_machine->setup_linux({"benchmark_guest"}, {});
@@ -83,13 +82,11 @@ void initialize(const std::string& binary_path) {
 
 	// Set reasonable instruction limit for vmcalls
 	g_machine->set_max_instructions(10'000'000ull);
-
-	g_initialized = true;
 }
 
 // Get the machine instance
 Machine& get_machine() {
-	if (!g_initialized) {
+	if (g_machine == nullptr) {
 		throw std::runtime_error("Machine not initialized. Call initialize() first.");
 	}
 	return *g_machine;

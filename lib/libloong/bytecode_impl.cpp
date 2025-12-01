@@ -1114,13 +1114,6 @@ INSTRUCTION(LA64_BC_INVALID, execute_invalid)
 	CPU().trigger_exception(ILLEGAL_OPCODE, DECODER().instr);
 }
 
-// LA64_BC_STOP: Stop execution marker
-INSTRUCTION(LA64_BC_STOP, la64_stop)
-{
-	REGISTERS().pc = pc;
-	goto stop_execution;
-}
-
 // LA64_BC_NOP: No operation
 INSTRUCTION(LA64_BC_NOP, la64_nop)
 {

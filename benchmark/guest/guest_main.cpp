@@ -1,3 +1,4 @@
+#include <cstdlib>
 // Simple guest program for benchmarking libloong vmcall overhead
 // This program provides minimal test functions with various argument counts
 
@@ -6,8 +7,7 @@ asm(".pushsection .text\n"
 	".global fast_exit\n"
 	".type fast_exit, @function\n"
 	"fast_exit:\n"
-	"	li.w $a7, 94\n"    // syscall number for exit_group
-	"	syscall 0\n"
+	"	move $zero, $zero\n"  // Indicate fast exit
 	".popsection\n");
 
 extern "C" {
@@ -66,6 +66,18 @@ int fibonacci(int n) {
 	if (n <= 1)
 		return n;
 	return fibonacci(n - 1) + fibonacci(n - 2);
+}
+
+void test_heap(int size) {
+	void* arr = malloc(size);
+	asm("" ::: "memory"); // Prevent optimization
+	free(arr);
+}
+
+void test_heap_cxx(int size) {
+	int* arr = new int[size];
+	asm("" ::: "memory"); // Prevent optimization
+	delete[] arr;
 }
 
 // Main function - does nothing in benchmark context

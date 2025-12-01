@@ -67,7 +67,15 @@ uint32_t DecodedExecuteSegment::optimize_bytecode(uint8_t& bytecode, address_t p
 			fi.rd = original.r3.rd;
 			fi.rj = 0;  // Always zero for MOVE
 			fi.rk = original.r3.rk;
-			NOP_IF_RD_ZERO(fi.rd, bytecode);
+			if (fi.rd == 0 && fi.rk == 0) {
+				// Special STOP instruction: MOVE zero, zero
+				bytecode = LA64_BC_STOP;
+				return 0;
+			} else if (fi.rd == 0) {
+				// MOVE to zero register is NOP
+				bytecode = LA64_BC_NOP;
+				return original.whole;
+			}
 			return fi.whole;
 		} break;
 		case LA64_BC_ST_D: {

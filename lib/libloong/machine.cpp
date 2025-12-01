@@ -9,7 +9,6 @@ namespace loongarch
 		: cpu(*this), memory(*this, binary, options),
 		  m_arena(nullptr)
 	{
-		m_options_ptr = &options;
 		cpu.reset();  // Reset CPU after memory is loaded
 		// Initialize all system call handlers to a throwing stub on first creation (thread-safe)
 		static std::once_flag init_flag;

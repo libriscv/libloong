@@ -75,6 +75,12 @@ continue_segment:
 		/** Bytecode handlers **/
 		#include "bytecode_impl.cpp"
 
+INSTRUCTION(LA64_BC_STOP, la64_stop)
+{
+	REGISTERS().pc = pc;
+	return;
+}
+
 		// Cleanup macros
 		#undef DECODER
 		#undef CPU

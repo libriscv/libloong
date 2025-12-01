@@ -134,7 +134,17 @@ namespace loongarch
 		cpu.registers().pc = func_addr;
 
 		// Execute until the function returns and calls exit
-		this->simulate<true>(MAX_INSTRUCTIONS, 0);
+		if constexpr (MAX_INSTRUCTIONS == UINT64_MAX) {
+			cpu.simulate_inaccurate(func_addr);
+		} else {
+			this->simulate(MAX_INSTRUCTIONS, 0);
+			if constexpr (true) {
+				if (this->instruction_limit_reached()) {
+					throw MachineException(MACHINE_TIMEOUT,
+						"vmcall: Instruction limit reached during function call", func_addr);
+				}
+			}
+		}
 
 		// If we're here, execution completed normally (via exit syscall)
 		// Return value is in A0
@@ -184,7 +194,7 @@ namespace loongarch
 		cpu.registers().pc = func_addr;
 
 		// Execute with instruction limit
-		this->template simulate<Throw>(max_instr, 0);
+		this->simulate(max_instr, 0);
 
 		// Restore registers if needed
 		if constexpr (StoreRegs) {
@@ -192,6 +202,13 @@ namespace loongarch
 			const address_t retval = cpu.reg(REG_A0);
 			cpu.registers() = saved_regs;
 			cpu.reg(REG_A0) = retval;
+		}
+
+		if constexpr (Throw) {
+			if (this->instruction_limit_reached()) {
+				throw MachineException(MACHINE_TIMEOUT,
+					"preempt: Instruction limit reached during function call", func_addr);
+			}
 		}
 
 		return cpu.reg(REG_A0);

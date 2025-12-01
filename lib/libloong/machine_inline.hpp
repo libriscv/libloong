@@ -5,7 +5,6 @@ namespace loongarch
 	// Inline machine methods
 
 	template <int W>
-	template <bool Throw>
 	inline bool Machine<W>::simulate(uint64_t max_instructions, uint64_t counter)
 	{
 		return cpu.simulate(cpu.pc(), counter, max_instructions);

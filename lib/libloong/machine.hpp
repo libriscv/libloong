@@ -45,7 +45,6 @@ namespace loongarch
 		void setup_accelerated_syscalls(); // Warning: modifies decoder cache
 
 		// Execution
-		template <bool Throw = true>
 		bool simulate(uint64_t max_instructions = UINT64_MAX, uint64_t counter = 0);
 
 		void stop() noexcept { m_max_instructions = 0; }
@@ -84,10 +83,10 @@ namespace loongarch
 		inline auto sysargs() const;
 
 		// Function calls (implemented in machine_vmcall.hpp)
-		template <uint64_t MAX_INSTRUCTIONS = 10'000'000ull, typename... Args>
+		template <uint64_t MAX_INSTRUCTIONS = UINT64_MAX, typename... Args>
 		address_t vmcall(address_t func_addr, Args&&... args);
 
-		template <uint64_t MAX_INSTRUCTIONS = 10'000'000ull, typename... Args>
+		template <uint64_t MAX_INSTRUCTIONS = UINT64_MAX, typename... Args>
 		address_t vmcall(const std::string& func_name, Args&&... args);
 
 		// Preemptible function calls with instruction limit

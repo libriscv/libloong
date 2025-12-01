@@ -2005,10 +2005,10 @@ struct InstrImpl {
 		const auto& src_a = cpu.registers().getvr(xa);
 
 		// Read all inputs first to handle aliasing
-		uint64_t r0 = (src_k.du[0] & src_a.du[0]) | (src_j.du[0] & ~src_a.du[0]);
-		uint64_t r1 = (src_k.du[1] & src_a.du[1]) | (src_j.du[1] & ~src_a.du[1]);
-		uint64_t r2 = (src_k.du[2] & src_a.du[2]) | (src_j.du[2] & ~src_a.du[2]);
-		uint64_t r3 = (src_k.du[3] & src_a.du[3]) | (src_j.du[3] & ~src_a.du[3]);
+		uint64_t r0 = (src_a.du[0] & src_k.du[0]) | (~src_a.du[0] & src_j.du[0]);
+		uint64_t r1 = (src_a.du[1] & src_k.du[1]) | (~src_a.du[1] & src_j.du[1]);
+		uint64_t r2 = (src_a.du[2] & src_k.du[2]) | (~src_a.du[2] & src_j.du[2]);
+		uint64_t r3 = (src_a.du[3] & src_k.du[3]) | (~src_a.du[3] & src_j.du[3]);
 
 		auto& dst = cpu.registers().getvr(xd);
 		dst.du[0] = r0;
@@ -3459,29 +3459,34 @@ struct InstrImpl {
 	static void XVPERMI_Q(cpu_t& cpu, la_instruction instr) {
 		// XVPERMI.Q xd, xj, ui8
 		// Permute quadwords (128-bit chunks) based on immediate
+		// Format: XdXjUk8 where a=xd (dest is also source), b=xj
 		uint32_t xd = instr.whole & 0x1F;
 		uint32_t xj = (instr.whole >> 5) & 0x1F;
 		uint32_t imm = (instr.whole >> 10) & 0xFF;
 
-		const auto& src = cpu.registers().getvr(xj);
+		const auto& a = cpu.registers().getvr(xd);  // First source (also destination)
+		const auto& b = cpu.registers().getvr(xj);  // Second source
 		auto& dst = cpu.registers().getvr(xd);
 
-		// imm specifies which 128-bit chunks to select
-		// Bits [1:0] select source for low 128 bits
-		// Bits [3:2] select source for high 128 bits
-		uint32_t lo_sel = (imm >> 0) & 0x1;
-		uint32_t hi_sel = (imm >> 1) & 0x1;
+		// Pseudo-code:
+		// dst.qword[0] = (imm & 2) ? a.qword[imm & 0x1] : b.qword[imm & 0x1];
+		// dst.qword[1] = (imm & 0x20) ? a.qword[(imm >> 4) & 0x1] : b.qword[(imm >> 4) & 0x1];
 
-		uint64_t tmp[4];
-		tmp[0] = src.du[0];
-		tmp[1] = src.du[1];
-		tmp[2] = src.du[2];
-		tmp[3] = src.du[3];
+		// Save values before modifying dst (since dst aliases with a)
+		uint64_t tmp_a[4] = {a.du[0], a.du[1], a.du[2], a.du[3]};
+		uint64_t tmp_b[4] = {b.du[0], b.du[1], b.du[2], b.du[3]};
 
-		dst.du[0] = tmp[lo_sel * 2];
-		dst.du[1] = tmp[lo_sel * 2 + 1];
-		dst.du[2] = tmp[hi_sel * 2];
-		dst.du[3] = tmp[hi_sel * 2 + 1];
+		// Select lower qword (128 bits = 2 x 64-bit elements)
+		uint32_t lo_idx = imm & 0x1;
+		const auto& lo_src = (imm & 2) ? tmp_a : tmp_b;
+		dst.du[0] = lo_src[lo_idx * 2];
+		dst.du[1] = lo_src[lo_idx * 2 + 1];
+
+		// Select upper qword (128 bits = 2 x 64-bit elements)
+		uint32_t hi_idx = (imm >> 4) & 0x1;
+		const auto& hi_src = (imm & 0x20) ? tmp_a : tmp_b;
+		dst.du[2] = hi_src[hi_idx * 2];
+		dst.du[3] = hi_src[hi_idx * 2 + 1];
 	}
 
 	static void XVLDX(cpu_t& cpu, la_instruction instr) {

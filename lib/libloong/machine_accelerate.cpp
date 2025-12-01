@@ -1,7 +1,15 @@
 #include "machine.hpp"
 #include "threaded_bytecodes.hpp"
+#include "native/heap.hpp"
 #include <cstdio>
 #include <inttypes.h>
+
+//#define VERBOSE_NATSYS
+#ifdef VERBOSE_NATSYS
+#define HPRINT(fmt, ...) printf(fmt, ##__VA_ARGS__)
+#else
+#define HPRINT(fmt, ...) /* */
+#endif
 
 namespace loongarch {
 
@@ -179,6 +187,119 @@ void Machine<W>::setup_accelerated_syscalls()
 	patch<W>(*this, {"__strnlen_lsx", "__strnlen_lasx", "__strnlen_aligned"}, SYS_native_strnlen);
 	patch<W>(*this, {"__strcmp_lsx", "__strcmp_lasx", "__strcmp_aligned"}, SYS_native_strcmp);
 	patch<W>(*this, {"__strncmp_lsx", "__strncmp_lasx", "__strncmp_aligned"}, SYS_native_strncmp);
+}
+
+template <int W>
+void Machine<W>::setup_accelerated_heap(address_t arena_base, size_t arena_size)
+{
+	if (!this->has_arena()) {
+		this->m_arena = std::make_unique<Arena>(arena_base, arena_size);
+	}
+
+	// Setup accelerated malloc/free/realloc/calloc syscalls
+	const size_t syscall_base = 495; // Arbitrary high number to avoid conflicts
+
+	// Malloc n+0
+	install_syscall_handler(syscall_base+0,
+	[] (Machine<W>& machine)
+	{
+		const size_t len = machine.sysarg(0);
+		auto data = machine.arena().malloc(len);
+		HPRINT("SYSCALL malloc(%zu) = 0x%lX\n", len, (long)data);
+		machine.set_result(data);
+	});
+	// Calloc n+1
+	install_syscall_handler(syscall_base+1,
+	[] (Machine<W>& machine)
+	{
+		const auto [count, size] =
+			machine.template sysargs<address_type<W>, address_type<W>> ();
+		const size_t len = count * size;
+		auto data = machine.arena().malloc(len);
+		HPRINT("SYSCALL calloc(%zu, %zu) = 0x%lX\n",
+			(size_t)count, (size_t)size, (long)data);
+		if (data != 0) {
+			// XXX: Not using memzero as it has known issues
+			machine.memory.memset(data, 0, len);
+		}
+		machine.set_result(data);
+	});
+	// Realloc n+2
+	install_syscall_handler(syscall_base+2,
+	[] (Machine<W>& machine)
+	{
+		const auto src = machine.sysarg(0);
+		const auto newlen = machine.sysarg(1);
+
+		const auto [data, srclen] = machine.arena().realloc(src, newlen);
+		HPRINT("SYSCALL realloc(0x%lX:%zu, %zu) = 0x%lX\n",
+			(long)src, (size_t)srclen, (size_t)newlen, (long)data);
+		// When data != src, srclen is the old length, and the
+		// chunks are non-overlapping, so we can use forwards memcpy.
+		if (data != src && srclen != 0) {
+			const char* src_ptr = machine.memory.template memarray<char>(src, srclen);
+			machine.memory.copy_to_guest(data, src_ptr, std::min(address_t(srclen), newlen));
+		}
+		machine.set_result(data);
+	});
+	// Free n+3
+	install_syscall_handler(syscall_base+3,
+	[] (Machine<W>& machine)
+	{
+		const auto ptr = machine.sysarg(0);
+		if (ptr != 0x0)
+		{
+			[[maybe_unused]] int ret = machine.arena().free(ptr);
+			HPRINT("SYSCALL free(0x%lX) = %d\n", (long)ptr, ret);
+			//machine.set_result(ret);
+			if (ret < 0) {
+				throw MachineException(ILLEGAL_OPERATION, "Possible double-free for freed pointer", ptr);
+			}
+				return;
+		}
+		HPRINT("SYSCALL free(0x0) = 0\n");
+		//machine.set_result(0);
+		return;
+	});
+	// Meminfo n+4
+	install_syscall_handler(syscall_base+4,
+	[] (Machine<W>& machine)
+	{
+		const auto dst = machine.sysarg(0);
+		const auto& arena = machine.arena();
+		struct Result {
+			const address_type<W> bf;
+			const address_type<W> bu;
+			const address_type<W> cu;
+		} result = {
+			.bf = (address_type<W>) arena.bytes_free(),
+			.bu = (address_type<W>) arena.bytes_used(),
+			.cu = (address_type<W>) arena.chunks_used()
+		};
+		int ret = (dst != 0) ? 0 : -1;
+		HPRINT("SYSCALL meminfo(0x%lX) = %d\n", (long)dst, ret);
+		if (ret == 0) {
+			machine.memory.copy_to_guest(dst, &result, sizeof(result));
+		}
+		machine.set_result(ret);
+	});
+}
+
+template <int W>
+const Arena& Machine<W>::arena() const
+{
+	if (!this->has_arena()) {
+		throw MachineException(FEATURE_DISABLED, "Native-performance heap not enabled");
+	}
+	return *this->m_arena;
+}
+template <int W>
+Arena& Machine<W>::arena()
+{
+	if (!this->has_arena()) {
+		throw MachineException(FEATURE_DISABLED, "Native-performance heap not enabled");
+	}
+	return *this->m_arena;
 }
 
 #ifdef LA_32

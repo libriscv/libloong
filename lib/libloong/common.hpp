@@ -11,6 +11,7 @@ namespace loongarch
 	static constexpr int LA32 = 4;
 	static constexpr int LA64 = 8;
 	#define LA_SYSCALLS_MAX  512
+	#define LA_PAGE_SIZE     0x1000  // 4 KB pages
 
 	template <int W = LA64>
 	struct MachineOptions {
@@ -80,6 +81,8 @@ namespace loongarch
 		MachineTimeoutException()
 			: MachineException(MACHINE_TIMEOUT, "Machine instruction timeout") {}
 	};
+
+	struct Arena;
 
 	// Compiler attributes
 	#if defined(__GNUC__) || defined(__clang__)

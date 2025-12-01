@@ -20,6 +20,22 @@ namespace loongarch
 		Machine(const Machine&) = delete;
 		~Machine();
 
+		/// @brief Set a custom pointer that only you know the meaning of.
+		/// This pointer can be retrieved from many of the callbacks in the
+		/// machine, such as system calls, printers etc. It is used to
+		/// facilitate wrapping the RISC-V Machine inside of your custom
+		/// structure, such as a Script class.
+		/// @tparam T The type of the pointer.
+		/// @param data The pointer to the outer class.
+		template <typename T> void set_userdata(T* data) { m_userdata = data; }
+
+		/// @brief Return a previously set user pointer. It is usually
+		/// a pointer to an outer wrapper class that manages the Machine, such
+		/// as a Script class.
+		/// @tparam T The type of the previously set user pointer.
+		/// @return The previously set user pointer.
+		template <typename T> T* get_userdata() const noexcept { return static_cast<T*> (m_userdata); }
+
 		// Setup
 		void setup_linux(
 			const std::vector<std::string>& args,
@@ -54,7 +70,7 @@ namespace loongarch
 		T return_value() const;
 
 		// System call argument helpers
-		template <typename T>
+		template <typename T = address_t>
 		inline T sysarg(int idx) const;
 
 		/// @brief Retrieve a tuple of arguments based on the given types.
@@ -109,6 +125,12 @@ namespace loongarch
 		bool has_options() const noexcept { return m_options_ptr != nullptr; }
 		const MachineOptions<W>& options() const { return *m_options_ptr; }
 
+		// Optional custom native-performance heap
+		bool has_arena() const noexcept { return m_arena != nullptr; }
+		const Arena& arena() const;
+		Arena& arena();
+		void setup_accelerated_heap(address_t arena_base, size_t arena_size); // Creates arena if needed
+
 		// Serialization
 		size_t serialize_to(std::vector<uint8_t>& vec) const;
 		int deserialize_from(const std::vector<uint8_t>& vec);
@@ -126,10 +148,12 @@ namespace loongarch
 		std::vector<BytecodeStats> collect_bytecode_statistics() const;
 
 	private:
-		uint64_t m_counter = 0;
-		uint64_t m_max_instructions = 0;
+		uint64_t      m_counter = 0;
+		uint64_t      m_max_instructions = 0;
+		mutable void* m_userdata = nullptr;
 		const MachineOptions<W>* m_options_ptr = nullptr;
-		ThreadData m_threads;
+		ThreadData    m_threads;
+		std::unique_ptr<Arena> m_arena;
 		static inline std::array<syscall_t*, LA_SYSCALLS_MAX> m_syscall_handlers = {};
 
 		void push_argument(address_t& sp, address_t value);

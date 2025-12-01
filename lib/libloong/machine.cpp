@@ -1,12 +1,14 @@
 #include "machine.hpp"
 #include <cstring>
 #include <mutex>
+#include "native/heap.hpp"
 
 namespace loongarch
 {
 	template <int W>
 	Machine<W>::Machine(std::string_view binary, const MachineOptions<W>& options)
-		: cpu(*this), memory(*this, binary, options)
+		: cpu(*this), memory(*this, binary, options),
+		  m_arena(nullptr)
 	{
 		m_options_ptr = &options;
 		cpu.reset();  // Reset CPU after memory is loaded

@@ -1132,10 +1132,6 @@ namespace loongarch
 					uint32_t subop = (instr.whole >> 10) & 0x3F;
 					if (subop == 0x00) return DECODED_INSTR(XVREPLGR2VR_B);
 				}
-				// XVLDI: LASX load immediate - bits[31:22] = 0x1df (0x77e00000 >> 22)
-				if ((instr.whole >> 22) == 0x1df) {
-					return DECODED_INSTR(XVLDI);
-				}
 				// XVPICKVE.W: 0x7703Dxxx (bits[31:16] = 0x7703, bits[15:10] = 0x34)
 				if (top16 == 0x7703) {
 					uint32_t subop = (instr.whole >> 10) & 0x3F;
@@ -1182,8 +1178,9 @@ namespace loongarch
 				if ((instr.whole >> 18) == 0x1DBB) {
 					return DECODED_INSTR(XVPICKVE2GR_W);
 				}
-				// XVPERMI.Q: bits[31:15] = 0xEE82
-				if ((instr.whole >> 15) == 0xEE82) {
+				// XVPERMI.Q: LASX permute quadword - bits[31:18] = 0x1DFB
+				// Opcode: 0x77ec0000 >> 18 = 0x1DFB (format: XdXjUk8)
+				if ((instr.whole >> 18) == 0x1DFB) {
 					return DECODED_INSTR(XVPERMI_Q);
 				}
 				// XVFADD.D: LASX vector floating-point add (double) - bits[31:15] = 0xEA62
@@ -1198,9 +1195,9 @@ namespace loongarch
 				// XVORI.B: LASX vector OR immediate byte - bits[31:15] = 0xEFA8
 				// Opcode: 0x77d40000 >> 15 = 0xEFA8
 				if ((instr.whole >> 15) == 0xEFA8) return DECODED_INSTR(XVORI_B);
-				// XVXORI.B: LASX vector XOR immediate byte - bits[31:15] = 0xEFD9
-				// Opcode: 0x77ec0000 >> 15 = 0xEFD9
-				if ((instr.whole >> 15) == 0xEFD9) return DECODED_INSTR(XVXORI_B);
+				// XVXORI.B: LASX vector XOR immediate byte - bits[31:15] = 0xEFB0
+				// Opcode: 0x77d80000 >> 15 = 0xEFB0
+				if ((instr.whole >> 15) == 0xEFB0) return DECODED_INSTR(XVXORI_B);
 				// XVILVL.D: LASX vector interleave low double-word - bits[31:15] = 0xEA37
 				// Opcode: 0x751b8000 >> 15 = 0xEA37
 				if ((instr.whole >> 15) == 0xEA37) return DECODED_INSTR(XVILVL_D);
@@ -1225,6 +1222,12 @@ namespace loongarch
 				// XVPICKOD.D: LASX vector pick odd double-word - bits[31:15] = 0xee0f
 				// Opcode: 0x77078000 >> 15 = 0xee0f
 				if ((instr.whole >> 15) == 0xee0f) return DECODED_INSTR(XVPICKOD_D);
+				// XVLDI: LASX load immediate - bits[31:23] = 0xEF
+				// Opcode: 0x77e00000 >> 23 = 0xEF (format: XdSj13 with 13-bit immediate)
+				// Note: Checked last as catch-all for 0x77exxxxx / 0x77fxxxxx after specific instructions
+				if ((instr.whole >> 23) == 0xEF) {
+					return DECODED_INSTR(XVLDI);
+				}
 			}
 			break;
 		}

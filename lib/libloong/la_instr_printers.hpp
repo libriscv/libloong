@@ -1684,12 +1684,28 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		return snprintf(buf, len, "xvfdiv.d $xr%u, $xr%u, $xr%u", xd, xj, xk);
 	}
 
+	static int XVFMADD_S(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+		uint32_t xa = (instr.whole >> 15) & 0x1F;
+		return snprintf(buf, len, "xvfmadd.s $xr%u, $xr%u, $xr%u, $xr%u", xd, xj, xk, xa);
+	}
+
 	static int XVFMADD_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		uint32_t xd = instr.whole & 0x1F;
 		uint32_t xj = (instr.whole >> 5) & 0x1F;
 		uint32_t xk = (instr.whole >> 10) & 0x1F;
 		uint32_t xa = (instr.whole >> 15) & 0x1F;
 		return snprintf(buf, len, "xvfmadd.d $xr%u, $xr%u, $xr%u, $xr%u", xd, xj, xk, xa);
+	}
+
+	static int XVFMSUB_S(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+		uint32_t xa = (instr.whole >> 15) & 0x1F;
+		return snprintf(buf, len, "xvfmsub.s $xr%u, $xr%u, $xr%u, $xr%u", xd, xj, xk, xa);
 	}
 
 	static int XVFMSUB_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
@@ -1700,12 +1716,36 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		return snprintf(buf, len, "xvfmsub.d $xr%u, $xr%u, $xr%u, $xr%u", xd, xj, xk, xa);
 	}
 
+	static int XVFNMADD_S(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+		uint32_t xa = (instr.whole >> 15) & 0x1F;
+		return snprintf(buf, len, "xvfnmadd.s $xr%u, $xr%u, $xr%u, $xr%u", xd, xj, xk, xa);
+	}
+
 	static int XVFNMADD_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		uint32_t xd = instr.whole & 0x1F;
 		uint32_t xj = (instr.whole >> 5) & 0x1F;
 		uint32_t xk = (instr.whole >> 10) & 0x1F;
 		uint32_t xa = (instr.whole >> 15) & 0x1F;
 		return snprintf(buf, len, "xvfnmadd.d $xr%u, $xr%u, $xr%u, $xr%u", xd, xj, xk, xa);
+	}
+
+	static int XVFNMSUB_S(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+		uint32_t xa = (instr.whole >> 15) & 0x1F;
+		return snprintf(buf, len, "xvfnmsub.s $xr%u, $xr%u, $xr%u, $xr%u", xd, xj, xk, xa);
+	}
+
+	static int XVFNMSUB_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+		uint32_t xa = (instr.whole >> 15) & 0x1F;
+		return snprintf(buf, len, "xvfnmsub.d $xr%u, $xr%u, $xr%u, $xr%u", xd, xj, xk, xa);
 	}
 
 	static int XVORI_B(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {

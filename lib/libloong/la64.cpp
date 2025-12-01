@@ -240,9 +240,14 @@ namespace loongarch
 	INSTRUCTION(XVFADD_D);
 	INSTRUCTION(XVFMUL_D);
 	INSTRUCTION(XVFDIV_D);
+	INSTRUCTION(XVFMADD_S);
 	INSTRUCTION(XVFMADD_D);
+	INSTRUCTION(XVFMSUB_S);
 	INSTRUCTION(XVFMSUB_D);
+	INSTRUCTION(XVFNMADD_S);
 	INSTRUCTION(XVFNMADD_D);
+	INSTRUCTION(XVFNMSUB_S);
+	INSTRUCTION(XVFNMSUB_D);
 	INSTRUCTION(XVORI_B);
 	INSTRUCTION(XVXORI_B);
 	INSTRUCTION(XVILVL_D);
@@ -609,19 +614,29 @@ namespace loongarch
 				// VFMADD.D: Vector FMA (bits[31:20] = 0x092)
 				if (op12_4r == 0x092) return DECODED_INSTR(VFMADD_D);
 				// NOTE: VFNMADD.D is handled in case 0x03 or has a different encoding
-				// XVFMADD.D: LASX vector FMA (bits[31:20] = 0x0A2)
+				// LASX vector FMA instructions (XVFMADD, XVFMSUB, XVFNMADD, XVFNMSUB)
+				// XVFMADD.S: bits[31:20] = 0x0A1
+				if (op12_4r == 0x0A1) return DECODED_INSTR(XVFMADD_S);
+				// XVFMADD.D: bits[31:20] = 0x0A2
 				if (op12_4r == 0x0A2) return DECODED_INSTR(XVFMADD_D);
+				// XVFMSUB.S: bits[31:20] = 0x0A5
+				if (op12_4r == 0x0A5) return DECODED_INSTR(XVFMSUB_S);
+				// XVFMSUB.D: bits[31:20] = 0x0A6
+				if (op12_4r == 0x0A6) return DECODED_INSTR(XVFMSUB_D);
+				// XVFNMADD.S: bits[31:20] = 0x0A9
+				if (op12_4r == 0x0A9) return DECODED_INSTR(XVFNMADD_S);
+				// XVFNMADD.D: bits[31:20] = 0x0AA
+				if (op12_4r == 0x0AA) return DECODED_INSTR(XVFNMADD_D);
+				// XVFNMSUB.S: bits[31:20] = 0x0AD
+				if (op12_4r == 0x0AD) return DECODED_INSTR(XVFNMSUB_S);
+				// XVFNMSUB.D: bits[31:20] = 0x0AE
+				if (op12_4r == 0x0AE) return DECODED_INSTR(XVFNMSUB_D);
 			}
 			break;
 
 		case 0x03: // VSHUF.B (4R-type vector shuffle) and FCMP instructions
-		// XVFNMADD.D: LASX vector FNMA (bits[31:21] = 0x069, bit[20] = 1)
-		// XVBITSEL.V: LASX bit select (bits[31:21] = 0x069, bit[20] = 0)
-		if ((instr.whole >> 21) == 0x069) {
-			uint32_t bit20 = (instr.whole >> 20) & 1;
-			if (bit20 == 1) return DECODED_INSTR(XVFNMADD_D);
-			if (bit20 == 0) return DECODED_INSTR(XVBITSEL_V);
-		}
+		// XVBITSEL.V: LASX bit select (bits[31:20] = 0x0D2)
+		if ((instr.whole >> 20) == 0x0D2) return DECODED_INSTR(XVBITSEL_V);
 		// VSHUF.B: bits[31:20] = 0x00D5
 		if ((instr.whole >> 20) == 0x00D5) return DECODED_INSTR(VSHUF_B);
 		// VBITSEL.V: bits[31:20] = 0x0D1

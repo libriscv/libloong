@@ -3554,6 +3554,24 @@ struct InstrImpl {
 		dst.df[3] = src1.df[3] / src2.df[3];
 	}
 
+	static void XVFMADD_S(cpu_t& cpu, la_instruction instr) {
+		// XVFMADD.S: LASX vector fused multiply-add (single precision, 8x32-bit)
+		// 4R-type format: xd = xa + xj * xk
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+		uint32_t xa = (instr.whole >> 15) & 0x1F;
+
+		const auto& src_j = cpu.registers().getvr(xj);
+		const auto& src_k = cpu.registers().getvr(xk);
+		const auto& src_a = cpu.registers().getvr(xa);
+		auto& dst = cpu.registers().getvr(xd);
+
+		for (int i = 0; i < 8; i++) {
+			dst.f[i] = src_a.f[i] + src_j.f[i] * src_k.f[i];
+		}
+	}
+
 	static void XVFMADD_D(cpu_t& cpu, la_instruction instr) {
 		// XVFMADD.D: LASX vector fused multiply-add (double precision, 4x64-bit)
 		// 4R-type format: xd = xa + xj * xk
@@ -3571,6 +3589,24 @@ struct InstrImpl {
 		dst.df[1] = src_a.df[1] + src_j.df[1] * src_k.df[1];
 		dst.df[2] = src_a.df[2] + src_j.df[2] * src_k.df[2];
 		dst.df[3] = src_a.df[3] + src_j.df[3] * src_k.df[3];
+	}
+
+	static void XVFMSUB_S(cpu_t& cpu, la_instruction instr) {
+		// XVFMSUB.S: LASX vector fused multiply-subtract (single precision, 8x32-bit)
+		// 4R-type format: xd = xa - xj * xk
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+		uint32_t xa = (instr.whole >> 15) & 0x1F;
+
+		const auto& src_j = cpu.registers().getvr(xj);
+		const auto& src_k = cpu.registers().getvr(xk);
+		const auto& src_a = cpu.registers().getvr(xa);
+		auto& dst = cpu.registers().getvr(xd);
+
+		for (int i = 0; i < 8; i++) {
+			dst.f[i] = src_a.f[i] - src_j.f[i] * src_k.f[i];
+		}
 	}
 
 	static void XVFMSUB_D(cpu_t& cpu, la_instruction instr) {
@@ -3592,6 +3628,24 @@ struct InstrImpl {
 		dst.df[3] = src_a.df[3] - src_j.df[3] * src_k.df[3];
 	}
 
+	static void XVFNMADD_S(cpu_t& cpu, la_instruction instr) {
+		// XVFNMADD.S: LASX vector fused negative multiply-add (single precision, 8x32-bit)
+		// 4R-type format: xd = -(xj * xk) + xa = xa - xj * xk
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+		uint32_t xa = (instr.whole >> 15) & 0x1F;
+
+		const auto& src_j = cpu.registers().getvr(xj);
+		const auto& src_k = cpu.registers().getvr(xk);
+		const auto& src_a = cpu.registers().getvr(xa);
+		auto& dst = cpu.registers().getvr(xd);
+
+		for (int i = 0; i < 8; i++) {
+			dst.f[i] = src_a.f[i] - src_j.f[i] * src_k.f[i];
+		}
+	}
+
 	static void XVFNMADD_D(cpu_t& cpu, la_instruction instr) {
 		// XVFNMADD.D: LASX vector fused negative multiply-add (double precision, 4x64-bit)
 		// 4R-type format: xd = -(xj * xk) + xa = xa - xj * xk
@@ -3609,6 +3663,43 @@ struct InstrImpl {
 		dst.df[1] = src_a.df[1] - src_j.df[1] * src_k.df[1];
 		dst.df[2] = src_a.df[2] - src_j.df[2] * src_k.df[2];
 		dst.df[3] = src_a.df[3] - src_j.df[3] * src_k.df[3];
+	}
+
+	static void XVFNMSUB_S(cpu_t& cpu, la_instruction instr) {
+		// XVFNMSUB.S: LASX vector fused negative multiply-subtract (single precision, 8x32-bit)
+		// 4R-type format: xd = -(xj * xk) - xa = -xa - xj * xk
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+		uint32_t xa = (instr.whole >> 15) & 0x1F;
+
+		const auto& src_j = cpu.registers().getvr(xj);
+		const auto& src_k = cpu.registers().getvr(xk);
+		const auto& src_a = cpu.registers().getvr(xa);
+		auto& dst = cpu.registers().getvr(xd);
+
+		for (int i = 0; i < 8; i++) {
+			dst.f[i] = -(src_a.f[i] + src_j.f[i] * src_k.f[i]);
+		}
+	}
+
+	static void XVFNMSUB_D(cpu_t& cpu, la_instruction instr) {
+		// XVFNMSUB.D: LASX vector fused negative multiply-subtract (double precision, 4x64-bit)
+		// 4R-type format: xd = -(xj * xk) - xa = -xa - xj * xk
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+		uint32_t xa = (instr.whole >> 15) & 0x1F;
+
+		const auto& src_j = cpu.registers().getvr(xj);
+		const auto& src_k = cpu.registers().getvr(xk);
+		const auto& src_a = cpu.registers().getvr(xa);
+		auto& dst = cpu.registers().getvr(xd);
+
+		dst.df[0] = -(src_a.df[0] + src_j.df[0] * src_k.df[0]);
+		dst.df[1] = -(src_a.df[1] + src_j.df[1] * src_k.df[1]);
+		dst.df[2] = -(src_a.df[2] + src_j.df[2] * src_k.df[2]);
+		dst.df[3] = -(src_a.df[3] + src_j.df[3] * src_k.df[3]);
 	}
 
 	static void XVORI_B(cpu_t& cpu, la_instruction instr) {

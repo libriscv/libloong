@@ -263,10 +263,14 @@ namespace loongarch
 	INSTRUCTION(BCEQZ);
 
 	// Vector element extraction
-	INSTRUCTION(VPICKVE2GR_D);
-	INSTRUCTION(VPICKVE2GR_DU);
-	INSTRUCTION(VPICKVE2GR_W);
-	INSTRUCTION(VPICKVE2GR_WU);
+	INSTRUCTION_P(VPICKVE2GR_B, VPICKVE2GR);
+	INSTRUCTION_P(VPICKVE2GR_H, VPICKVE2GR);
+	INSTRUCTION_P(VPICKVE2GR_W, VPICKVE2GR);
+	INSTRUCTION_P(VPICKVE2GR_D, VPICKVE2GR);
+	INSTRUCTION_P(VPICKVE2GR_BU, VPICKVE2GR);
+	INSTRUCTION_P(VPICKVE2GR_HU, VPICKVE2GR);
+	INSTRUCTION_P(VPICKVE2GR_WU, VPICKVE2GR);
+	INSTRUCTION_P(VPICKVE2GR_DU, VPICKVE2GR);
 
 	// Vector interleave
 	INSTRUCTION_P(VILVL_B, VILVL);
@@ -335,13 +339,27 @@ namespace loongarch
 	INSTRUCTION_P(VADD_D, VADD);
 	INSTRUCTION(VSHUF_B);
 	INSTRUCTION(VBITSEL_V);
-	INSTRUCTION(VMIN_BU);
+	INSTRUCTION_P(VMAX_B, VMAX);
+	INSTRUCTION_P(VMAX_H, VMAX);
+	INSTRUCTION_P(VMAX_W, VMAX);
+	INSTRUCTION_P(VMAX_D, VMAX);
+	INSTRUCTION_P(VMAX_BU, VMAX);
+	INSTRUCTION_P(VMAX_HU, VMAX);
+	INSTRUCTION_P(VMAX_WU, VMAX);
+	INSTRUCTION_P(VMAX_DU, VMAX);
+	INSTRUCTION_P(VMIN_B, VMIN);
+	INSTRUCTION_P(VMIN_H, VMIN);
+	INSTRUCTION_P(VMIN_W, VMIN);
+	INSTRUCTION_P(VMIN_D, VMIN);
+	INSTRUCTION_P(VMIN_BU, VMIN);
+	INSTRUCTION_P(VMIN_HU, VMIN);
+	INSTRUCTION_P(VMIN_WU, VMIN);
+	INSTRUCTION_P(VMIN_DU, VMIN);
 	INSTRUCTION_P(VSEQI_B, VSEQI);
 	INSTRUCTION_P(VSEQI_H, VSEQI);
 	INSTRUCTION_P(VSEQI_W, VSEQI);
 	INSTRUCTION_P(VSEQI_D, VSEQI);
 	INSTRUCTION(VFRSTPI_B);
-	INSTRUCTION(VPICKVE2GR_BU);
 	INSTRUCTION(VLDI);
 
 	// FP/Vector to GPR
@@ -822,8 +840,28 @@ namespace loongarch
 				if ((instr.whole >> 18) == 0x1CF5) return DECODED_INSTR(VORI_B);
 				// VBITREVI.D: Vector Bit Reverse Immediate (double) - op10 = 0x1CC
 				if (op10 == 0x1CC) return DECODED_INSTR(VBITREVI_D);
-				// VHADDW.D.W: Vector horizontal add with widening - op10 = 0x1C1
-				if (op10 == 0x1C1) return DECODED_INSTR(VHADDW_D_W);			// VFADD.D: Vector floating-point add (double) - op17 = 0x71310000
+				// VMAX/VMIN instructions - bits[31:15] identify variants
+				// Signed: 0xE0E0-E0E3 (b/h/w/d), Unsigned: 0xE0E8-E0EB (bu/hu/wu/du)
+				uint32_t bits15 = instr.whole >> 15;
+				if (bits15 == 0xE0E0) return DECODED_INSTR(VMAX_B);
+				if (bits15 == 0xE0E1) return DECODED_INSTR(VMAX_H);
+				if (bits15 == 0xE0E2) return DECODED_INSTR(VMAX_W);
+				if (bits15 == 0xE0E3) return DECODED_INSTR(VMAX_D);
+				if (bits15 == 0xE0E4) return DECODED_INSTR(VMIN_B);
+				if (bits15 == 0xE0E5) return DECODED_INSTR(VMIN_H);
+				if (bits15 == 0xE0E6) return DECODED_INSTR(VMIN_W);
+				if (bits15 == 0xE0E7) return DECODED_INSTR(VMIN_D);
+				if (bits15 == 0xE0E8) return DECODED_INSTR(VMAX_BU);
+				if (bits15 == 0xE0E9) return DECODED_INSTR(VMAX_HU);
+				if (bits15 == 0xE0EA) return DECODED_INSTR(VMAX_WU);
+				if (bits15 == 0xE0EB) return DECODED_INSTR(VMAX_DU);
+				if (bits15 == 0xE0EC) return DECODED_INSTR(VMIN_BU);
+				if (bits15 == 0xE0ED) return DECODED_INSTR(VMIN_HU);
+				if (bits15 == 0xE0EE) return DECODED_INSTR(VMIN_WU);
+				if (bits15 == 0xE0EF) return DECODED_INSTR(VMIN_DU);
+				// VHADDW.D.W: Vector horizontal add with widening - bits[31:15] = 0xE0AA
+				if (bits15 == 0xE0AA) return DECODED_INSTR(VHADDW_D_W);
+				// VFADD.D: Vector floating-point add (double) - op17 = 0x71310000
 				if ((instr.whole & 0xFFFF8000) == 0x71310000) return DECODED_INSTR(VFADD_D);
 				// VFDIV.D: Vector floating-point divide (double) - bits[31:15] = 0xE276
 				if ((instr.whole >> 15) == 0xE276) return DECODED_INSTR(VFDIV_D);
@@ -858,28 +896,21 @@ namespace loongarch
 				if ((instr.whole >> 15) == 0xE23E) {
 					return DECODED_INSTR(VPICKEV_W);
 				}
-				// VPICKVE2GR instructions (0x711Axxx) - but NOT VILVL
-				// VPICKVE2GR.D: bits[31:11] should be 0xE234D (0x711a6xxx)
-				// VPICKVE2GR.DU: bits[31:11] should be 0xE234F (0x711a7xxx)
-				if (top16 == 0x711A) {
-					uint32_t bits15 = (instr.whole >> 15) & 0x1FFFF;
-					// Skip if this is VILVL.H
-					if (bits15 != 0xE235) {
-						// bits[15:12] determine variant
-						uint32_t subop = (instr.whole >> 12) & 0xF;
-						if (subop == 0x6) return DECODED_INSTR(VPICKVE2GR_D);
-						if (subop == 0x7) return DECODED_INSTR(VPICKVE2GR_DU);
-						if (subop <= 0x3) return DECODED_INSTR(VPICKVE2GR_W);
-						if (subop >= 0x4 && subop <= 0x5) return DECODED_INSTR(VPICKVE2GR_WU);
-					}
-				}
-				// VPICKVE2GR.BU: 0x72F3xxxx
-				if (top16 == 0x72F3) {
-					return DECODED_INSTR(VPICKVE2GR_BU);
-				}
-				// VPICKVE2GR.W: 0x72EFxxxx (alternate encoding)
+				// VPICKVE2GR instructions: signed (0x72EF) and unsigned (0x72F3)
+				// bits[15:12] determine size: 0x8=B, 0xC=H, 0xE=W, 0xF=D
 				if (top16 == 0x72EF) {
-					return DECODED_INSTR(VPICKVE2GR_W);
+					uint32_t subop = (instr.whole >> 12) & 0xF;
+					if (subop == 0x8) return DECODED_INSTR(VPICKVE2GR_B);
+					if (subop == 0xC) return DECODED_INSTR(VPICKVE2GR_H);
+					if (subop == 0xE) return DECODED_INSTR(VPICKVE2GR_W);
+					if (subop == 0xF) return DECODED_INSTR(VPICKVE2GR_D);
+				}
+				if (top16 == 0x72F3) {
+					uint32_t subop = (instr.whole >> 12) & 0xF;
+					if (subop == 0x8) return DECODED_INSTR(VPICKVE2GR_BU);
+					if (subop == 0xC) return DECODED_INSTR(VPICKVE2GR_HU);
+					if (subop == 0xE) return DECODED_INSTR(VPICKVE2GR_WU);
+					if (subop == 0xF) return DECODED_INSTR(VPICKVE2GR_DU);
 				}
 				// VREPLVEI.D: 0x72F7xxxx (Vector Replicate Vector Element Immediate - double)
 				if (top16 == 0x72F7) {
@@ -1015,10 +1046,6 @@ namespace loongarch
 				// VSLT.D: bits[31:15] = 0xE00F
 				if ((instr.whole >> 15) == 0xE00F) {
 					return DECODED_INSTR(VSLT_D);
-				}
-				// VMIN.BU: bits[31:15] = 0xE0EC
-				if ((instr.whole >> 15) == 0xE0EC) {
-					return DECODED_INSTR(VMIN_BU);
 				}
 				// VSEQI.B: bits[31:15] = 0xE500
 				if ((instr.whole >> 15) == 0xE500) {

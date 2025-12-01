@@ -1175,13 +1175,6 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		return snprintf(buf, len, "vfrstpi.b $vr%u, $vr%u, 0x%x", vd, vj, ui5);
 	}
 
-	static int VPICKVE2GR_BU(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t rd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t ui4 = (instr.whole >> 10) & 0xF;
-		return snprintf(buf, len, "vpickve2gr.bu %s, $vr%u, 0x%x", reg_name(rd), vj, ui4);
-	}
-
 	// === LSX Condition Branches ===
 
 	static int BCNEZ(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t pc) {
@@ -1204,36 +1197,26 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 
 	// === LSX Vector Element Extraction ===
 
-	static int VPICKVE2GR_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int VPICKVE2GR(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		uint32_t rd = instr.whole & 0x1F;
 		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t ui1 = (instr.whole >> 10) & 0x1;
-		return snprintf(buf, len, "vpickve2gr.d %s, $vr%u, %u",
-			reg_name(rd), vj, ui1);
-	}
+		uint32_t top16 = (instr.whole >> 16) & 0xFFFF;
+		uint32_t subop = (instr.whole >> 12) & 0xF;
 
-	static int VPICKVE2GR_DU(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t rd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t ui1 = (instr.whole >> 10) & 0x1;
-		return snprintf(buf, len, "vpickve2gr.du %s, $vr%u, %u",
-			reg_name(rd), vj, ui1);
-	}
+		// Determine size suffix and immediate width
+		const char* size_suffix;
+		uint32_t imm_mask;
+		switch (subop) {
+			case 0x8: size_suffix = (top16 == 0x72EF) ? ".b" : ".bu"; imm_mask = 0xF; break;
+			case 0xC: size_suffix = (top16 == 0x72EF) ? ".h" : ".hu"; imm_mask = 0x7; break;
+			case 0xE: size_suffix = (top16 == 0x72EF) ? ".w" : ".wu"; imm_mask = 0x3; break;
+			case 0xF: size_suffix = (top16 == 0x72EF) ? ".d" : ".du"; imm_mask = 0x1; break;
+			default: size_suffix = ".?"; imm_mask = 0xF; break;
+		}
 
-	static int VPICKVE2GR_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t rd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t ui2 = (instr.whole >> 10) & 0x3;
-		return snprintf(buf, len, "vpickve2gr.w %s, $vr%u, %u",
-			reg_name(rd), vj, ui2);
-	}
-
-	static int VPICKVE2GR_WU(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t rd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t ui2 = (instr.whole >> 10) & 0x3;
-		return snprintf(buf, len, "vpickve2gr.wu %s, $vr%u, %u",
-			reg_name(rd), vj, ui2);
+		uint32_t imm = (instr.whole >> 10) & imm_mask;
+		return snprintf(buf, len, "vpickve2gr%s %s, $vr%u, 0x%x",
+			size_suffix, reg_name(rd), vj, imm);
 	}
 
 	// === LSX Vector Arithmetic/Logic ===
@@ -1545,11 +1528,54 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		return snprintf(buf, len, "vbitsel.v $vr%u, $vr%u, $vr%u, $vr%u", vd, vj, vk, va);
 	}
 
-	static int VMIN_BU(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int VMAX(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		static constexpr char sizes[] = {'b', 'h', 'w', 'd'};
 		uint32_t vd = instr.whole & 0x1F;
 		uint32_t vj = (instr.whole >> 5) & 0x1F;
 		uint32_t vk = (instr.whole >> 10) & 0x1F;
-		return snprintf(buf, len, "vmin.bu $vr%u, $vr%u, $vr%u", vd, vj, vk);
+		uint32_t bits15 = instr.whole >> 15;
+
+		// Determine size and signedness
+		const char* suffix;
+		if (bits15 >= 0xE0E0 && bits15 <= 0xE0E3) {
+			// Signed: 0xE0E0-E0E3
+			char size = sizes[bits15 - 0xE0E0];
+			static char buf_suffix[4];
+			snprintf(buf_suffix, sizeof(buf_suffix), ".%c", size);
+			suffix = buf_suffix;
+		} else {
+			// Unsigned: 0xE0E8-E0EB
+			char size = sizes[bits15 - 0xE0E8];
+			static char buf_suffix[4];
+			snprintf(buf_suffix, sizeof(buf_suffix), ".%cu", size);
+			suffix = buf_suffix;
+		}
+		return snprintf(buf, len, "vmax%s $vr%u, $vr%u, $vr%u", suffix, vd, vj, vk);
+	}
+
+	static int VMIN(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		static constexpr char sizes[] = {'b', 'h', 'w', 'd'};
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t vj = (instr.whole >> 5) & 0x1F;
+		uint32_t vk = (instr.whole >> 10) & 0x1F;
+		uint32_t bits15 = instr.whole >> 15;
+
+		// Determine size and signedness
+		const char* suffix;
+		if (bits15 >= 0xE0E4 && bits15 <= 0xE0E7) {
+			// Signed: 0xE0E4-E0E7
+			char size = sizes[bits15 - 0xE0E4];
+			static char buf_suffix[4];
+			snprintf(buf_suffix, sizeof(buf_suffix), ".%c", size);
+			suffix = buf_suffix;
+		} else {
+			// Unsigned: 0xE0EC-E0EF
+			char size = sizes[bits15 - 0xE0EC];
+			static char buf_suffix[4];
+			snprintf(buf_suffix, sizeof(buf_suffix), ".%cu", size);
+			suffix = buf_suffix;
+		}
+		return snprintf(buf, len, "vmin%s $vr%u, $vr%u, $vr%u", suffix, vd, vj, vk);
 	}
 
 	// === LASX (256-bit) Instruction Printers ===

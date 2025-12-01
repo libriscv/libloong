@@ -1586,6 +1586,54 @@ struct InstrImpl {
 		cpu.reg(rd) = src.wu[ui2];
 	}
 
+	static void VPICKVE2GR_H(cpu_t& cpu, la_instruction instr) {
+		// VPICKVE2GR.H: Pick vector element to general register (halfword)
+		// Sign extends to 64 bits
+		uint32_t rd = instr.whole & 0x1F;
+		if (rd == 0) return; // Writes to x0 are discarded
+		uint32_t vj = (instr.whole >> 5) & 0x1F;
+		uint32_t ui3 = (instr.whole >> 10) & 0x7;
+
+		const auto& src = cpu.registers().getvr(vj);
+		cpu.reg(rd) = static_cast<int64_t>(static_cast<int16_t>(src.hu[ui3]));
+	}
+
+	static void VPICKVE2GR_HU(cpu_t& cpu, la_instruction instr) {
+		// VPICKVE2GR.HU: Pick vector element to general register (unsigned halfword)
+		// Zero extends to 64 bits
+		uint32_t rd = instr.whole & 0x1F;
+		if (rd == 0) return; // Writes to x0 are discarded
+		uint32_t vj = (instr.whole >> 5) & 0x1F;
+		uint32_t ui3 = (instr.whole >> 10) & 0x7;
+
+		const auto& src = cpu.registers().getvr(vj);
+		cpu.reg(rd) = src.hu[ui3];
+	}
+
+	static void VPICKVE2GR_B(cpu_t& cpu, la_instruction instr) {
+		// VPICKVE2GR.B: Pick vector element to general register (byte)
+		// Sign extends to 64 bits
+		uint32_t rd = instr.whole & 0x1F;
+		if (rd == 0) return; // Writes to x0 are discarded
+		uint32_t vj = (instr.whole >> 5) & 0x1F;
+		uint32_t ui4 = (instr.whole >> 10) & 0xF;
+
+		const auto& src = cpu.registers().getvr(vj);
+		cpu.reg(rd) = static_cast<int64_t>(static_cast<int8_t>(src.bu[ui4]));
+	}
+
+	static void VPICKVE2GR_BU(cpu_t& cpu, la_instruction instr) {
+		// VPICKVE2GR.BU: Pick vector element to general register (unsigned byte)
+		// Zero extends to 64 bits
+		uint32_t rd = instr.whole & 0x1F;
+		if (rd == 0) return; // Writes to x0 are discarded
+		uint32_t vj = (instr.whole >> 5) & 0x1F;
+		uint32_t ui4 = (instr.whole >> 10) & 0xF;
+
+		const auto& src = cpu.registers().getvr(vj);
+		cpu.reg(rd) = src.bu[ui4];
+	}
+
 	// === LSX Vector Arithmetic Instructions ===
 
 	static void VSUB_B(cpu_t& cpu, la_instruction instr) {
@@ -2703,18 +2751,6 @@ struct InstrImpl {
 		dst.du[1] = 0;
 	}
 
-	static void VPICKVE2GR_BU(cpu_t& cpu, la_instruction instr) {
-		// VPICKVE2GR.BU rd, vj, ui4
-		// Pick unsigned byte element from vector to general register (zero-extended)
-		uint32_t rd = instr.whole & 0x1F;
-		if (rd == 0) return; // Writes to x0 are discarded
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t ui4 = (instr.whole >> 10) & 0xF;
-
-		const auto& src = cpu.registers().getvr(vj);
-		cpu.reg(rd) = src.bu[ui4];
-	}
-
 	static void BCNEZ(cpu_t& cpu, la_instruction instr) {
 		// BCNEZ: Branch if condition flag is not equal to zero
 		// Format: 0x48xxxxxx
@@ -3034,28 +3070,184 @@ struct InstrImpl {
 		dst.du[3] = 0;
 	}
 
-	static void VMIN_BU(cpu_t& cpu, la_instruction instr) {
-		// VMIN.BU vd, vj, vk
-		// Unsigned minimum of corresponding bytes
+	// === VMAX/VMIN instructions ===
+
+	static void VMAX_B(cpu_t& cpu, la_instruction instr) {
 		uint32_t vd = instr.whole & 0x1F;
 		uint32_t vj = (instr.whole >> 5) & 0x1F;
 		uint32_t vk = (instr.whole >> 10) & 0x1F;
-
 		const auto& src1 = cpu.registers().getvr(vj);
 		const auto& src2 = cpu.registers().getvr(vk);
 		auto& dst = cpu.registers().getvr(vd);
-
-		for (int i = 0; i < 2; i++) {
-			uint64_t result = 0;
-			for (int j = 0; j < 8; j++) {
-				uint8_t b1 = (src1.du[i] >> (j * 8)) & 0xFF;
-				uint8_t b2 = (src2.du[i] >> (j * 8)) & 0xFF;
-				uint8_t minv = (b1 < b2) ? b1 : b2;
-				result |= (uint64_t)minv << (j * 8);
-			}
-			dst.du[i] = result;
-		}
+		for (int i = 0; i < 16; i++)
+			dst.b[i] = (src1.b[i] > src2.b[i]) ? src1.b[i] : src2.b[i];
 	}
+
+	static void VMAX_H(cpu_t& cpu, la_instruction instr) {
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t vj = (instr.whole >> 5) & 0x1F;
+		uint32_t vk = (instr.whole >> 10) & 0x1F;
+		const auto& src1 = cpu.registers().getvr(vj);
+		const auto& src2 = cpu.registers().getvr(vk);
+		auto& dst = cpu.registers().getvr(vd);
+		for (int i = 0; i < 8; i++)
+			dst.h[i] = (src1.h[i] > src2.h[i]) ? src1.h[i] : src2.h[i];
+	}
+
+	static void VMAX_W(cpu_t& cpu, la_instruction instr) {
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t vj = (instr.whole >> 5) & 0x1F;
+		uint32_t vk = (instr.whole >> 10) & 0x1F;
+		const auto& src1 = cpu.registers().getvr(vj);
+		const auto& src2 = cpu.registers().getvr(vk);
+		auto& dst = cpu.registers().getvr(vd);
+		for (int i = 0; i < 4; i++)
+			dst.w[i] = (src1.w[i] > src2.w[i]) ? src1.w[i] : src2.w[i];
+	}
+
+	static void VMAX_D(cpu_t& cpu, la_instruction instr) {
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t vj = (instr.whole >> 5) & 0x1F;
+		uint32_t vk = (instr.whole >> 10) & 0x1F;
+		const auto& src1 = cpu.registers().getvr(vj);
+		const auto& src2 = cpu.registers().getvr(vk);
+		auto& dst = cpu.registers().getvr(vd);
+		for (int i = 0; i < 2; i++)
+			dst.d[i] = (src1.d[i] > src2.d[i]) ? src1.d[i] : src2.d[i];
+	}
+
+	static void VMAX_BU(cpu_t& cpu, la_instruction instr) {
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t vj = (instr.whole >> 5) & 0x1F;
+		uint32_t vk = (instr.whole >> 10) & 0x1F;
+		const auto& src1 = cpu.registers().getvr(vj);
+		const auto& src2 = cpu.registers().getvr(vk);
+		auto& dst = cpu.registers().getvr(vd);
+		for (int i = 0; i < 16; i++)
+			dst.bu[i] = (src1.bu[i] > src2.bu[i]) ? src1.bu[i] : src2.bu[i];
+	}
+
+	static void VMAX_HU(cpu_t& cpu, la_instruction instr) {
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t vj = (instr.whole >> 5) & 0x1F;
+		uint32_t vk = (instr.whole >> 10) & 0x1F;
+		const auto& src1 = cpu.registers().getvr(vj);
+		const auto& src2 = cpu.registers().getvr(vk);
+		auto& dst = cpu.registers().getvr(vd);
+		for (int i = 0; i < 8; i++)
+			dst.hu[i] = (src1.hu[i] > src2.hu[i]) ? src1.hu[i] : src2.hu[i];
+	}
+
+	static void VMAX_WU(cpu_t& cpu, la_instruction instr) {
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t vj = (instr.whole >> 5) & 0x1F;
+		uint32_t vk = (instr.whole >> 10) & 0x1F;
+		const auto& src1 = cpu.registers().getvr(vj);
+		const auto& src2 = cpu.registers().getvr(vk);
+		auto& dst = cpu.registers().getvr(vd);
+		for (int i = 0; i < 4; i++)
+			dst.wu[i] = (src1.wu[i] > src2.wu[i]) ? src1.wu[i] : src2.wu[i];
+	}
+
+	static void VMAX_DU(cpu_t& cpu, la_instruction instr) {
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t vj = (instr.whole >> 5) & 0x1F;
+		uint32_t vk = (instr.whole >> 10) & 0x1F;
+		const auto& src1 = cpu.registers().getvr(vj);
+		const auto& src2 = cpu.registers().getvr(vk);
+		auto& dst = cpu.registers().getvr(vd);
+		for (int i = 0; i < 2; i++)
+			dst.du[i] = (src1.du[i] > src2.du[i]) ? src1.du[i] : src2.du[i];
+	}
+
+	static void VMIN_B(cpu_t& cpu, la_instruction instr) {
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t vj = (instr.whole >> 5) & 0x1F;
+		uint32_t vk = (instr.whole >> 10) & 0x1F;
+		const auto& src1 = cpu.registers().getvr(vj);
+		const auto& src2 = cpu.registers().getvr(vk);
+		auto& dst = cpu.registers().getvr(vd);
+		for (int i = 0; i < 16; i++)
+			dst.b[i] = (src1.b[i] < src2.b[i]) ? src1.b[i] : src2.b[i];
+	}
+
+	static void VMIN_H(cpu_t& cpu, la_instruction instr) {
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t vj = (instr.whole >> 5) & 0x1F;
+		uint32_t vk = (instr.whole >> 10) & 0x1F;
+		const auto& src1 = cpu.registers().getvr(vj);
+		const auto& src2 = cpu.registers().getvr(vk);
+		auto& dst = cpu.registers().getvr(vd);
+		for (int i = 0; i < 8; i++)
+			dst.h[i] = (src1.h[i] < src2.h[i]) ? src1.h[i] : src2.h[i];
+	}
+
+	static void VMIN_W(cpu_t& cpu, la_instruction instr) {
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t vj = (instr.whole >> 5) & 0x1F;
+		uint32_t vk = (instr.whole >> 10) & 0x1F;
+		const auto& src1 = cpu.registers().getvr(vj);
+		const auto& src2 = cpu.registers().getvr(vk);
+		auto& dst = cpu.registers().getvr(vd);
+		for (int i = 0; i < 4; i++)
+			dst.w[i] = (src1.w[i] < src2.w[i]) ? src1.w[i] : src2.w[i];
+	}
+
+	static void VMIN_D(cpu_t& cpu, la_instruction instr) {
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t vj = (instr.whole >> 5) & 0x1F;
+		uint32_t vk = (instr.whole >> 10) & 0x1F;
+		const auto& src1 = cpu.registers().getvr(vj);
+		const auto& src2 = cpu.registers().getvr(vk);
+		auto& dst = cpu.registers().getvr(vd);
+		for (int i = 0; i < 2; i++)
+			dst.d[i] = (src1.d[i] < src2.d[i]) ? src1.d[i] : src2.d[i];
+	}
+
+	static void VMIN_BU(cpu_t& cpu, la_instruction instr) {
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t vj = (instr.whole >> 5) & 0x1F;
+		uint32_t vk = (instr.whole >> 10) & 0x1F;
+		const auto& src1 = cpu.registers().getvr(vj);
+		const auto& src2 = cpu.registers().getvr(vk);
+		auto& dst = cpu.registers().getvr(vd);
+		for (int i = 0; i < 16; i++)
+			dst.bu[i] = (src1.bu[i] < src2.bu[i]) ? src1.bu[i] : src2.bu[i];
+	}
+
+	static void VMIN_HU(cpu_t& cpu, la_instruction instr) {
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t vj = (instr.whole >> 5) & 0x1F;
+		uint32_t vk = (instr.whole >> 10) & 0x1F;
+		const auto& src1 = cpu.registers().getvr(vj);
+		const auto& src2 = cpu.registers().getvr(vk);
+		auto& dst = cpu.registers().getvr(vd);
+		for (int i = 0; i < 8; i++)
+			dst.hu[i] = (src1.hu[i] < src2.hu[i]) ? src1.hu[i] : src2.hu[i];
+	}
+
+	static void VMIN_WU(cpu_t& cpu, la_instruction instr) {
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t vj = (instr.whole >> 5) & 0x1F;
+		uint32_t vk = (instr.whole >> 10) & 0x1F;
+		const auto& src1 = cpu.registers().getvr(vj);
+		const auto& src2 = cpu.registers().getvr(vk);
+		auto& dst = cpu.registers().getvr(vd);
+		for (int i = 0; i < 4; i++)
+			dst.wu[i] = (src1.wu[i] < src2.wu[i]) ? src1.wu[i] : src2.wu[i];
+	}
+
+	static void VMIN_DU(cpu_t& cpu, la_instruction instr) {
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t vj = (instr.whole >> 5) & 0x1F;
+		uint32_t vk = (instr.whole >> 10) & 0x1F;
+		const auto& src1 = cpu.registers().getvr(vj);
+		const auto& src2 = cpu.registers().getvr(vk);
+		auto& dst = cpu.registers().getvr(vd);
+		for (int i = 0; i < 2; i++)
+			dst.du[i] = (src1.du[i] < src2.du[i]) ? src1.du[i] : src2.du[i];
+	}
+
 
 	// === LASX (256-bit) Instructions ===
 

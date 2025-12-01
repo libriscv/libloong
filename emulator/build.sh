@@ -14,6 +14,8 @@ MASKED_MEMORY_BITS=""
 LA_DEBUG=""
 LA_BINARY_TRANSLATION=""
 LA_THREADED="-DLA_THREADED=ON"
+LA_ARENA_BASE_REGISTER="-DLA_ENABLE_ARENA_BASE_REGISTER=OFF"
+
 
 while [[ $# -gt 0 ]]; do
 	case $1 in
@@ -34,9 +36,13 @@ while [[ $# -gt 0 ]]; do
 			LTO="-DLTO=OFF"
 			shift
 			;;
-		--masked-memory-bits)
+		-N|--masked-memory-bits)
 			MASKED_MEMORY_BITS="-DLA_MASKED_MEMORY_BITS=$2"
 			shift 2
+			;;
+		--arena-base-register)
+			LA_ARENA_BASE_REGISTER="-DLA_ENABLE_ARENA_BASE_REGISTER=ON"
+			shift
 			;;
 		--binary-translation)
 			LA_BINARY_TRANSLATION="-DLA_BINARY_TRANSLATION=ON"
@@ -109,7 +115,8 @@ cmake .. \
 	$LA_DEBUG \
 	$LA_BINARY_TRANSLATION \
 	$LA_THREADED \
-	$MASKED_MEMORY_BITS
+	$MASKED_MEMORY_BITS \
+	$LA_ARENA_BASE_REGISTER
 
 # Build
 make -j$(nproc)

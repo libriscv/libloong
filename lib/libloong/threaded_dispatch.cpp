@@ -36,6 +36,7 @@ namespace loongarch
 	bool CPU::simulate(address_t pc, uint64_t inscounter, uint64_t maxcounter)
 	{
 		constexpr bool TRACE_DISPATCH = false;  // Disable for normal execution
+		memory().set_arena_base_register();
 		machine().set_max_instructions(UINT64_MAX);
 
 		// Include computed goto table

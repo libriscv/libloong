@@ -12,6 +12,7 @@ using namespace loongarch;
 static std::unique_ptr<Machine> g_machine;
 static std::vector<uint8_t> g_binary;
 static uint64_t empty_addr = 0;
+static uint64_t test_args0_addr = 0;
 
 // Load the guest binary from file
 static std::vector<uint8_t> load_binary(const std::string& path) {
@@ -74,6 +75,12 @@ void initialize(const std::string& binary_path) {
 		throw std::runtime_error("empty_function not found in guest binary");
 	}
 
+	// Get address of test_args_0 function for benchmarking
+	test_args0_addr = g_machine->address_of("test_args_0");
+	if (test_args0_addr == 0) {
+		throw std::runtime_error("test_args_0 not found in guest binary");
+	}
+
 	// Run initialization to resolve any IFUNCs
 	auto saved_regs = g_machine->cpu.registers();
 	g_machine->simulate(1'000'000ull);
@@ -107,8 +114,7 @@ template <int N>
 void test_args();
 
 template<> void test_args<0>() {
-	static uint64_t func_addr = g_machine->address_of("test_args_0");
-	g_machine->vmcall(func_addr);
+	g_machine->vmcall(test_args0_addr);
 }
 
 template<> void test_args<1>() {

@@ -22,10 +22,10 @@ namespace loongarch
 		~Memory();
 
 		// Memory access
-		template <typename T>
+		template <typename T, bool EnableSegReg = false>
 		T read(address_t addr) const;
 
-		template <typename T>
+		template <typename T, bool EnableSegReg = false>
 		void write(address_t addr, T value);
 
 		// Memory arena operations
@@ -95,6 +95,19 @@ namespace loongarch
 
 		void reset();
 
+		void set_arena_base_register() {
+#ifdef LA_ENABLE_ARENA_BASE_REGISTER
+#  ifdef __linux__
+			// On Linux, set the GS base to the start of the arena for fast access
+			asm volatile (
+				"wrgsbase %0"
+				:
+				: "r"((uintptr_t)m_arena)
+			);
+#  endif
+#endif
+		}
+
 	private:
 		Machine& m_machine;
 
@@ -140,8 +153,8 @@ namespace loongarch
 		// Arena helpers
 		void allocate_arena(size_t size);
 		void free_arena();
-		inline bool is_valid_address(address_t addr) const noexcept {
-			return addr >= m_rodata_start && addr < m_arena_size;
+		inline bool is_readable(address_t addr, size_t size = sizeof(address_t)) const noexcept {
+			return addr >= m_rodata_start && addr < m_arena_size - size;
 		}
 		inline bool is_writable(address_t addr, size_t size = sizeof(address_t)) const noexcept {
 			return addr >= m_data_start && addr < m_arena_size - size;

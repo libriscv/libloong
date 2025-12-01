@@ -10,7 +10,7 @@ INSTRUCTION(LA64_BC_LD_D, la64_ld_d)
 {
 	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
 	const auto addr = REG(fi.rj) + fi.imm;
-	REG(fi.rd) = MACHINE().memory.template read<uint64_t>(addr);
+	REG(fi.rd) = MACHINE().memory.template read<uint64_t, true>(addr);
 	NEXT_INSTR();
 }
 
@@ -35,7 +35,7 @@ INSTRUCTION(LA64_BC_ST_D, la64_st_d)
 {
 	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
 	const auto addr = REG(fi.rj) + fi.imm;
-	MACHINE().memory.template write<uint64_t>(addr, REG(fi.rd));
+	MACHINE().memory.template write<uint64_t, true>(addr, REG(fi.rd));
 	NEXT_INSTR();
 }
 
@@ -111,7 +111,7 @@ INSTRUCTION(LA64_BC_LD_BU, la64_ld_bu)
 {
 	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
 	const auto addr = REG(fi.rj) + fi.imm;
-	REG(fi.rd) = MACHINE().memory.template read<uint8_t>(addr);
+	REG(fi.rd) = MACHINE().memory.template read<uint8_t, true>(addr);
 	NEXT_INSTR();
 }
 
@@ -120,7 +120,7 @@ INSTRUCTION(LA64_BC_ST_B, la64_st_b)
 {
 	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
 	const auto addr = REG(fi.rj) + fi.imm;
-	MACHINE().memory.template write<uint8_t>(addr, REG(fi.rd));
+	MACHINE().memory.template write<uint8_t, true>(addr, REG(fi.rd));
 	NEXT_INSTR();
 }
 
@@ -129,7 +129,7 @@ INSTRUCTION(LA64_BC_ST_W, la64_st_w)
 {
 	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
 	const auto addr = REG(fi.rj) + fi.imm;
-	MACHINE().memory.template write<uint32_t>(addr, REG(fi.rd));
+	MACHINE().memory.template write<uint32_t, true>(addr, REG(fi.rd));
 	NEXT_INSTR();
 }
 
@@ -157,7 +157,7 @@ INSTRUCTION(LA64_BC_LDPTR_D, la64_ldptr_d)
 {
 	auto fi = *(FasterLA64_RI14 *)&DECODER().instr;
 	const auto addr = REG(fi.rj) + (saddress_t(fi.imm14) << 2);
-	REG(fi.rd) = MACHINE().memory.template read<uint64_t>(addr);
+	REG(fi.rd) = MACHINE().memory.template read<uint64_t, true>(addr);
 	NEXT_INSTR();
 }
 
@@ -166,7 +166,7 @@ INSTRUCTION(LA64_BC_LDPTR_W, la64_ldptr_w)
 {
 	auto fi = *(FasterLA64_RI14 *)&DECODER().instr;
 	const auto addr = REG(fi.rj) + (saddress_t(fi.imm14) << 2);
-	REG(fi.rd) = (saddress_t)(int32_t)MACHINE().memory.template read<uint32_t>(addr);
+	REG(fi.rd) = (saddress_t)(int32_t)MACHINE().memory.template read<uint32_t, true>(addr);
 	NEXT_INSTR();
 }
 
@@ -175,7 +175,7 @@ INSTRUCTION(LA64_BC_STPTR_D, la64_stptr_d)
 {
 	auto fi = *(FasterLA64_RI14 *)&DECODER().instr;
 	const auto addr = REG(fi.rj) + (int64_t(fi.imm14) << 2);
-	MACHINE().memory.template write<uint64_t>(addr, REG(fi.rd));
+	MACHINE().memory.template write<uint64_t, true>(addr, REG(fi.rd));
 	NEXT_INSTR();
 }
 
@@ -229,7 +229,7 @@ INSTRUCTION(LA64_BC_LD_B, la64_ld_b)
 {
 	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
 	const auto addr = REG(fi.rj) + fi.imm;
-	REG(fi.rd) = (int64_t)MACHINE().memory.template read<int8_t>(addr);
+	REG(fi.rd) = (int64_t)MACHINE().memory.template read<int8_t, true>(addr);
 	NEXT_INSTR();
 }
 
@@ -238,7 +238,7 @@ INSTRUCTION(LA64_BC_STPTR_W, la64_stptr_w)
 {
 	auto fi = *(FasterLA64_RI14 *)&DECODER().instr;
 	const auto addr = REG(fi.rj) + (saddress_t(fi.imm14) << 2);
-	MACHINE().memory.template write<uint32_t>(addr, REG(fi.rd));
+	MACHINE().memory.template write<uint32_t, true>(addr, REG(fi.rd));
 	NEXT_INSTR();
 }
 
@@ -247,7 +247,7 @@ INSTRUCTION(LA64_BC_LDX_D, la64_ldx_d)
 {
 	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
 	const auto addr = REG(fi.rj) + REG(fi.rk);
-	REG(fi.rd) = MACHINE().memory.template read<int64_t>(addr);
+	REG(fi.rd) = MACHINE().memory.template read<int64_t, true>(addr);
 	NEXT_INSTR();
 }
 
@@ -298,7 +298,7 @@ INSTRUCTION(LA64_BC_STX_D, la64_stx_d)
 {
 	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
 	const auto addr = REG(fi.rj) + REG(fi.rk);
-	MACHINE().memory.template write<uint64_t>(addr, REG(fi.rd));
+	MACHINE().memory.template write<uint64_t, true>(addr, REG(fi.rd));
 	NEXT_INSTR();
 }
 
@@ -326,7 +326,7 @@ INSTRUCTION(LA64_BC_LDX_W, la64_ldx_w)
 {
 	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
 	const auto addr = REG(fi.rj) + REG(fi.rk);
-	REG(fi.rd) = (saddress_t)(int32_t)MACHINE().memory.template read<int32_t>(addr);
+	REG(fi.rd) = (saddress_t)(int32_t)MACHINE().memory.template read<int32_t, true>(addr);
 	NEXT_INSTR();
 }
 
@@ -335,7 +335,7 @@ INSTRUCTION(LA64_BC_STX_W, la64_stx_w)
 {
 	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
 	const auto addr = REG(fi.rj) + REG(fi.rk);
-	MACHINE().memory.template write<uint32_t>(addr, REG(fi.rd));
+	MACHINE().memory.template write<uint32_t, true>(addr, REG(fi.rd));
 	NEXT_INSTR();
 }
 
@@ -352,7 +352,7 @@ INSTRUCTION(LA64_BC_LD_HU, la64_ld_hu)
 {
 	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
 	const auto addr = REG(fi.rj) + fi.imm;
-	REG(fi.rd) = MACHINE().memory.template read<uint16_t>(addr);
+	REG(fi.rd) = MACHINE().memory.template read<uint16_t, true>(addr);
 	NEXT_INSTR();
 }
 
@@ -387,7 +387,7 @@ INSTRUCTION(LA64_BC_LDX_BU, la64_ldx_bu)
 {
 	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
 	const auto addr = REG(fi.rj) + REG(fi.rk);
-	REG(fi.rd) = (uint64_t)MACHINE().memory.template read<uint8_t>(addr);
+	REG(fi.rd) = (uint64_t)MACHINE().memory.template read<uint8_t, true>(addr);
 	NEXT_INSTR();
 }
 
@@ -540,7 +540,7 @@ INSTRUCTION(LA64_BC_VLD, la64_vld)
 	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
 	const auto addr = REG(fi.rj) + fi.imm;
 	auto& vr = REGISTERS().getvr128low(fi.rd);
-	vr = MACHINE().memory.template read<remove_cvref_t<decltype(vr)>>(addr);
+	vr = MACHINE().memory.template read<remove_cvref_t<decltype(vr)>, true>(addr);
 	NEXT_INSTR();
 }
 
@@ -550,7 +550,7 @@ INSTRUCTION(LA64_BC_VST, la64_vst)
 	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
 	const auto addr = REG(fi.rj) + fi.imm;
 	const auto& vr = REGISTERS().getvr128low(fi.rd);
-	MACHINE().memory.template write<remove_cvref_t<decltype(vr)>>(addr, vr);
+	MACHINE().memory.template write<remove_cvref_t<decltype(vr)>, true>(addr, vr);
 	NEXT_INSTR();
 }
 
@@ -560,7 +560,7 @@ INSTRUCTION(LA64_BC_VLDX, la64_vldx)
 	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
 	const auto addr = REG(fi.rj) + REG(fi.rk);
 	auto& vr = REGISTERS().getvr128low(fi.rd);
-	vr = MACHINE().memory.template read<remove_cvref_t<decltype(vr)>>(addr);
+	vr = MACHINE().memory.template read<remove_cvref_t<decltype(vr)>, true>(addr);
 	NEXT_INSTR();
 }
 
@@ -570,7 +570,7 @@ INSTRUCTION(LA64_BC_VSTX, la64_vstx)
 	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
 	const auto addr = REG(fi.rj) + REG(fi.rk);
 	const auto& vr = REGISTERS().getvr128low(fi.rd);
-	MACHINE().memory.template write<remove_cvref_t<decltype(vr)>>(addr, vr);
+	MACHINE().memory.template write<remove_cvref_t<decltype(vr)>, true>(addr, vr);
 	NEXT_INSTR();
 }
 
@@ -642,7 +642,7 @@ INSTRUCTION(LA64_BC_XVLD, la64_xvld)
 	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
 	const auto addr = REG(fi.rj) + fi.imm;
 	auto& vr = REGISTERS().getvr(fi.rd);
-	vr = MACHINE().memory.template read<remove_cvref_t<decltype(vr)>>(addr);
+	vr = MACHINE().memory.template read<remove_cvref_t<decltype(vr)>, true>(addr);
 	NEXT_INSTR();
 }
 
@@ -652,7 +652,7 @@ INSTRUCTION(LA64_BC_XVST, la64_xvst)
 	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
 	const auto addr = REG(fi.rj) + fi.imm;
 	const auto& vr = REGISTERS().getvr(fi.rd);
-	MACHINE().memory.template write<remove_cvref_t<decltype(vr)>>(addr, vr);
+	MACHINE().memory.template write<remove_cvref_t<decltype(vr)>, true>(addr, vr);
 	NEXT_INSTR();
 }
 
@@ -662,7 +662,7 @@ INSTRUCTION(LA64_BC_XVLDX, la64_xvldx)
 	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
 	const auto addr = REG(fi.rj) + REG(fi.rk);
 	auto& vr = REGISTERS().getvr(fi.rd);
-	vr = MACHINE().memory.template read<remove_cvref_t<decltype(vr)>>(addr);
+	vr = MACHINE().memory.template read<remove_cvref_t<decltype(vr)>, true>(addr);
 	NEXT_INSTR();
 }
 
@@ -672,7 +672,7 @@ INSTRUCTION(LA64_BC_XVSTX, la64_xvstx)
 	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
 	const auto addr = REG(fi.rj) + REG(fi.rk);
 	const auto& vr = REGISTERS().getvr(fi.rd);
-	MACHINE().memory.template write<remove_cvref_t<decltype(vr)>>(addr, vr);
+	MACHINE().memory.template write<remove_cvref_t<decltype(vr)>, true>(addr, vr);
 	NEXT_INSTR();
 }
 
@@ -696,7 +696,7 @@ INSTRUCTION(LA64_BC_FLDX_D, la64_fldx_d)
 	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
 	const auto addr = REG(fi.rj) + REG(fi.rk);
 	auto& vr = REGISTERS().getvr(fi.rd);
-	vr.du[0] = MACHINE().memory.template read<uint64_t>(addr);
+	vr.du[0] = MACHINE().memory.template read<uint64_t, true>(addr);
 	NEXT_INSTR();
 }
 
@@ -706,7 +706,7 @@ INSTRUCTION(LA64_BC_FSTX_D, la64_fstx_d)
 	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
 	const auto addr = REG(fi.rj) + REG(fi.rk);
 	const auto& vr = REGISTERS().getvr(fi.rd);
-	MACHINE().memory.template write<uint64_t>(addr, vr.du[0]);
+	MACHINE().memory.template write<uint64_t, true>(addr, vr.du[0]);
 	NEXT_INSTR();
 }
 
@@ -846,7 +846,7 @@ INSTRUCTION(LA64_BC_ST_H, la64_st_h)
 {
 	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
 	const auto addr = REG(fi.rj) + fi.imm;
-	MACHINE().memory.template write<uint16_t>(addr, REG(fi.rd));
+	MACHINE().memory.template write<uint16_t, true>(addr, REG(fi.rd));
 	NEXT_INSTR();
 }
 
@@ -855,7 +855,7 @@ INSTRUCTION(LA64_BC_FLD_D, la64_fld_d)
 {
 	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
 	const auto addr = REG(fi.rj) + fi.imm;
-	uint64_t val = MACHINE().memory.template read<uint64_t>(addr);
+	uint64_t val = MACHINE().memory.template read<uint64_t, true>(addr);
 	auto& vr = REGISTERS().getvr(fi.rd);
 	vr.du[0] = val;
 	vr.du[1] = 0;
@@ -868,7 +868,7 @@ INSTRUCTION(LA64_BC_FST_D, la64_fst_d)
 	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
 	const auto addr = REG(fi.rj) + fi.imm;
 	const auto& vr = REGISTERS().getvr(fi.rd);
-	MACHINE().memory.template write<uint64_t>(addr, vr.du[0]);
+	MACHINE().memory.template write<uint64_t, true>(addr, vr.du[0]);
 	NEXT_INSTR();
 }
 
@@ -946,7 +946,7 @@ INSTRUCTION(LA64_BC_LD_H, la64_ld_h)
 {
 	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
 	const auto addr = REG(fi.rj) + fi.imm;
-	REG(fi.rd) = static_cast<int64_t>(MACHINE().memory.template read<int16_t>(addr));
+	REG(fi.rd) = static_cast<int64_t>(MACHINE().memory.template read<int16_t, true>(addr));
 	NEXT_INSTR();
 }
 
@@ -955,7 +955,7 @@ INSTRUCTION(LA64_BC_LDX_HU, la64_ldx_hu)
 {
 	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
 	const auto addr = REG(fi.rj) + REG(fi.rk);
-	REG(fi.rd) = MACHINE().memory.template read<uint16_t>(addr);
+	REG(fi.rd) = MACHINE().memory.template read<uint16_t, true>(addr);
 	NEXT_INSTR();
 }
 
@@ -964,7 +964,7 @@ INSTRUCTION(LA64_BC_LD_WU, la64_ld_wu)
 {
 	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
 	const auto addr = REG(fi.rj) + fi.imm;
-	REG(fi.rd) = MACHINE().memory.template read<uint32_t>(addr);
+	REG(fi.rd) = MACHINE().memory.template read<uint32_t, true>(addr);
 	NEXT_INSTR();
 }
 
@@ -1001,7 +1001,7 @@ INSTRUCTION(LA64_BC_STX_B, la64_stx_b)
 {
 	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
 	const auto addr = REG(fi.rj) + REG(fi.rk);
-	MACHINE().memory.template write<uint8_t>(addr, REG(fi.rd));
+	MACHINE().memory.template write<uint8_t, true>(addr, REG(fi.rd));
 	NEXT_INSTR();
 }
 
@@ -1036,7 +1036,7 @@ INSTRUCTION(LA64_BC_LDX_B, la64_ldx_b)
 {
 	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
 	const auto addr = REG(fi.rj) + REG(fi.rk);
-	REG(fi.rd) = static_cast<int64_t>(MACHINE().memory.template read<int8_t>(addr));
+	REG(fi.rd) = static_cast<int64_t>(MACHINE().memory.template read<int8_t, true>(addr));
 	NEXT_INSTR();
 }
 

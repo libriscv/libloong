@@ -8,6 +8,7 @@
 #cmakedefine LA_DEBUG
 #cmakedefine LA_BINARY_TRANSLATION
 #cmakedefine LA_THREADED
+#cmakedefine LA_ENABLE_ARENA_BASE_REGISTER
 
 // Version
 #define LOONGARCH_VERSION_MAJOR @LOONGARCH_VERSION_MAJOR@

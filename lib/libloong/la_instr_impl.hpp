@@ -265,57 +265,57 @@ struct InstrImpl {
 
 	static void LD_B(cpu_t& cpu, la_instruction instr) {
 		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
-		cpu.reg(instr.ri12.rd) = (int64_t)cpu.memory().template read<int8_t>(addr);
+		cpu.reg(instr.ri12.rd) = (int64_t)cpu.memory().template read<int8_t, true>(addr);
 	}
 
 	static void LD_H(cpu_t& cpu, la_instruction instr) {
 		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
-		cpu.reg(instr.ri12.rd) = (int64_t)cpu.memory().template read<int16_t>(addr);
+		cpu.reg(instr.ri12.rd) = (int64_t)cpu.memory().template read<int16_t, true>(addr);
 	}
 
 	static void LD_W(cpu_t& cpu, la_instruction instr) {
 		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
-		cpu.reg(instr.ri12.rd) = (int64_t)cpu.memory().template read<int32_t>(addr);
+		cpu.reg(instr.ri12.rd) = (int64_t)cpu.memory().template read<int32_t, true>(addr);
 	}
 
 	static void LD_D(cpu_t& cpu, la_instruction instr) {
 		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
-		cpu.reg(instr.ri12.rd) = cpu.memory().template read<int64_t>(addr);
+		cpu.reg(instr.ri12.rd) = cpu.memory().template read<int64_t, true>(addr);
 	}
 
 	static void LD_BU(cpu_t& cpu, la_instruction instr) {
 		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
-		cpu.reg(instr.ri12.rd) = (uint64_t)cpu.memory().template read<uint8_t>(addr);
+		cpu.reg(instr.ri12.rd) = (uint64_t)cpu.memory().template read<uint8_t, true>(addr);
 	}
 
 	static void LD_HU(cpu_t& cpu, la_instruction instr) {
 		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
-		cpu.reg(instr.ri12.rd) = (uint64_t)cpu.memory().template read<uint16_t>(addr);
+		cpu.reg(instr.ri12.rd) = (uint64_t)cpu.memory().template read<uint16_t, true>(addr);
 	}
 
 	static void LD_WU(cpu_t& cpu, la_instruction instr) {
 		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
-		cpu.reg(instr.ri12.rd) = (uint64_t)cpu.memory().template read<uint32_t>(addr);
+		cpu.reg(instr.ri12.rd) = (uint64_t)cpu.memory().template read<uint32_t, true>(addr);
 	}
 
 	static void ST_B(cpu_t& cpu, la_instruction instr) {
 		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
-		cpu.memory().template write<uint8_t>(addr, cpu.reg(instr.ri12.rd));
+		cpu.memory().template write<uint8_t, true>(addr, cpu.reg(instr.ri12.rd));
 	}
 
 	static void ST_H(cpu_t& cpu, la_instruction instr) {
 		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
-		cpu.memory().template write<uint16_t>(addr, cpu.reg(instr.ri12.rd));
+		cpu.memory().template write<uint16_t, true>(addr, cpu.reg(instr.ri12.rd));
 	}
 
 	static void ST_W(cpu_t& cpu, la_instruction instr) {
 		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
-		cpu.memory().template write<uint32_t>(addr, cpu.reg(instr.ri12.rd));
+		cpu.memory().template write<uint32_t, true>(addr, cpu.reg(instr.ri12.rd));
 	}
 
 	static void ST_D(cpu_t& cpu, la_instruction instr) {
 		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
-		cpu.memory().template write<uint64_t>(addr, cpu.reg(instr.ri12.rd));
+		cpu.memory().template write<uint64_t, true>(addr, cpu.reg(instr.ri12.rd));
 	}
 
 	static void LDPTR_W(cpu_t& cpu, la_instruction instr) {
@@ -323,35 +323,35 @@ struct InstrImpl {
 		int64_t offset = InstructionHelpers::sign_extend_14(instr.ri14.imm) << 2;
 		auto addr = cpu.reg(instr.ri14.rj) + offset;
 		// Sign-extend the 32-bit value to 64 bits
-		cpu.reg(instr.ri14.rd) = (int64_t)(int32_t)cpu.memory().template read<uint32_t>(addr);
+		cpu.reg(instr.ri14.rd) = (int64_t)(int32_t)cpu.memory().template read<uint32_t, true>(addr);
 	}
 
 	static void LDPTR_D(cpu_t& cpu, la_instruction instr) {
 		// LDPTR.D uses 14-bit signed offset << 2 (word-aligned)
 		int64_t offset = InstructionHelpers::sign_extend_14(instr.ri14.imm) << 2;
 		auto addr = cpu.reg(instr.ri14.rj) + offset;
-		cpu.reg(instr.ri14.rd) = cpu.memory().template read<uint64_t>(addr);
+		cpu.reg(instr.ri14.rd) = cpu.memory().template read<uint64_t, true>(addr);
 	}
 
 	static void STPTR_W(cpu_t& cpu, la_instruction instr) {
 		// STPTR.W uses 14-bit signed offset << 2 (word-aligned)
 		int64_t offset = InstructionHelpers::sign_extend_14(instr.ri14.imm) << 2;
 		auto addr = cpu.reg(instr.ri14.rj) + offset;
-		cpu.memory().template write<uint32_t>(addr, cpu.reg(instr.ri14.rd));
+		cpu.memory().template write<uint32_t, true>(addr, cpu.reg(instr.ri14.rd));
 	}
 
 	static void STPTR_D(cpu_t& cpu, la_instruction instr) {
 		// STPTR.D uses 14-bit signed offset << 2 (word-aligned)
 		int64_t offset = InstructionHelpers::sign_extend_14(instr.ri14.imm) << 2;
 		auto addr = cpu.reg(instr.ri14.rj) + offset;
-		cpu.memory().template write<uint64_t>(addr, cpu.reg(instr.ri14.rd));
+		cpu.memory().template write<uint64_t, true>(addr, cpu.reg(instr.ri14.rd));
 	}
 
 	// === Floating-point Load/Store Instructions ===
 
 	static void FLD_S(cpu_t& cpu, la_instruction instr) {
 		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
-		uint32_t val = cpu.memory().template read<uint32_t>(addr);
+		uint32_t val = cpu.memory().template read<uint32_t, true>(addr);
 		auto& vr = cpu.registers().getvr(instr.ri12.rd);
 		vr.wu[0] = val;
 		vr.wu[1] = 0;
@@ -361,12 +361,12 @@ struct InstrImpl {
 	static void FST_S(cpu_t& cpu, la_instruction instr) {
 		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		const auto& vr = cpu.registers().getvr(instr.ri12.rd);
-		cpu.memory().template write<uint32_t>(addr, vr.wu[0]);
+		cpu.memory().template write<uint32_t, true>(addr, vr.wu[0]);
 	}
 
 	static void FLD_D(cpu_t& cpu, la_instruction instr) {
 		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
-		uint64_t val = cpu.memory().template read<uint64_t>(addr);
+		uint64_t val = cpu.memory().template read<uint64_t, true>(addr);
 		auto& vr = cpu.registers().getvr(instr.ri12.rd);
 		vr.du[0] = val;
 		vr.du[1] = 0;
@@ -375,51 +375,51 @@ struct InstrImpl {
 	static void FST_D(cpu_t& cpu, la_instruction instr) {
 		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		const auto& vr = cpu.registers().getvr(instr.ri12.rd);
-		cpu.memory().template write<uint64_t>(addr, vr.du[0]);
+		cpu.memory().template write<uint64_t, true>(addr, vr.du[0]);
 	}
 
 	// === Indexed Load/Store Instructions ===
 
 	static void STX_B(cpu_t& cpu, la_instruction instr) {
 		auto addr = cpu.reg(instr.r3.rj) + cpu.reg(instr.r3.rk);
-		cpu.memory().template write<uint8_t>(addr, cpu.reg(instr.r3.rd));
+		cpu.memory().template write<uint8_t, true>(addr, cpu.reg(instr.r3.rd));
 	}
 
 	static void STX_H(cpu_t& cpu, la_instruction instr) {
 		auto addr = cpu.reg(instr.r3.rj) + cpu.reg(instr.r3.rk);
-		cpu.memory().template write<uint16_t>(addr, cpu.reg(instr.r3.rd));
+		cpu.memory().template write<uint16_t, true>(addr, cpu.reg(instr.r3.rd));
 	}
 
 	static void STX_W(cpu_t& cpu, la_instruction instr) {
 		auto addr = cpu.reg(instr.r3.rj) + cpu.reg(instr.r3.rk);
-		cpu.memory().template write<uint32_t>(addr, cpu.reg(instr.r3.rd));
+		cpu.memory().template write<uint32_t, true>(addr, cpu.reg(instr.r3.rd));
 	}
 
 	static void STX_D(cpu_t& cpu, la_instruction instr) {
 		auto addr = cpu.reg(instr.r3.rj) + cpu.reg(instr.r3.rk);
-		cpu.memory().template write<uint64_t>(addr, cpu.reg(instr.r3.rd));
+		cpu.memory().template write<uint64_t, true>(addr, cpu.reg(instr.r3.rd));
 	}
 
 	static void FLDX_D(cpu_t& cpu, la_instruction instr) {
 		// Floating-point indexed load (double precision)
 		auto addr = cpu.reg(instr.r3.rj) + cpu.reg(instr.r3.rk);
 		auto& vr = cpu.registers().getvr(instr.r3.rd);
-		vr.du[0] = cpu.memory().template read<uint64_t>(addr);
+		vr.du[0] = cpu.memory().template read<uint64_t, true>(addr);
 	}
 
 	static void FSTX_D(cpu_t& cpu, la_instruction instr) {
 		// Floating-point indexed store (double precision)
 		auto addr = cpu.reg(instr.r3.rj) + cpu.reg(instr.r3.rk);
 		const auto& vr = cpu.registers().getvr(instr.r3.rd);
-		cpu.memory().template write<uint64_t>(addr, vr.du[0]);
+		cpu.memory().template write<uint64_t, true>(addr, vr.du[0]);
 	}
 
 	static void VLDX(cpu_t& cpu, la_instruction instr) {
 		// Vector indexed load (LSX 128-bit)
 		auto addr = cpu.reg(instr.r3.rj) + cpu.reg(instr.r3.rk);
 		auto& vr = cpu.registers().getvr(instr.r3.rd);
-		vr.du[0] = cpu.memory().template read<uint64_t>(addr);
-		vr.du[1] = cpu.memory().template read<uint64_t>(addr + 8);
+		vr.du[0] = cpu.memory().template read<uint64_t, true>(addr);
+		vr.du[1] = cpu.memory().template read<uint64_t, true>(addr + 8);
 		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
 		vr.du[2] = 0;
 		vr.du[3] = 0;
@@ -429,8 +429,8 @@ struct InstrImpl {
 		// Vector indexed store (LSX 128-bit)
 		auto addr = cpu.reg(instr.r3.rj) + cpu.reg(instr.r3.rk);
 		const auto& vr = cpu.registers().getvr(instr.r3.rd);
-		cpu.memory().template write<uint64_t>(addr, vr.du[0]);
-		cpu.memory().template write<uint64_t>(addr + 8, vr.du[1]);
+		cpu.memory().template write<uint64_t, true>(addr, vr.du[0]);
+		cpu.memory().template write<uint64_t, true>(addr + 8, vr.du[1]);
 	}
 
 	// === Branch Instructions ===
@@ -639,21 +639,21 @@ struct InstrImpl {
 
 	static void LL_W(cpu_t& cpu, la_instruction instr) {
 		auto addr = cpu.reg(instr.ri14.rj) + (InstructionHelpers::sign_extend_14(instr.ri14.imm) << 2);
-		cpu.reg(instr.ri14.rd) = (int64_t)(int32_t)cpu.memory().template read<uint32_t>(addr);
+		cpu.reg(instr.ri14.rd) = (int64_t)(int32_t)cpu.memory().template read<uint32_t, true>(addr);
 		// In single-threaded mode, we always succeed
 		cpu.set_ll_bit(true);
 	}
 
 	static void LL_D(cpu_t& cpu, la_instruction instr) {
 		auto addr = cpu.reg(instr.ri14.rj) + (InstructionHelpers::sign_extend_14(instr.ri14.imm) << 2);
-		cpu.reg(instr.ri14.rd) = cpu.memory().template read<uint64_t>(addr);
+		cpu.reg(instr.ri14.rd) = cpu.memory().template read<uint64_t, true>(addr);
 		cpu.set_ll_bit(true);
 	}
 
 	static void SC_W(cpu_t& cpu, la_instruction instr) {
 		auto addr = cpu.reg(instr.ri14.rj) + (InstructionHelpers::sign_extend_14(instr.ri14.imm) << 2);
 		if (cpu.ll_bit()) {
-			cpu.memory().template write<uint32_t>(addr, cpu.reg(instr.ri14.rd));
+			cpu.memory().template write<uint32_t, true>(addr, cpu.reg(instr.ri14.rd));
 			cpu.reg(instr.ri14.rd) = 1; // Success
 		} else {
 			cpu.reg(instr.ri14.rd) = 0; // Failure
@@ -664,7 +664,7 @@ struct InstrImpl {
 	static void SC_D(cpu_t& cpu, la_instruction instr) {
 		auto addr = cpu.reg(instr.ri14.rj) + (InstructionHelpers::sign_extend_14(instr.ri14.imm) << 2);
 		if (cpu.ll_bit()) {
-			cpu.memory().template write<uint64_t>(addr, cpu.reg(instr.ri14.rd));
+			cpu.memory().template write<uint64_t, true>(addr, cpu.reg(instr.ri14.rd));
 			cpu.reg(instr.ri14.rd) = 1; // Success
 		} else {
 			cpu.reg(instr.ri14.rd) = 0; // Failure
@@ -676,37 +676,37 @@ struct InstrImpl {
 
 	static void LDX_B(cpu_t& cpu, la_instruction instr) {
 		auto addr = cpu.reg(instr.r3.rj) + cpu.reg(instr.r3.rk);
-		cpu.reg(instr.r3.rd) = (int64_t)cpu.memory().template read<int8_t>(addr);
+		cpu.reg(instr.r3.rd) = (int64_t)cpu.memory().template read<int8_t, true>(addr);
 	}
 
 	static void LDX_H(cpu_t& cpu, la_instruction instr) {
 		auto addr = cpu.reg(instr.r3.rj) + cpu.reg(instr.r3.rk);
-		cpu.reg(instr.r3.rd) = (int64_t)cpu.memory().template read<int16_t>(addr);
+		cpu.reg(instr.r3.rd) = (int64_t)cpu.memory().template read<int16_t, true>(addr);
 	}
 
 	static void LDX_W(cpu_t& cpu, la_instruction instr) {
 		auto addr = cpu.reg(instr.r3.rj) + cpu.reg(instr.r3.rk);
-		cpu.reg(instr.r3.rd) = (int64_t)cpu.memory().template read<int32_t>(addr);
+		cpu.reg(instr.r3.rd) = (int64_t)cpu.memory().template read<int32_t, true>(addr);
 	}
 
 	static void LDX_D(cpu_t& cpu, la_instruction instr) {
 		auto addr = cpu.reg(instr.r3.rj) + cpu.reg(instr.r3.rk);
-		cpu.reg(instr.r3.rd) = cpu.memory().template read<int64_t>(addr);
+		cpu.reg(instr.r3.rd) = cpu.memory().template read<int64_t, true>(addr);
 	}
 
 	static void LDX_BU(cpu_t& cpu, la_instruction instr) {
 		auto addr = cpu.reg(instr.r3.rj) + cpu.reg(instr.r3.rk);
-		cpu.reg(instr.r3.rd) = (uint64_t)cpu.memory().template read<uint8_t>(addr);
+		cpu.reg(instr.r3.rd) = (uint64_t)cpu.memory().template read<uint8_t, true>(addr);
 	}
 
 	static void LDX_HU(cpu_t& cpu, la_instruction instr) {
 		auto addr = cpu.reg(instr.r3.rj) + cpu.reg(instr.r3.rk);
-		cpu.reg(instr.r3.rd) = (uint64_t)cpu.memory().template read<uint16_t>(addr);
+		cpu.reg(instr.r3.rd) = (uint64_t)cpu.memory().template read<uint16_t, true>(addr);
 	}
 
 	static void LDX_WU(cpu_t& cpu, la_instruction instr) {
 		auto addr = cpu.reg(instr.r3.rj) + cpu.reg(instr.r3.rk);
-		cpu.reg(instr.r3.rd) = (uint64_t)cpu.memory().template read<uint32_t>(addr);
+		cpu.reg(instr.r3.rd) = (uint64_t)cpu.memory().template read<uint32_t, true>(addr);
 	}
 
 	// === Multiply Instructions ===
@@ -1438,8 +1438,8 @@ struct InstrImpl {
 		// Load 128-bit vector from memory
 		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		auto& vr = cpu.registers().getvr(instr.ri12.rd);
-		vr.du[0] = cpu.memory().template read<uint64_t>(addr);
-		vr.du[1] = cpu.memory().template read<uint64_t>(addr + 8);
+		vr.du[0] = cpu.memory().template read<uint64_t, true>(addr);
+		vr.du[1] = cpu.memory().template read<uint64_t, true>(addr + 8);
 		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
 		vr.du[2] = 0;
 		vr.du[3] = 0;
@@ -1450,8 +1450,8 @@ struct InstrImpl {
 		// Store 128-bit vector to memory
 		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		const auto& vr = cpu.registers().getvr(instr.ri12.rd);
-		cpu.memory().template write<uint64_t>(addr, vr.du[0]);
-		cpu.memory().template write<uint64_t>(addr + 8, vr.du[1]);
+		cpu.memory().template write<uint64_t, true>(addr, vr.du[0]);
+		cpu.memory().template write<uint64_t, true>(addr + 8, vr.du[1]);
 	}
 
 	static void XVLD(cpu_t& cpu, la_instruction instr) {
@@ -1459,10 +1459,10 @@ struct InstrImpl {
 		// Load 256-bit LASX vector from memory
 		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		auto& vr = cpu.registers().getvr(instr.ri12.rd);
-		vr.du[0] = cpu.memory().template read<uint64_t>(addr);
-		vr.du[1] = cpu.memory().template read<uint64_t>(addr + 8);
-		vr.du[2] = cpu.memory().template read<uint64_t>(addr + 16);
-		vr.du[3] = cpu.memory().template read<uint64_t>(addr + 24);
+		vr.du[0] = cpu.memory().template read<uint64_t, true>(addr);
+		vr.du[1] = cpu.memory().template read<uint64_t, true>(addr + 8);
+		vr.du[2] = cpu.memory().template read<uint64_t, true>(addr + 16);
+		vr.du[3] = cpu.memory().template read<uint64_t, true>(addr + 24);
 	}
 
 	static void XVST(cpu_t& cpu, la_instruction instr) {
@@ -1470,10 +1470,10 @@ struct InstrImpl {
 		// Store 256-bit LASX vector to memory
 		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		const auto& vr = cpu.registers().getvr(instr.ri12.rd);
-		cpu.memory().template write<uint64_t>(addr, vr.du[0]);
-		cpu.memory().template write<uint64_t>(addr + 8, vr.du[1]);
-		cpu.memory().template write<uint64_t>(addr + 16, vr.du[2]);
-		cpu.memory().template write<uint64_t>(addr + 24, vr.du[3]);
+		cpu.memory().template write<uint64_t, true>(addr, vr.du[0]);
+		cpu.memory().template write<uint64_t, true>(addr + 8, vr.du[1]);
+		cpu.memory().template write<uint64_t, true>(addr + 16, vr.du[2]);
+		cpu.memory().template write<uint64_t, true>(addr + 24, vr.du[3]);
 	}
 
 	// === Additional LSX Vector Instructions ===
@@ -3493,10 +3493,10 @@ struct InstrImpl {
 		// Vector indexed load (LASX 256-bit)
 		auto addr = cpu.reg(instr.r3.rj) + cpu.reg(instr.r3.rk);
 		auto& vr = cpu.registers().getvr(instr.r3.rd);
-		vr.du[0] = cpu.memory().template read<uint64_t>(addr);
-		vr.du[1] = cpu.memory().template read<uint64_t>(addr + 8);
-		vr.du[2] = cpu.memory().template read<uint64_t>(addr + 16);
-		vr.du[3] = cpu.memory().template read<uint64_t>(addr + 24);
+		vr.du[0] = cpu.memory().template read<uint64_t, true>(addr);
+		vr.du[1] = cpu.memory().template read<uint64_t, true>(addr + 8);
+		vr.du[2] = cpu.memory().template read<uint64_t, true>(addr + 16);
+		vr.du[3] = cpu.memory().template read<uint64_t, true>(addr + 24);
 	}
 
 	static void XVSTX(cpu_t& cpu, la_instruction instr) {
@@ -3504,10 +3504,10 @@ struct InstrImpl {
 		// Vector indexed store (LASX 256-bit)
 		auto addr = cpu.reg(instr.r3.rj) + cpu.reg(instr.r3.rk);
 		const auto& vr = cpu.registers().getvr(instr.r3.rd);
-		cpu.memory().template write<uint64_t>(addr, vr.du[0]);
-		cpu.memory().template write<uint64_t>(addr + 8, vr.du[1]);
-		cpu.memory().template write<uint64_t>(addr + 16, vr.du[2]);
-		cpu.memory().template write<uint64_t>(addr + 24, vr.du[3]);
+		cpu.memory().template write<uint64_t, true>(addr, vr.du[0]);
+		cpu.memory().template write<uint64_t, true>(addr + 8, vr.du[1]);
+		cpu.memory().template write<uint64_t, true>(addr + 16, vr.du[2]);
+		cpu.memory().template write<uint64_t, true>(addr + 24, vr.du[3]);
 	}
 
 	static void XVFADD_D(cpu_t& cpu, la_instruction instr) {

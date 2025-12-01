@@ -5,6 +5,7 @@ namespace loongarch
 {
 	bool CPU::simulate(address_t local_pc, uint64_t counter, uint64_t max_counter)
 	{
+		memory().set_arena_base_register();
 		DecodedExecuteSegment* exec = m_exec;
 		// Initialize cached segment info
 		address_t exec_begin = exec->exec_begin();

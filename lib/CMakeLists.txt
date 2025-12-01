@@ -9,6 +9,7 @@ option(LA_DEBUG "Enable debug output" OFF)
 option(LA_BINARY_TRANSLATION "Enable binary translation" OFF)
 option(LA_THREADED "Enable threaded support" ON)
 set(LA_MASKED_MEMORY_BITS "0" CACHE STRING "Power-of-two memory arena size for masking (0 = disabled)")
+option(LA_ENABLE_ARENA_BASE_REGISTER "Arena base register optimization (Linux only)" OFF)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

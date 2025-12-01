@@ -416,7 +416,6 @@ namespace loongarch
 		// System instructions (checked first for exact match)
 		if (instr.whole == Opcode::SYSCALL) return DECODED_INSTR(SYSCALL);
 		if (instr.whole == Opcode::BREAK) return DECODED_INSTR(UNIMPLEMENTED);
-		if (instr.whole == 0) return DECODED_INSTR(NOP);
 
 		// Decode based on opcode
 		switch (op6) {
@@ -513,7 +512,10 @@ namespace loongarch
 			if (op22 == (Opcode::ADDI_D & 0xFFC00000)) return DECODED_INSTR(ADDI_D);
 			if (op22 == (Opcode::SLTI & 0xFFC00000)) return DECODED_INSTR(SLTI);
 			if (op22 == (Opcode::SLTUI & 0xFFC00000)) return DECODED_INSTR(SLTUI);
-			if (op22 == (Opcode::ANDI & 0xFFC00000)) return DECODED_INSTR(ANDI);
+			if (op22 == (Opcode::ANDI & 0xFFC00000)) {
+				if ((instr.whole & 0x7FFF) == 0) return DECODED_INSTR(NOP);
+				return DECODED_INSTR(ANDI);
+			}
 			if (op22 == (Opcode::ORI & 0xFFC00000)) return DECODED_INSTR(ORI);
 			if (op22 == (Opcode::XORI & 0xFFC00000)) return DECODED_INSTR(XORI);
 			if (op22 == (Opcode::LU52I_D & 0xFFC00000)) return DECODED_INSTR(LU52I_D);

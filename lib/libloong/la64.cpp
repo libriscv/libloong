@@ -240,6 +240,9 @@ namespace loongarch
 	INSTRUCTION(XVFADD_D);
 	INSTRUCTION(XVFMUL_D);
 	INSTRUCTION(XVFDIV_D);
+	INSTRUCTION(XVFSUB_D);
+	INSTRUCTION(XVBITREVI_D);
+	INSTRUCTION(XVREPLVE_D);
 	INSTRUCTION(XVFMADD_S);
 	INSTRUCTION(XVFMADD_D);
 	INSTRUCTION(XVFMSUB_S);
@@ -1192,6 +1195,15 @@ namespace loongarch
 				// XVFDIV.D: LASX vector floating-point divide (double) - bits[31:15] = 0xEA76
 				// Opcode: 0x753b2000 >> 15 = 0xEA76
 				if ((instr.whole >> 15) == 0xEA76) return DECODED_INSTR(XVFDIV_D);
+				// XVFSUB.D: LASX vector floating-point subtract (double) - bits[31:15] = 0xEA66
+				// Opcode: 0x75330000 >> 15 = 0xEA66
+				if ((instr.whole >> 15) == 0xEA66) return DECODED_INSTR(XVFSUB_D);
+				// XVBITREVI.D: LASX vector bit reverse immediate (double) - bits[31:15] = 0xEE32
+				// Opcode: 0x77190000 >> 15 = 0xEE32
+				if ((instr.whole >> 15) == 0xEE32) return DECODED_INSTR(XVBITREVI_D);
+				// XVREPLVE.D: LASX vector replicate element (double) - bits[31:15] = 0xEA47
+				// Opcode: 0x75238000 >> 15 = 0xEA47
+				if ((instr.whole >> 15) == 0xEA47) return DECODED_INSTR(XVREPLVE_D);
 				// XVORI.B: LASX vector OR immediate byte - bits[31:15] = 0xEFA8
 				// Opcode: 0x77d40000 >> 15 = 0xEFA8
 				if ((instr.whole >> 15) == 0xEFA8) return DECODED_INSTR(XVORI_B);

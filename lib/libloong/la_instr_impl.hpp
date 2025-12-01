@@ -3559,6 +3559,62 @@ struct InstrImpl {
 		dst.df[3] = src1.df[3] / src2.df[3];
 	}
 
+	static void XVFSUB_D(cpu_t& cpu, la_instruction instr) {
+		// XVFSUB.D: LASX vector floating-point subtract (double precision, 4x64-bit)
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+
+		const auto& src1 = cpu.registers().getvr(xj);
+		const auto& src2 = cpu.registers().getvr(xk);
+		auto& dst = cpu.registers().getvr(xd);
+
+		dst.df[0] = src1.df[0] - src2.df[0];
+		dst.df[1] = src1.df[1] - src2.df[1];
+		dst.df[2] = src1.df[2] - src2.df[2];
+		dst.df[3] = src1.df[3] - src2.df[3];
+	}
+
+	static void XVBITREVI_D(cpu_t& cpu, la_instruction instr) {
+		// XVBITREVI.D: LASX vector bit reverse immediate (double precision, 4x64-bit)
+		// XORs (toggles) a specific bit in each 64-bit element
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t imm = (instr.whole >> 10) & 0x3F;  // 6-bit immediate for bit position (0-63)
+
+		const auto& src = cpu.registers().getvr(xj);
+		auto& dst = cpu.registers().getvr(xd);
+
+		// Toggle the specified bit in each 64-bit element (all 4 elements for LASX)
+		uint64_t mask = 1ULL << imm;
+		dst.du[0] = src.du[0] ^ mask;
+		dst.du[1] = src.du[1] ^ mask;
+		dst.du[2] = src.du[2] ^ mask;
+		dst.du[3] = src.du[3] ^ mask;
+	}
+
+	static void XVREPLVE_D(cpu_t& cpu, la_instruction instr) {
+		// XVREPLVE.D: LASX vector replicate element from register (double precision)
+		// Replicates element selected by rj to all elements in xd from vector xk
+		// Format: xd[i] = xk[rj % 4] for all i
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+
+		const auto& src = cpu.registers().getvr(xk);
+		auto& dst = cpu.registers().getvr(xd);
+
+		// Get the element index from register rj (modulo 4 for double elements)
+		uint32_t idx = cpu.reg(xj) & 0x3;
+
+		// Replicate the selected element to all 4 positions
+		uint64_t value = src.du[idx];
+		dst.du[0] = value;
+		dst.du[1] = value;
+		dst.du[2] = value;
+		dst.du[3] = value;
+	}
+
 	static void XVFMADD_S(cpu_t& cpu, la_instruction instr) {
 		// XVFMADD.S: LASX vector fused multiply-add (single precision, 8x32-bit)
 		// 4R-type format: xd = xa + xj * xk

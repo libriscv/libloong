@@ -1684,6 +1684,27 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		return snprintf(buf, len, "xvfdiv.d $xr%u, $xr%u, $xr%u", xd, xj, xk);
 	}
 
+	static int XVFSUB_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+		return snprintf(buf, len, "xvfsub.d $xr%u, $xr%u, $xr%u", xd, xj, xk);
+	}
+
+	static int XVBITREVI_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t imm = (instr.whole >> 10) & 0x3F;
+		return snprintf(buf, len, "xvbitrevi.d $xr%u, $xr%u, 0x%x", xd, xj, imm);
+	}
+
+	static int XVREPLVE_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t xd = instr.whole & 0x1F;
+		uint32_t xj = (instr.whole >> 5) & 0x1F;
+		uint32_t xk = (instr.whole >> 10) & 0x1F;
+		return snprintf(buf, len, "xvreplve.d $xr%u, $xr%u, $r%u", xd, xk, xj);
+	}
+
 	static int XVFMADD_S(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		uint32_t xd = instr.whole & 0x1F;
 		uint32_t xj = (instr.whole >> 5) & 0x1F;

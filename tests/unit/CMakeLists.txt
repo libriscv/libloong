@@ -43,6 +43,7 @@ add_executable(unit_tests
 	test_vmcall.cpp
 	test_machine.cpp
 	test_instructions.cpp
+	test_native.cpp
 )
 
 # Set C++ standard

@@ -1,5 +1,6 @@
 #pragma once
 #include "machine.hpp"
+#include "guest_datatypes.hpp"
 #include <string>
 #include <vector>
 #include <type_traits>
@@ -10,13 +11,6 @@ namespace loongarch
 	// Type trait to check if a type is a standard layout type
 	template <typename T>
 	struct is_stdlayout : std::integral_constant<bool, std::is_standard_layout<T>::value> {};
-
-	// Forward declarations for vmcall support
-	struct GuestStdString {
-		address_t data;
-		size_t length;
-		char sso[16]; // Small string optimization buffer
-	};
 
 	// Stack push implementation - pushes raw data onto the guest stack
 	inline address_t Machine::stack_push(address_t& sp, const void* data, size_t size)
@@ -61,6 +55,15 @@ namespace loongarch
 			else if constexpr (std::is_same_v<T, const char*> || std::is_same_v<T, char*>) {
 				// C-string: Push zero-terminated string onto stack, pass pointer as integer
 				cpu.reg(iarg++) = machine.stack_push(sp, args, std::strlen(args) + 1);
+			}
+			else if constexpr (std::is_same_v<T, GuestStdString>) {
+				// GuestStdString: Adjust SSO pointer and push onto stack
+				args.move(sp - sizeof(T)); // SSO-adjustment
+				cpu.reg(iarg++) = machine.stack_push(sp, &args, sizeof(T));
+			}
+			else if constexpr (is_scoped_guest_object<T>::value) {
+				// ScopedArenaObject: Pass the guest address directly
+				cpu.reg(iarg++) = args.address();
 			}
 			else if constexpr (std::is_integral_v<T>) {
 				// Integer types go to integer registers (A0-A7)

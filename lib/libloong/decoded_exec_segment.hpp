@@ -30,6 +30,9 @@ namespace loongarch
 
 		auto* decoder_cache() noexcept { return m_decoder_cache.cache; }
 		auto* decoder_cache() const noexcept { return m_decoder_cache.cache; }
+		auto* pc_relative_decoder_cache(address_t pc = 0) noexcept {
+			return m_decoder_cache.cache - exec_begin() / 4 + (pc / 4);
+		}
 		size_t decoder_cache_size() const noexcept { return m_decoder_cache.size; }
 
 		void set_decoder_cache(DecoderData* cache, size_t size) noexcept {

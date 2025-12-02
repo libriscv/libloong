@@ -15,7 +15,7 @@ LA_DEBUG=""
 LA_BINARY_TRANSLATION=""
 LA_THREADED="-DLA_THREADED=ON"
 LA_ARENA_BASE_REGISTER="-DLA_ENABLE_ARENA_BASE_REGISTER=OFF"
-
+LA_TAILCALL="-DLA_TAILCALL_DISPATCH=OFF"
 
 while [[ $# -gt 0 ]]; do
 	case $1 in
@@ -50,6 +50,10 @@ while [[ $# -gt 0 ]]; do
 			;;
 		--no-threaded)
 			LA_THREADED="-DLA_THREADED=OFF"
+			shift
+			;;
+		--tailcall-dispatch)
+			LA_TAILCALL="-DLA_TAILCALL_DISPATCH=ON"
 			shift
 			;;
 		-h|--help)
@@ -116,7 +120,8 @@ cmake .. \
 	$LA_BINARY_TRANSLATION \
 	$LA_THREADED \
 	$MASKED_MEMORY_BITS \
-	$LA_ARENA_BASE_REGISTER
+	$LA_ARENA_BASE_REGISTER \
+	$LA_TAILCALL
 
 # Build
 make -j$(nproc)

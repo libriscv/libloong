@@ -1,7 +1,6 @@
 #include "cpu.hpp"
 #include "machine.hpp"
 #include "threaded_bytecodes.hpp"
-#include "instruction_counter.hpp"
 
 #define MUSTTAIL __attribute__((musttail))
 #define MUNUSED  [[maybe_unused]]
@@ -13,19 +12,19 @@ namespace loongarch {
 	// Return type for tailcall dispatch
 	using TcoRet = address_t;
 
-	// Function pointer type for bytecode handlers
+	// Function pointer type for bytecode handlers (inaccurate doesn't need counter)
 	using DecoderFunc =
-		TcoRet(*)(DecoderData* d, DecodedExecuteSegment* exec, CPU& cpu, address_t pc, InstrCounter& counter);
+		TcoRet(*)(DecoderData* d, DecodedExecuteSegment* exec, CPU& cpu, address_t pc, uint64_t& max_counter);
 
 	namespace {
 		extern const DecoderFunc computed_opcode[BYTECODES_MAX];
 	}
 }
 
-// Macro definitions for tailcall dispatch
+// Macro definitions for tailcall dispatch (inaccurate version)
 #define INSTRUCTION(bytecode, name) \
 	static \
-	TcoRet name(DecoderData* d, MUNUSED DecodedExecuteSegment* exec, MUNUSED CPU& cpu, MUNUSED address_t pc, MUNUSED InstrCounter& counter)
+	TcoRet name(DecoderData* d, MUNUSED DecodedExecuteSegment* exec, MUNUSED CPU& cpu, MUNUSED address_t pc, MUNUSED uint64_t& max_counter)
 
 #define DECODER()   (*d)
 #define CPU()       cpu
@@ -37,7 +36,7 @@ namespace loongarch {
 	auto instr = la_instruction{d->instr};
 
 #define EXECUTE_INSTR() \
-	computed_opcode[d->get_bytecode()](d, exec, cpu, pc, counter)
+	computed_opcode[d->get_bytecode()](d, exec, cpu, pc, max_counter)
 
 #define EXECUTE_CURRENT() \
 	MUSTTAIL return EXECUTE_INSTR();
@@ -55,9 +54,8 @@ namespace loongarch {
 
 #define BEGIN_BLOCK() \
 	pc += d->block_bytes; \
-	counter.increment_counter(d->instruction_count()); \
 	if constexpr (TRACING) { \
-		printf("TRACE: End of block. New PC=0x%lx Counter=%lu/%lu\n", pc, counter.value(), counter.max()); \
+		printf("TRACE: End of block. New PC=0x%lx\n", pc); \
 	}
 
 #define NEXT_BLOCK(offset) \
@@ -66,7 +64,7 @@ namespace loongarch {
 	} \
 	pc += (offset); \
 	d = exec->pc_relative_decoder_cache(pc); \
-	OVERFLOW_CHECK(); \
+	COUNTER_CHECK(); \
 	QUICK_EXEC_CHECK() \
 	BEGIN_BLOCK() \
 	EXECUTE_CURRENT()
@@ -79,7 +77,7 @@ namespace loongarch {
 
 #define QUICK_EXEC_CHECK() \
 	if (LA_UNLIKELY(!(pc >= exec->exec_begin() && pc < exec->exec_end()))) \
-		MUSTTAIL return next_execute_segment(d, exec, cpu, pc, counter);
+		MUSTTAIL return next_execute_segment(d, exec, cpu, pc, max_counter);
 
 #define UNCHECKED_JUMP() \
 	QUICK_EXEC_CHECK() \
@@ -87,8 +85,8 @@ namespace loongarch {
 	BEGIN_BLOCK() \
 	EXECUTE_CURRENT()
 
-#define OVERFLOW_CHECK() \
-	if (LA_UNLIKELY(counter.overflowed())) \
+#define COUNTER_CHECK() \
+	if (LA_UNLIKELY(max_counter == 0)) \
 		return RETURN_VALUES();
 
 #define PERFORM_BRANCH(offset) \
@@ -97,12 +95,11 @@ namespace loongarch {
 	if constexpr (TRACING) { \
 		printf("TRACE: Branch taken. New PC=0x%lx\n", pc); \
 	} \
-	OVERFLOW_CHECK() \
 	BEGIN_BLOCK() \
 	EXECUTE_CURRENT()
 
 #define OVERFLOW_CHECKED_JUMP() \
-	OVERFLOW_CHECK(); \
+	COUNTER_CHECK(); \
 	UNCHECKED_JUMP();
 
 namespace loongarch
@@ -125,7 +122,7 @@ namespace loongarch
 	{
 		(void) d;
 		pc += 4; // Complete STOP instruction
-		counter.stop();
+		max_counter = 0;
 		return RETURN_VALUES();
 	}
 
@@ -133,12 +130,12 @@ namespace loongarch
 	{
 		// Make the current PC visible
 		cpu.registers().pc = pc;
-		// Make the instruction counter visible
-		counter.apply(MACHINE());
+		// Make the max counter visible
+		cpu.machine().set_max_instructions(max_counter);
 		// Invoke system call
 		cpu.machine().system_call(cpu.reg(REG_A7));
-		// Restore counters
-		counter.retrieve_counters(MACHINE());
+		// Restore max counter
+		max_counter = cpu.machine().max_instructions();
 		// System calls can change PC
 		if (LA_UNLIKELY(pc != cpu.registers().pc))
 		{
@@ -153,11 +150,11 @@ namespace loongarch
 		VIEW_INSTR();
 		// Make the current PC visible
 		cpu.registers().pc = pc;
-		counter.apply(MACHINE());
+		cpu.machine().set_max_instructions(max_counter);
 		// Execute syscall from verified immediate
 		cpu.machine().unchecked_system_call(d->instr);
 		// Restore max counter
-		counter.retrieve_counters(MACHINE());
+		max_counter = cpu.machine().max_instructions();
 		// Return immediately using REG_RA
 		pc = REG(REG_RA);
 		OVERFLOW_CHECKED_JUMP();
@@ -179,9 +176,9 @@ namespace loongarch
 		};
 	}
 
-	bool CPU::simulate(address_t pc, uint64_t inscounter, uint64_t maxcounter)
+	void CPU::simulate_inaccurate(address_t pc)
 	{
-		InstrCounter counter{inscounter, maxcounter};
+		uint64_t max_counter = UINT64_MAX;
 		memory().set_arena_base_register();
 
 		auto* exec = this->m_exec;
@@ -202,10 +199,6 @@ namespace loongarch
 		const address_t new_pc = EXECUTE_INSTR();
 
 		cpu.registers().pc = new_pc;
-		MACHINE().set_instruction_counter(counter.value());
-
-		// Machine stopped normally?
-		return counter.max() == 0;
 	}
 
 } // loongarch

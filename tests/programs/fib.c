@@ -18,7 +18,7 @@ static void sys_exit(long code) {
 	__builtin_unreachable();
 }
 
-int main() {
+void _start() {
 	const volatile long n = 256000000ll;
 	sys_exit(fib(n, 0, 1));
 }

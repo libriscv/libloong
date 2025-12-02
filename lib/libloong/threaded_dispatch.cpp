@@ -47,7 +47,7 @@ namespace loongarch
 		address_t current_end   = exec->exec_end();
 
 		// Offset the cache pointer so we can use cache[pc >> SHIFT] directly
-		DecoderData* exec_decoder = exec->decoder_cache() - (current_begin >> DecoderCache::SHIFT);
+		DecoderData* exec_decoder = exec->pc_relative_decoder_cache();
 		DecoderData* decoder;
 
 		uint64_t counter = inscounter;
@@ -74,6 +74,37 @@ continue_segment:
 
 		/** Bytecode handlers **/
 		#include "bytecode_impl.cpp"
+
+INSTRUCTION(LA64_BC_SYSCALL, la64_syscall)
+{
+	REGISTERS().pc = pc;
+	MACHINE().set_max_instructions(max_counter);
+	MACHINE().system_call(REG(REG_A7));
+	// Restore counters
+	max_counter = MACHINE().max_instructions();
+
+	if (LA_UNLIKELY(max_counter == 0 || pc != REGISTERS().pc))
+	{
+		pc = REGISTERS().pc + 4;
+		goto check_jump;
+	}
+	// Syscall completed normally
+	NEXT_BLOCK_UNCHECKED(4);
+}
+
+INSTRUCTION(LA64_BC_SYSCALLIMM, la64_syscall_imm)
+{
+	REGISTERS().pc = pc;
+	MACHINE().set_max_instructions(max_counter);
+	// Execute syscall from verified immediate
+	MACHINE().unchecked_system_call(DECODER().instr);
+	// Restore max counter
+	max_counter = MACHINE().max_instructions();
+
+	// Return immediately using REG_RA
+	pc = REG(REG_RA);
+	goto check_jump;
+}
 
 INSTRUCTION(LA64_BC_STOP, la64_stop)
 {

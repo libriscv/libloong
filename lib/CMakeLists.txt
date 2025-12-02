@@ -38,9 +38,15 @@ set(SOURCES
 )
 
 # Dispatch implementations
-if (FALSE AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND NOT MSVC)
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
+	AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 13.0
+	AND DEFINED LA_TAILCALL_DISPATCH
+	AND LA_TAILCALL_DISPATCH)
 	# Tail-call optimization dispatch (fastest)
-	list(APPEND SOURCES libloong/tailcall_dispatch.cpp)
+	list(APPEND SOURCES
+		libloong/tailcall_dispatch.cpp
+		libloong/tailcall_inaccurate_dispatch.cpp
+	)
 	message(STATUS "Using tail-call optimization dispatch")
 elseif (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
 	# Threaded dispatch for GCC/Clang (using computed goto)

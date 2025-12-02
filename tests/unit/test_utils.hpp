@@ -49,6 +49,7 @@ public:
 		const std::vector<std::string>& env = {"LC_ALL=C", "USER=test"})
 	{
 		m_machine->setup_linux_syscalls();
+		m_machine->setup_posix_threads();
 		m_machine->setup_linux(args, env);
 
 		// Set up exit address for vmcalls

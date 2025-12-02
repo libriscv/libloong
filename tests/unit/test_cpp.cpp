@@ -278,4 +278,30 @@ TEST_CASE("C++ exceptions", "[cpp][exceptions]") {
 		REQUIRE(result.success);
 		REQUIRE(result.exit_code == 42);
 	}
+
+	SECTION("std::thread basics") {
+		auto binary = builder.build_cpp(R"(
+			#include <thread>
+			#include <vector>
+			int main() {
+				std::vector<std::thread> threads;
+				int result = 0;
+				auto worker = [&result](int id) {
+					result += id;
+				};
+				for (int i = 1; i <= 6; i++) {
+					threads.emplace_back(worker, i);
+				}
+				for (auto& t : threads) {
+					t.join();
+				}
+				// 1+2+3+4+5+6 = 21
+				return result * 2;  // 42
+			}
+		)", "cpp_threads");
+
+		auto result = run_binary(binary, 42);
+		REQUIRE(result.success);
+		REQUIRE(result.exit_code == 42);
+	}
 }

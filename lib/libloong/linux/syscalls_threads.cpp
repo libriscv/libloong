@@ -93,7 +93,7 @@ namespace loongarch
 		// exit & exit_group
 		this->install_syscall_handler(93,
 		[](Machine& machine) {
-			const uint32_t status = machine.sysarg<uint32_t>(0);
+			[[maybe_unused]] const int status = machine.sysarg<int>(0);
 			thprint(machine,
 				">>> Exit on tid=%d, exit code = %d\n",
 					machine.threads().get_tid(), static_cast<int>(status));
@@ -103,7 +103,6 @@ namespace loongarch
 				return;
 			}
 			machine.stop();
-			machine.set_result(status);
 		});
 		// exit_group
 		this->install_syscall_handler(94, m_syscall_handlers[93]);

@@ -20,36 +20,41 @@ void empty_function() {
 void test_args_0() {
 }
 
-int test_args_1(int a) {
-	return a;
+void test_args_1(int a) {
 }
 
-int test_args_2(int a, int b) {
-	return a + b;
+void test_args_2(int a, int b) {
 }
 
-int test_args_3(int a, int b, int c) {
-	return a + b + c;
+void test_args_3(int a, int b, int c) {
 }
 
-int test_args_4(int a, int b, int c, int d) {
-	return a + b + c + d;
+void test_args_4(int a, int b, int c, int d) {
 }
 
-int test_args_5(int a, int b, int c, int d, int e) {
-	return a + b + c + d + e;
+void test_args_5(int a, int b, int c, int d, int e) {
 }
 
-int test_args_6(int a, int b, int c, int d, int e, int f) {
-	return a + b + c + d + e + f;
+void test_args_6(int a, int b, int c, int d, int e, int f) {
 }
 
-int test_args_7(int a, int b, int c, int d, int e, int f, int g) {
-	return a + b + c + d + e + f + g;
+void test_args_7(int a, int b, int c, int d, int e, int f, int g) {
 }
 
-int test_args_8(int a, int b, int c, int d, int e, int f, int g, int h) {
-	return a + b + c + d + e + f + g + h;
+void test_args_8(int a, int b, int c, int d, int e, int f, int g, int h) {
+}
+
+void test_syscall_0() {
+	register int a7 asm("a7") = 1; // our custom syscall
+
+	asm ("syscall 0" :: "r"(a7));
+}
+
+void test_syscall_1(int a) {
+	register int a7 asm("a7") = 1; // our custom syscall
+	register int a0 asm("a0") = a;
+
+	asm ("syscall 0" :: "r"(a7), "r"(a0));
 }
 
 // Simple computation - for testing actual work overhead

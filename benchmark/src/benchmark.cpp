@@ -62,6 +62,10 @@ void initialize(const std::string& binary_path) {
 	g_machine->setup_accelerated_heap(heap_begin, HEAP_SIZE);
 	g_machine->setup_linux({"benchmark_guest"}, {});
 
+	Machine::install_syscall_handler(1, [](Machine&) {
+		// Custom empty syscall for benchmarking
+	});
+
 	// Set up exit address for vmcalls
 	auto exit_addr = g_machine->address_of("fast_exit");
 	if (exit_addr == 0) {
@@ -112,6 +116,9 @@ void test_empty_function() {
 // Test: Function with N arguments
 template <int N>
 void test_args();
+// Test: Syscall with N arguments
+template <int N>
+void test_syscall();
 
 template<> void test_args<0>() {
 	g_machine->vmcall(test_args0_addr);
@@ -157,6 +164,16 @@ template<> void test_args<8>() {
 	g_machine->vmcall(func_addr, 1, 2, 3, 4, 5, 6, 7, 8);
 }
 
+template<> void test_syscall<0>() {
+	static uint64_t func_addr = g_machine->address_of("test_syscall_0");
+	g_machine->vmcall(func_addr);
+}
+
+template<> void test_syscall<1>() {
+	static uint64_t func_addr = g_machine->address_of("test_syscall_1");
+	g_machine->vmcall(func_addr);
+}
+
 // Run all benchmarks
 void run_all_benchmarks(int samples) {
 	const int iterations = 1000;
@@ -190,6 +207,9 @@ void run_all_benchmarks(int samples) {
 		overhead
 	);
 	print_result(args0);
+
+	// Use args0 as base vmcall overhead for future tests
+	const int64_t base_vmcall_overhead = overhead + args0.median_ns;
 
 	auto args1 = run_benchmark<iterations>(
 		"args=1",
@@ -263,8 +283,30 @@ void run_all_benchmarks(int samples) {
 	);
 	print_result(args8);
 
+	// After this point, use call overhead as baseline
+	printf("\n=== Syscall Overhead ===\n");
+
+	auto syscall0 = run_benchmark<iterations>(
+		"syscall 0",
+		samples,
+		reset_counter,
+		test_syscall<0>,
+		base_vmcall_overhead
+	);
+	print_result(syscall0);
+
+	auto syscall1 = run_benchmark<iterations>(
+		"syscall 1",
+		samples,
+		reset_counter,
+		test_syscall<1>,
+		base_vmcall_overhead
+	);
+	print_result(syscall1);
+
 	printf("\n");
 	printf("Note: All results show overhead after subtracting benchmark overhead (%ldns)\n", overhead);
+	printf("      Syscall tests additionally subtract base vmcall overhead (%ldns)\n", base_vmcall_overhead);
 	printf("      p75, p90, and p99 represent the 75th, 90th, and 99th percentiles\n");
 }
 

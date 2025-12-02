@@ -35,7 +35,11 @@ namespace loongarch
 	inline void Machine::set_result(const T& value)
 	{
 		if constexpr (std::is_integral_v<remove_cvref_t<T>>) {
-			cpu.reg(REG_A0) = static_cast<address_t>(value);
+			if constexpr (sizeof(T) < sizeof(address_t) && !std::is_same_v<T, bool>)
+				// Sign-extend all arguments smaller than the word size
+				cpu.reg(REG_A0) = static_cast<address_t>(static_cast<std::make_signed_t<T>>(value));
+			else
+				cpu.reg(REG_A0) = static_cast<address_t>(value);
 		} else if constexpr (std::is_floating_point_v<remove_cvref_t<T>>) {
 			if constexpr (sizeof(T) == 4) {
 				cpu.registers().getfl32(REG_FA0) = static_cast<float>(value);

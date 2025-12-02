@@ -257,7 +257,7 @@ TEST_CASE("C++ exceptions", "[cpp][exceptions]") {
 		REQUIRE(result.success);
 		REQUIRE(result.exit_code == 42);
 	}
-/*
+
 	SECTION("Exception thrown") {
 		auto binary = builder.build_cpp(R"(
 			int divide(int a, int b) {
@@ -278,5 +278,4 @@ TEST_CASE("C++ exceptions", "[cpp][exceptions]") {
 		REQUIRE(result.success);
 		REQUIRE(result.exit_code == 42);
 	}
-*/
 }

@@ -648,6 +648,13 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 			reg_name(instr.ri16.rd), reg_name(instr.ri16.rj), msbd, lsbd);
 	}
 
+	static int BSTRINS_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t msbw = (instr.whole >> 16) & 0x1F;
+		uint32_t lsbw = (instr.whole >> 10) & 0x1F;
+		return snprintf(buf, len, "bstrins.w %s, %s, %u, %u",
+			reg_name(instr.ri16.rd), reg_name(instr.ri16.rj), msbw, lsbw);
+	}
+
 	static int BSTRPICK_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		uint32_t msbw = (instr.whole >> 16) & 0x1F;
 		uint32_t lsbw = (instr.whole >> 10) & 0x1F;

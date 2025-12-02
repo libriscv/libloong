@@ -185,10 +185,15 @@ namespace loongarch
 		if (op17 == 0x7038) {
 			return LA64_BC_STX_D;
 		}
-		// BSTRPICK.8: op11 = 0x003 (bits[31:21])
+		// BSTRINS.W and BSTRPICK.W: op11 = 0x003 (bits[31:21])
+		// Differentiated by bit 15: BSTRINS.W (bit 15 = 0), BSTRPICK.W (bit 15 = 1)
 		const uint32_t op11 = (instr >> 21) & 0x7FF;
 		if (op11 == 0x003) {
-			return LA64_BC_BSTRPICK_W;
+			if ((instr >> 15) & 1) {
+				return LA64_BC_BSTRPICK_W;
+			} else {
+				// BSTRINS.W bytecode not implemented, fall through to FUNCTION
+			}
 		}
 		// SLTU: op17 = 0x00025 (0x00128000 >> 15)
 		if (op17 == 0x00025) {

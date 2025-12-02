@@ -1,8 +1,11 @@
 #include <cstdio>
 #include <cstring>
+extern "C" void fast_exit(int code);
 
 int main() {
-    return 0;
+	// If we don't return from main(), we can
+	// throw exceptions from VM function calls.
+	fast_exit(42);
 }
 
 extern "C" long test_exception() {

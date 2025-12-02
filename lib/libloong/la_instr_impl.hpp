@@ -596,6 +596,25 @@ struct InstrImpl {
 		cpu.reg(instr.ri16.rd) = result;
 	}
 
+	static void BSTRINS_W(cpu_t& cpu, la_instruction instr) {
+		// BSTRINS.W: Insert bit string from rj[msbw-lsbw:0] into rd[msbw:lsbw]
+		// msbw is 5 bits at [20:16], lsbw is 5 bits at [14:10]
+		uint32_t msbw = (instr.whole >> 16) & 0x1F;
+		uint32_t lsbw = (instr.whole >> 10) & 0x1F;
+		uint32_t src = (uint32_t)cpu.reg(instr.ri16.rj);
+		uint32_t dst = (uint32_t)cpu.reg(instr.ri16.rd);
+
+		// Valid when msbw >= lsbw
+		if (msbw >= lsbw) {
+			uint32_t width = msbw - lsbw + 1;
+			uint32_t mask = ((1U << width) - 1) << lsbw;
+			uint32_t bits = (src << lsbw) & mask;
+			uint32_t result = (dst & ~mask) | bits;
+			// Sign-extend to 64 bits
+			cpu.reg(instr.ri16.rd) = (int64_t)(int32_t)result;
+		}
+	}
+
 	static void BSTRPICK_W(cpu_t& cpu, la_instruction instr) {
 		// Extract bits [msbw:lsbw] from rj and zero-extend to rd (32-bit version)
 		// msbw is 5 bits at [20:16], lsbw is 5 bits at [14:10]

@@ -143,6 +143,7 @@ namespace loongarch
 	// Bit Manipulation
 	INSTRUCTION(BSTRINS_D);
 	INSTRUCTION(BSTRPICK_D);
+	INSTRUCTION(BSTRINS_W);
 	INSTRUCTION(BSTRPICK_W);
 
 	// System
@@ -597,11 +598,19 @@ namespace loongarch
 				if (op10 == 0x002) return DECODED_INSTR(BSTRINS_D);
 				if (op10 == 0x003) return DECODED_INSTR(BSTRPICK_D);
 			}
-			// BSTRPICK.W: bits [31:21] (op11)
-			// Encoding: 0000 0000 011x xxxx - top 11 bits = 0x003
+			// BSTRINS.W and BSTRPICK.W: bits [31:21] (op11)
+			// Both have op11 = 0x003, differentiated by bit 15
+			// BSTRINS.W:  0x00600000 (bit 15 = 0)
+			// BSTRPICK.W: 0x00608000 (bit 15 = 1)
 			{
 				uint32_t op11 = (instr.whole >> 21) & 0x7FF;
-				if (op11 == 0x003) return DECODED_INSTR(BSTRPICK_W);
+				if (op11 == 0x003) {
+					if ((instr.whole >> 15) & 1) {
+						return DECODED_INSTR(BSTRPICK_W);
+					} else {
+						return DECODED_INSTR(BSTRINS_W);
+					}
+				}
 			}
 			break;
 

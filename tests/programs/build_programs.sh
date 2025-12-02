@@ -18,3 +18,5 @@ build_program printf_test.c printf_test.elf
 build_program simple_add.c simple_add.elf
 build_freestanding_program fib.c fib.elf
 build_program stream.c stream.elf
+
+loongarch64-linux-gnu-g++-14 -O2 -gdwarf-4 -static -Wl,-Ttext-segment=0x200000 cxx_test.cpp -o cxx_test.elf

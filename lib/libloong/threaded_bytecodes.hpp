@@ -89,6 +89,8 @@ namespace loongarch
 		LA64_BC_MUL_W,             // Multiply word (38 in coremark)
 		LA64_BC_MOD_DU,            // Modulo doubleword unsigned (35 in coremark)
 		LA64_BC_REVB_4H,           // Reverse bytes in 4 halfwords (27 in coremark)
+		LA64_BC_LDX_H,             // Load halfword signed indexed
+		LA64_BC_STX_H,             // Store halfword indexed
 
 		// LSX (SIMD) instructions
 		LA64_BC_VLD,               // Vector load 128-bit (293 in stream)
@@ -205,6 +207,8 @@ namespace loongarch
 		case LA64_BC_XORI: return "XORI";
 		case LA64_BC_SLTUI: return "SLTUI";
 		case LA64_BC_LD_H: return "LD.H";
+		case LA64_BC_LDX_H: return "LDX.H";
+		case LA64_BC_STX_H: return "STX.H";
 		case LA64_BC_LDX_HU: return "LDX.HU";
 		case LA64_BC_LD_WU: return "LD.WU";
 		case LA64_BC_PCADDU12I: return "PCADDU12I";

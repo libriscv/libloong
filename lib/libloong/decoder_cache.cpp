@@ -194,9 +194,17 @@ namespace loongarch
 		if (op17 == 0x00025) {
 			return LA64_BC_SLTU;
 		}
-		// LDX.8: op17 = 0x7010 (0x38080000 >> 15)
+		// LDX.W: op17 = 0x7008 (0x38040000 >> 15)
+		if (op17 == 0x7008) {
+			return LA64_BC_LDX_H;
+		}
+		// LDX.W: op17 = 0x7010 (0x38080000 >> 15)
 		if (op17 == 0x7010) {
 			return LA64_BC_LDX_W;
+		}
+		// STX.H: op17 = 0x7028 (0x38140000 >> 15)
+		if (op17 == 0x7028) {
+			return LA64_BC_STX_H;
 		}
 		// STX.8: op17 = 0x7030 (0x38180000 >> 15)
 		if (op17 == 0x7030) {

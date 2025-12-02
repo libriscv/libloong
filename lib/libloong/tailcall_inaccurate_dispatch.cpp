@@ -6,15 +6,14 @@
 #define MUNUSED  [[maybe_unused]]
 #define DISPATCH_MODE_TAILCALL
 
-// Instruction counter structure for tailcall dispatch
 namespace loongarch {
 	static constexpr bool TRACING = false;
 	// Return type for tailcall dispatch
 	using TcoRet = address_t;
 
 	// Function pointer type for bytecode handlers (inaccurate doesn't need counter)
-	using DecoderFunc =
-		TcoRet(*)(DecoderData* d, DecodedExecuteSegment* exec, CPU& cpu, address_t pc, uint64_t& max_counter);
+	using DecoderFunc = __attribute__((preserve_none))
+		TcoRet(*)(DecoderData* d, DecodedExecuteSegment* exec, CPU& cpu, address_t pc);
 
 	namespace {
 		extern const DecoderFunc computed_opcode[BYTECODES_MAX];
@@ -23,8 +22,8 @@ namespace loongarch {
 
 // Macro definitions for tailcall dispatch (inaccurate version)
 #define INSTRUCTION(bytecode, name) \
-	static \
-	TcoRet name(DecoderData* d, MUNUSED DecodedExecuteSegment* exec, MUNUSED CPU& cpu, MUNUSED address_t pc, MUNUSED uint64_t& max_counter)
+	static __attribute__((preserve_none)) \
+	TcoRet name(DecoderData* d, MUNUSED DecodedExecuteSegment* exec, MUNUSED CPU& cpu, MUNUSED address_t pc)
 
 #define DECODER()   (*d)
 #define CPU()       cpu
@@ -36,7 +35,7 @@ namespace loongarch {
 	auto instr = la_instruction{d->instr};
 
 #define EXECUTE_INSTR() \
-	computed_opcode[d->get_bytecode()](d, exec, cpu, pc, max_counter)
+	computed_opcode[d->get_bytecode()](d, exec, cpu, pc)
 
 #define EXECUTE_CURRENT() \
 	MUSTTAIL return EXECUTE_INSTR();
@@ -64,7 +63,6 @@ namespace loongarch {
 	} \
 	pc += (offset); \
 	d = exec->pc_relative_decoder_cache(pc); \
-	COUNTER_CHECK(); \
 	QUICK_EXEC_CHECK() \
 	BEGIN_BLOCK() \
 	EXECUTE_CURRENT()
@@ -77,17 +75,13 @@ namespace loongarch {
 
 #define QUICK_EXEC_CHECK() \
 	if (LA_UNLIKELY(!(pc >= exec->exec_begin() && pc < exec->exec_end()))) \
-		MUSTTAIL return next_execute_segment(d, exec, cpu, pc, max_counter);
+		MUSTTAIL return next_execute_segment(d, exec, cpu, pc);
 
 #define UNCHECKED_JUMP() \
 	QUICK_EXEC_CHECK() \
 	d = exec->pc_relative_decoder_cache(pc); \
 	BEGIN_BLOCK() \
 	EXECUTE_CURRENT()
-
-#define COUNTER_CHECK() \
-	if (LA_UNLIKELY(max_counter == 0)) \
-		return RETURN_VALUES();
 
 #define PERFORM_BRANCH(offset) \
 	pc += (offset); \
@@ -97,10 +91,6 @@ namespace loongarch {
 	} \
 	BEGIN_BLOCK() \
 	EXECUTE_CURRENT()
-
-#define OVERFLOW_CHECKED_JUMP() \
-	COUNTER_CHECK(); \
-	UNCHECKED_JUMP();
 
 namespace loongarch
 {
@@ -122,7 +112,6 @@ namespace loongarch
 	{
 		(void) d;
 		pc += 4; // Complete STOP instruction
-		max_counter = 0;
 		return RETURN_VALUES();
 	}
 
@@ -130,19 +119,17 @@ namespace loongarch
 	{
 		// Make the current PC visible
 		cpu.registers().pc = pc;
-		// Make the max counter visible
-		cpu.machine().set_max_instructions(max_counter);
 		// Invoke system call
 		cpu.machine().system_call(cpu.reg(REG_A7));
-		// Restore max counter
-		max_counter = cpu.machine().max_instructions();
+		if (LA_UNLIKELY(cpu.machine().max_instructions() == 0))
+			return RETURN_VALUES();
 		// System calls can change PC
 		if (LA_UNLIKELY(pc != cpu.registers().pc))
 		{
 			pc = cpu.registers().pc;
-			OVERFLOW_CHECKED_JUMP();
+			UNCHECKED_JUMP();
 		}
-		NEXT_BLOCK(4);
+		NEXT_BLOCK_UNCHECKED(4);
 	}
 
 	INSTRUCTION(LA64_BC_SYSCALLIMM, la64_syscall_imm)
@@ -150,14 +137,13 @@ namespace loongarch
 		VIEW_INSTR();
 		// Make the current PC visible
 		cpu.registers().pc = pc;
-		cpu.machine().set_max_instructions(max_counter);
 		// Execute syscall from verified immediate
 		cpu.machine().unchecked_system_call(d->instr);
-		// Restore max counter
-		max_counter = cpu.machine().max_instructions();
 		// Return immediately using REG_RA
 		pc = REG(REG_RA);
-		OVERFLOW_CHECKED_JUMP();
+		if (LA_UNLIKELY(MACHINE().max_instructions() == 0))
+			return RETURN_VALUES();
+		UNCHECKED_JUMP();
 	}
 
 	INSTRUCTION(0, next_execute_segment)
@@ -178,7 +164,7 @@ namespace loongarch
 
 	void CPU::simulate_inaccurate(address_t pc)
 	{
-		uint64_t max_counter = UINT64_MAX;
+		machine().set_max_instructions(~0ull);
 		memory().set_arena_base_register();
 
 		auto* exec = this->m_exec;

@@ -17,7 +17,7 @@ using namespace loongarch;
 struct EmulatorOptions {
 	std::string binary_path;
 	std::vector<std::string> program_args;
-	uint64_t max_instructions = UINT64_MAX;
+	uint64_t max_instructions = 0; // unlimited
 	uint64_t memory_max = 2048ull << 20; // 2 GB
 	bool verbose = false;
 	bool precise = false;
@@ -158,7 +158,7 @@ static int run_program(const std::vector<uint8_t>& binary, const EmulatorOptions
 			machine->set_max_instructions(opts.max_instructions);
 			machine->set_instruction_counter(0);
 			machine->cpu.simulate_precise();
-		} else if (opts.max_instructions == UINT64_MAX) {
+		} else if (opts.max_instructions == 0) {
 			machine->cpu.simulate_inaccurate(machine->cpu.pc());
 		} else {
 			machine->simulate(opts.max_instructions);
@@ -176,13 +176,14 @@ static int run_program(const std::vector<uint8_t>& binary, const EmulatorOptions
 		if (!machine->instruction_limit_reached()) {
 			const int exit_code = machine->template return_value<int>();
 			if (!opts.silent) {
-				if (opts.timing && opts.max_instructions != UINT64_MAX) {
-					printf("Program exited with code %d after %" PRIu64 " instructions (%.6f seconds)\n",
+				if (opts.max_instructions != 0) {
+					printf("Program exited with code %d after %" PRIu64 " instructions (%.3f seconds, %.2f MI/s)\n",
 							exit_code,
 							machine->instruction_counter(),
-							elapsed.count());
+							elapsed.count(),
+							(machine->instruction_counter() / (elapsed.count() * 1e6)));
 				} else if (opts.timing) {
-					printf("Program exited with code %d (%.6f seconds)\n",
+					printf("Program exited with code %d (%.3f seconds)\n",
 							exit_code,
 							elapsed.count());
 				} else {
@@ -273,9 +274,10 @@ static EmulatorOptions parse_arguments(int argc, char* argv[])
 			opts.timing = true;
 			break;
 		case 'f':
-			opts.max_instructions = strtoull(optarg, nullptr, 10);
-			if (opts.max_instructions == 0) {
+			if (strcasecmp(optarg, "max") == 0) {
 				opts.max_instructions = UINT64_MAX;
+			} else {
+				opts.max_instructions = strtoull(optarg, nullptr, 10);
 			}
 			break;
 		case 'm':

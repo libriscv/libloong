@@ -321,12 +321,30 @@ INSTRUCTION(LA64_BC_SLTU, la64_sltu)
 	NEXT_INSTR();
 }
 
+// LA64_BC_LDX_H: Load halfword indexed (rd = sign_ext(mem[rj + rk]))
+INSTRUCTION(LA64_BC_LDX_H, la64_ldx_h)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	const auto addr = REG(fi.rj) + REG(fi.rk);
+	REG(fi.rd) = (saddress_t)(int16_t)MACHINE().memory.template read<int16_t, true>(addr);
+	NEXT_INSTR();
+}
+
 // LA64_BC_LDX_W: Load word indexed (rd = sign_ext(mem[rj + rk]))
 INSTRUCTION(LA64_BC_LDX_W, la64_ldx_w)
 {
 	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
 	const auto addr = REG(fi.rj) + REG(fi.rk);
 	REG(fi.rd) = (saddress_t)(int32_t)MACHINE().memory.template read<int32_t, true>(addr);
+	NEXT_INSTR();
+}
+
+// LA64_BC_STX_H: Store halfword indexed (mem[rj + rk] = rd[15:0])
+INSTRUCTION(LA64_BC_STX_H, la64_stx_h)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	const auto addr = REG(fi.rj) + REG(fi.rk);
+	MACHINE().memory.template write<uint16_t, true>(addr, REG(fi.rd));
 	NEXT_INSTR();
 }
 
@@ -1088,6 +1106,8 @@ INSTRUCTION(LA64_BC_FUNCTION, execute_decoded_function)
 {
 	// Call the cached handler for this instruction
 	const auto handler = DECODER().get_handler();
+	//printf("Slow-path: instr %08x at PC 0x%lx\n",
+	//       DECODER().instr, pc);
 	handler(CPU(), la_instruction{DECODER().instr});
 	NEXT_INSTR();
 }

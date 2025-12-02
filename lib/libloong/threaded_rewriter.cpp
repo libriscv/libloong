@@ -329,6 +329,21 @@ uint32_t DecodedExecuteSegment::optimize_bytecode(uint8_t& bytecode, address_t p
 			NOP_IF_RD_ZERO(fi.rd, bytecode);
 			return fi.whole;
 		} break;
+		case LA64_BC_LDX_H: {
+			auto fi = *(FasterLA64_R3 *)&instruction_bits;
+			fi.rd = original.r3.rd;
+			fi.rj = original.r3.rj;
+			fi.rk = original.r3.rk;
+			NOP_IF_RD_ZERO(fi.rd, bytecode);
+			return fi.whole;
+		} break;
+		case LA64_BC_STX_H: {
+			auto fi = *(FasterLA64_R3 *)&instruction_bits;
+			fi.rd = original.r3.rd;
+			fi.rj = original.r3.rj;
+			fi.rk = original.r3.rk;
+			return fi.whole;
+		} break;
 		case LA64_BC_LDX_W: {
 			auto fi = *(FasterLA64_R3 *)&instruction_bits;
 			fi.rd = original.r3.rd;

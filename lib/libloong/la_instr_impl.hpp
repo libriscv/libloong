@@ -908,6 +908,55 @@ struct InstrImpl {
 		cpu.reg(rd) = cpu.registers().cf(cj);  // Write condition flag, zero-extended
 	}
 
+	static void FCMP_COND_S(cpu_t& cpu, la_instruction instr) {
+		// Floating-point compare with condition (single precision)
+		// Format: fcmp.cond.s cc, fj, fk
+		uint32_t cd = instr.whole & 0x7;         // FCC register index (3 bits)
+		uint32_t fj = (instr.whole >> 5) & 0x1F; // Source register 1
+		uint32_t fk = (instr.whole >> 10) & 0x1F; // Source register 2
+		uint32_t cond = (instr.whole >> 15) & 0x1F; // Condition code (5 bits)
+
+		const auto& vr_j = cpu.registers().getvr(fj);
+		const auto& vr_k = cpu.registers().getvr(fk);
+		float fj_val = vr_j.f[0];
+		float fk_val = vr_k.f[0];
+
+		bool is_unordered = std::isnan(fj_val) || std::isnan(fk_val);
+		bool result = false;
+
+		switch (cond) {
+			case 0x02: // CLT - (Quiet) Less Than (ordered)
+			case 0x03: // SLT - Signaling Less Than (ordered)
+				result = !is_unordered && (fj_val < fk_val);
+				break;
+			case 0x04: // CEQ - Equal (ordered)
+			case 0x05: // SEQ - Signaling Equal (ordered)
+				result = !is_unordered && (fj_val == fk_val);
+				break;
+			case 0x06: // CLE - (Quiet) Less or Equal (ordered)
+			case 0x07: // SLE - Signaling Less or Equal (ordered)
+				result = !is_unordered && (fj_val <= fk_val);
+				break;
+			case 0x0E: // CULE - (Quiet) Unordered or Less or Equal
+			case 0x0F: // SULE - Signaling Unordered or Less or Equal
+				result = is_unordered || (fj_val <= fk_val);
+				break;
+			case 0x14: // COR - (Quiet) Ordered
+				result = !is_unordered;
+				break;
+			case 0x18: // CUNE - (Quiet) Unordered or Not Equal
+			case 0x19: // SUNE - Signaling Unordered or Not Equal
+				result = is_unordered || (fj_val != fk_val);
+				break;
+			default:
+				// Unknown condition code - this should not happen in normal execution
+				result = false;
+				break;
+		}
+
+		cpu.registers().set_cf(cd, result ? 1 : 0);
+	}
+
 	static void FCMP_COND_D(cpu_t& cpu, la_instruction instr) {
 		// Floating-point compare with condition (double precision)
 		// Format: fcmp.cond.d cc, fj, fk

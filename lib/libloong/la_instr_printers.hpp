@@ -1037,6 +1037,15 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		return snprintf(buf, len, "vfcmp.%s.d $vr%u, $vr%u, $vr%u", mnemonic, vd, vj, vk);
 	}
 
+	static int FCMP_COND_S(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t cd = instr.whole & 0x7;
+		uint32_t fj = (instr.whole >> 5) & 0x1F;
+		uint32_t fk = (instr.whole >> 10) & 0x1F;
+		const uint32_t cond = (instr.whole >> 15) & 0x1F;
+		const char* mnemonic = cond_names(cond);
+		return snprintf(buf, len, "fcmp.%s.s $fcc%u, $fa%u, $fa%u", mnemonic, cd, fj, fk);
+	}
+
 	static int FCMP_COND_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		uint32_t cd = instr.whole & 0x7;
 		uint32_t fj = (instr.whole >> 5) & 0x1F;

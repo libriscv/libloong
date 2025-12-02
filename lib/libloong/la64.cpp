@@ -404,6 +404,7 @@ namespace loongarch
 	INSTRUCTION(FMADD_D);
 	INSTRUCTION(FLDX_D);
 	INSTRUCTION(FSTX_D);
+	INSTRUCTION(FCMP_COND_S);
 	INSTRUCTION(FCMP_COND_D);
 
 	// Decode function
@@ -657,10 +658,14 @@ namespace loongarch
 		// FSEL: FP conditional select - bits[31:18] = 0x0340
 		if (((instr.whole >> 18) & 0x3FFF) == 0x0340) return DECODED_INSTR(FSEL);
 
-		// FCMP instructions: bits[31:22] = 0x030, bits[19:15] = condition code
+		// FCMP instructions: bits[31:22] = 0x030, bit 21 determines S vs D, bits[19:15] = condition code
 		{
 			uint32_t op10 = (instr.whole >> 22) & 0x3FF;
-			if (op10 == 0x030) return DECODED_INSTR(FCMP_COND_D);
+			if (op10 == 0x030) {
+				// Bit 21: 0 = single precision (.s), 1 = double precision (.d)
+				bool is_double = (instr.whole >> 21) & 1;
+				return is_double ? DECODED_INSTR(FCMP_COND_D) : DECODED_INSTR(FCMP_COND_S);
+			}
 		}
 		// VFCMP instructions: bits[31:21] = 0x063, bits[20:15] = condition code
 		{

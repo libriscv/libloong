@@ -126,14 +126,17 @@ static int run_program(const std::vector<uint8_t>& binary, const EmulatorOptions
 	std::unique_ptr<Machine> machine;
 	try {
 		// Create machine
-		machine = std::make_unique<Machine>(binary, MachineOptions{
+		auto options = std::make_shared<MachineOptions>(MachineOptions{
 			.memory_max = opts.memory_max,
 			.verbose_loader = opts.verbose,
 			.verbose_syscalls = opts.verbose,
 		});
+		machine = std::make_unique<Machine>(binary, *options);
+		machine->set_options(options);
 
 		// Setup Linux syscalls
 		machine->setup_linux_syscalls();
+		machine->setup_posix_threads();
 		// Setup accelerated syscalls
 		machine->setup_accelerated_syscalls();
 

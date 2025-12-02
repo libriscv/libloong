@@ -1,4 +1,5 @@
 #include "../machine.hpp"
+#include "../posix/signals.hpp"
 #include <cstring>
 #include <cstdio>
 #include <sys/time.h>
@@ -30,6 +31,7 @@ namespace loongarch
 		LA_SYS_close = 57,
 		LA_SYS_ppoll = 73,
 		LA_SYS_fstat = 80,
+		LA_SYS_nanosleep = 101,
 		LA_SYS_sched_getaffinity = 123,
 		LA_SYS_gettimeofday = 169,
 		LA_SYS_brk = 214,
@@ -46,10 +48,12 @@ namespace loongarch
 		LA_SYS_geteuid = 175,
 		LA_SYS_getgid = 176,
 		LA_SYS_getegid = 177,
+		LA_SYS_tkill = 130,
+		LA_SYS_tgkill = 131,
+		LA_SYS_sigaltstack = 132,
 		LA_SYS_rt_sigaction = 134,
 		LA_SYS_rt_sigprocmask = 135,
 		LA_SYS_madvise = 233,
-		LA_SYS_tgkill = 131,
 		LA_SYS_prctl = 167,
 		LA_SYS_fstatat = 291,
 	};
@@ -259,7 +263,27 @@ namespace loongarch
 			machine.template return_value<int>());
 	}
 
-	// Gettid syscall
+	static void syscall_nanosleep(Machine& machine)
+	{
+		auto [req_addr, rem_addr] =
+			machine.template sysargs<address_t, address_t>();
+		if (req_addr != 0) {
+			struct timespec req;
+			machine.memory.copy_from_guest(&req, req_addr, sizeof(req));
+			// In a real implementation, we would sleep here.
+			// For the emulator, we just ignore the request.
+			if (rem_addr != 0) {
+				struct timespec rem = {0, 0};
+				machine.memory.copy_to_guest(rem_addr, &rem, sizeof(rem));
+			}
+		}
+		machine.set_result(0);
+		sysprint(machine, "nanosleep(req=0x%llx, rem=0x%llx) = %d\n",
+			static_cast<uint64_t>(req_addr),
+			static_cast<uint64_t>(rem_addr),
+			machine.template return_value<int>());
+	}
+
 	static void syscall_gettid(Machine& machine)
 	{
 		machine.set_result(machine.gettid());
@@ -286,37 +310,134 @@ namespace loongarch
 			machine.template return_value<int>());
 	}
 
-	// Getpid syscall
 	static void syscall_getpid(Machine& machine)
 	{
 		(void)machine;
 		machine.set_result(1);  // Fake PID
 	}
 
-	// Getuid/Geteuid/Getgid/Getegid syscalls
 	static void syscall_getuid(Machine& machine)
 	{
 		(void)machine;
 		machine.set_result(1000);  // Fake UID
 	}
 
-	// Rt_sigaction syscall
+	// Linux signal action flags
+	static constexpr int64_t LINUX_SA_ONSTACK = 0x08000000;
+
+	static void syscall_sigaltstack(Machine& machine)
+	{
+		const auto ss = machine.sysarg(0);
+		const auto old_ss = machine.sysarg(1);
+
+		auto& stack = machine.signals().per_thread(machine.gettid()).stack;
+
+		// Return old stack if requested
+		if (old_ss != 0x0) {
+			machine.memory.copy_to_guest(old_ss, &stack, sizeof(stack));
+		}
+		// Set new stack if provided
+		if (ss != 0x0) {
+			machine.memory.copy_from_guest(&stack, ss, sizeof(stack));
+		}
+		machine.set_result(0);
+		sysprint(machine, "sigaltstack(ss=0x%llx, old_ss=0x%llx) = 0\n",
+			static_cast<uint64_t>(ss), static_cast<uint64_t>(old_ss));
+	}
+
 	static void syscall_rt_sigaction(Machine& machine)
 	{
-		(void)machine;
-		// Ignore signal handlers in sandbox
+		const int sig = machine.sysarg<int>(0);
+		const auto action = machine.sysarg(1);
+		const auto old_action = machine.sysarg(2);
+
+		auto& sigact = machine.sigaction(sig);
+
+		// Kernel sigaction structure (64-bit)
+		struct kernel_sigaction {
+			address_t sa_handler;
+			address_t sa_flags;
+			address_t sa_restorer;
+			address_t sa_mask;
+		};
+
+		kernel_sigaction sa{};
+
+		// Return old action if requested
+		if (old_action != 0x0) {
+			sa.sa_handler = sigact.handler & ~address_t(0xF);
+			sa.sa_flags   = (sigact.altstack ? LINUX_SA_ONSTACK : 0x0);
+			sa.sa_restorer = 0;
+			sa.sa_mask    = sigact.mask;
+			machine.memory.copy_to_guest(old_action, &sa, sizeof(sa));
+		}
+		// Set new action if provided
+		if (action != 0x0) {
+			machine.memory.copy_from_guest(&sa, action, sizeof(sa));
+			sigact.handler  = sa.sa_handler;
+			sigact.altstack = (sa.sa_flags & LINUX_SA_ONSTACK) != 0;
+			sigact.mask     = sa.sa_mask;
+		}
 		machine.set_result(0);
+		sysprint(machine, "rt_sigaction(sig=%d, action=0x%llx, old_action=0x%llx) = 0\n",
+			sig, static_cast<uint64_t>(action), static_cast<uint64_t>(old_action));
 	}
 
-	// Rt_sigprocmask syscall
 	static void syscall_rt_sigprocmask(Machine& machine)
 	{
-		(void)machine;
-		// Ignore signal masks in sandbox
+		// Stub: just return success
+		machine.set_result(0);
+		sysprint(machine, "rt_sigprocmask() = 0 (stub)\n");
+	}
+
+	static void syscall_tkill(Machine& machine)
+	{
+		const int tid = machine.sysarg<int>(0);
+		const int sig = machine.sysarg<int>(1);
+
+		sysprint(machine, "tkill(tid=%d, sig=%d)\n", tid, sig);
+
+		// If the signal is zero or unset, ignore it
+		if (sig == 0 || machine.sigaction(sig).is_unset()) {
+			machine.set_result(0);
+			return;
+		}
+
+		// Jump to signal handler and change to altstack, if set
+		machine.signals().enter(machine, sig);
 		machine.set_result(0);
 	}
 
-	// BRK syscall
+	static void syscall_tgkill(Machine& machine)
+	{
+		const int tgid = machine.sysarg<int>(0);
+		const int tid = machine.sysarg<int>(1);
+		const int sig = machine.sysarg<int>(2);
+
+		// Signal 6 is SIGABRT - special handling
+		if (sig == 6) {
+			sysprint(machine, "tgkill(tgid=%d, tid=%d, sig=%d) - aborting\n", tgid, tid, sig);
+			// Check if there's a handler set
+			if (machine.sigaction(sig).is_unset()) {
+				// No handler - program called abort(), terminate
+				throw MachineException(GUEST_ABORT, "Program aborted via abort()");
+			}
+			// There's a handler - enter it
+		}
+
+		sysprint(machine, "tgkill(tgid=%d, tid=%d, sig=%d)\n", tgid, tid, sig);
+
+		// If the signal is zero or unset, ignore it
+		if (sig == 0 || machine.sigaction(sig).is_unset()) {
+			machine.set_result(0);
+			return;
+		}
+
+		// Jump to signal handler and change to altstack, if set
+		machine.signals().enter(machine, sig);
+		machine.set_result(0);
+	}
+
 	static void syscall_brk(Machine& machine)
 	{
 		auto new_end = machine.cpu.reg(REG_A0);
@@ -340,7 +461,6 @@ namespace loongarch
 			static_cast<uint64_t>(machine.template return_value<address_t>()));
 	}
 
-	// FCNTL syscall
 	static void syscall_fcntl(Machine& machine)
 	{
 		// int fd = machine.cpu.reg(REG_A0);
@@ -350,17 +470,12 @@ namespace loongarch
 		machine.set_result(0);
 	}
 
-	// SET_TID_ADDRESS syscall
 	static void syscall_set_tid_address(Machine& machine)
 	{
-		// Store the address for thread exit notification
-		const address_t tidptr = machine.cpu.reg(REG_A0);
-		machine.set_tid_address(tidptr);
 		// Return thread ID
 		machine.set_result(machine.gettid());
 	}
 
-	// SET_ROBUST_LIST syscall
 	static void syscall_set_robust_list(Machine& machine)
 	{
 		// This is used for robust futexes; we can ignore for single-threaded emulation
@@ -370,7 +485,6 @@ namespace loongarch
 		machine.set_result(0);
 	}
 
-	// READLINKAT syscall
 	static void syscall_readlinkat(Machine& machine)
 	{
 		// int dirfd = machine.cpu.reg(REG_A0);  // AT_FDCWD = -100
@@ -397,7 +511,6 @@ namespace loongarch
 		machine.set_result(len);
 	}
 
-	// GETRANDOM syscall
 	static void syscall_getrandom(Machine& machine)
 	{
 		auto buf_addr = machine.cpu.reg(REG_A0);
@@ -412,7 +525,6 @@ namespace loongarch
 		machine.set_result(buflen);
 	}
 
-	// PRLIMIT64 syscall (getrlimit/setrlimit)
 	static void syscall_prlimit64(Machine& machine)
 	{
 		// pid_t pid = machine.cpu.reg(REG_A0);
@@ -523,22 +635,6 @@ namespace loongarch
 		}
 	}
 
-	// TGKILL syscall - used by abort() to send signal
-	static void syscall_tgkill(Machine& machine)
-	{
-		auto [tgid, tid, sig] = machine.template sysargs<int, int, int>();
-
-		sysprint(machine, "tgkill(tgid=%d, tid=%d, sig=%d) - aborting\n", tgid, tid, sig);
-
-		// Signal 6 is SIGABRT
-		if (sig == 6) {
-			// Program called abort()
-			throw MachineException(GUEST_ABORT, "Program aborted via abort()");
-		} else {
-			machine.set_result(-LA_ENOSYS);
-		}
-	}
-
 	// PRCTL syscall - process control
 	static void syscall_prctl(Machine& machine)
 	{
@@ -624,16 +720,17 @@ namespace loongarch
 		// Time
 		install_syscall_handler(LA_SYS_clock_gettime, syscall_clock_gettime);
 		install_syscall_handler(LA_SYS_gettimeofday, syscall_gettimeofday);
+		install_syscall_handler(LA_SYS_nanosleep, syscall_nanosleep);
 
-		// Signals (ignored in sandbox)
+		// Signals
+		install_syscall_handler(LA_SYS_tkill, syscall_tkill);
+		install_syscall_handler(LA_SYS_tgkill, syscall_tgkill);
+		install_syscall_handler(LA_SYS_sigaltstack, syscall_sigaltstack);
 		install_syscall_handler(LA_SYS_rt_sigaction, syscall_rt_sigaction);
 		install_syscall_handler(LA_SYS_rt_sigprocmask, syscall_rt_sigprocmask);
 
 		// Other
 		install_syscall_handler(LA_SYS_getrandom, syscall_getrandom);
-
-		// Signals (abort handling)
-		install_syscall_handler(LA_SYS_tgkill, syscall_tgkill);
 
 		// Process control
 		install_syscall_handler(LA_SYS_prctl, syscall_prctl);

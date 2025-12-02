@@ -71,6 +71,10 @@ struct InstrPrinters {
 			reg_name(instr.r2.rd), reg_name(instr.r2.rj));
 	}
 
+	static int CPUCFG(char* buf, size_t len, const cpu_t&, la_instruction, addr_t) {
+		return snprintf(buf, len, "cpucfg");
+	}
+
 	// === Arithmetic Instructions ===
 
 	static int ADD_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {

@@ -1,7 +1,10 @@
 #include "machine.hpp"
+#include "posix/signals.hpp"
+#include "posix/threads.hpp"
 #include <chrono>
 #include <cstring>
 #include <mutex>
+#include <algorithm>
 #include "native/heap.hpp"
 
 namespace loongarch
@@ -32,6 +35,11 @@ namespace loongarch
 
 	Machine::~Machine()
 	{
+	}
+
+	void Machine::set_options(const std::shared_ptr<MachineOptions> options)
+	{
+		this->m_options = std::move(options);
 	}
 
 	void Machine::setup_linux(
@@ -184,6 +192,27 @@ namespace loongarch
 		auto now = std::chrono::high_resolution_clock::now();
 		auto duration = now.time_since_epoch();
 		return std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count();
+	}
+
+	Signals& Machine::signals()
+	{
+		if (!m_signals) {
+			m_signals = std::make_unique<Signals>();
+		}
+		return *m_signals;
+	}
+
+	SignalAction& Machine::sigaction(int sig)
+	{
+		return signals().get(sig);
+	}
+
+	MultiThreading& Machine::threads()
+	{
+		if (!m_mt) {
+			m_mt = std::make_unique<MultiThreading>(*this);
+		}
+		return *m_mt;
 	}
 
 } // loongarch

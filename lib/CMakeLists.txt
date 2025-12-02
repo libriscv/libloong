@@ -35,6 +35,7 @@ set(SOURCES
 	libloong/posix/signals.cpp
 	libloong/posix/threads.cpp
 	libloong/linux/syscalls.cpp
+	libloong/linux/syscalls_threads.cpp
 )
 
 # Dispatch implementations

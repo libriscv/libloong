@@ -265,37 +265,44 @@ struct InstrImpl {
 
 	static void LD_B(cpu_t& cpu, la_instruction instr) {
 		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
-		cpu.reg(instr.ri12.rd) = (int64_t)cpu.memory().template read<int8_t, true>(addr);
+		if (instr.ri12.rd != 0)
+			cpu.reg(instr.ri12.rd) = (int64_t)cpu.memory().template read<int8_t, true>(addr);
 	}
 
 	static void LD_H(cpu_t& cpu, la_instruction instr) {
 		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
-		cpu.reg(instr.ri12.rd) = (int64_t)cpu.memory().template read<int16_t, true>(addr);
+		if (instr.ri12.rd != 0)
+			cpu.reg(instr.ri12.rd) = (int64_t)cpu.memory().template read<int16_t, true>(addr);
 	}
 
 	static void LD_W(cpu_t& cpu, la_instruction instr) {
 		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
-		cpu.reg(instr.ri12.rd) = (int64_t)cpu.memory().template read<int32_t, true>(addr);
+		if (instr.ri12.rd != 0)
+			cpu.reg(instr.ri12.rd) = (int64_t)cpu.memory().template read<int32_t, true>(addr);
 	}
 
 	static void LD_D(cpu_t& cpu, la_instruction instr) {
 		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
-		cpu.reg(instr.ri12.rd) = cpu.memory().template read<int64_t, true>(addr);
+		if (instr.ri12.rd != 0)
+			cpu.reg(instr.ri12.rd) = cpu.memory().template read<int64_t, true>(addr);
 	}
 
 	static void LD_BU(cpu_t& cpu, la_instruction instr) {
 		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
-		cpu.reg(instr.ri12.rd) = (uint64_t)cpu.memory().template read<uint8_t, true>(addr);
+		if (instr.ri12.rd != 0)
+			cpu.reg(instr.ri12.rd) = (uint64_t)cpu.memory().template read<uint8_t, true>(addr);
 	}
 
 	static void LD_HU(cpu_t& cpu, la_instruction instr) {
 		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
-		cpu.reg(instr.ri12.rd) = (uint64_t)cpu.memory().template read<uint16_t, true>(addr);
+		if (instr.ri12.rd != 0)
+			cpu.reg(instr.ri12.rd) = (uint64_t)cpu.memory().template read<uint16_t, true>(addr);
 	}
 
 	static void LD_WU(cpu_t& cpu, la_instruction instr) {
 		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
-		cpu.reg(instr.ri12.rd) = (uint64_t)cpu.memory().template read<uint32_t, true>(addr);
+		if (instr.ri12.rd != 0)
+			cpu.reg(instr.ri12.rd) = (uint64_t)cpu.memory().template read<uint32_t, true>(addr);
 	}
 
 	static void ST_B(cpu_t& cpu, la_instruction instr) {
@@ -646,6 +653,13 @@ struct InstrImpl {
 		// Read time counter
 		// rd = Machine::rdtime()
 		cpu.reg(instr.r2.rd) = cpu.machine().rdtime();
+	}
+
+	static void CPUCFG(cpu_t& cpu, la_instruction instr) {
+		// CPUCFG: rd = CPU configuration register
+		// For simplicity, return a fixed value indicating a basic LoongArch CPU
+		const uint64_t CPUCFG_BASIC = 0x0000000000000001;
+		cpu.reg(instr.r2.rd) = CPUCFG_BASIC;
 	}
 
 	// === Memory Barrier Instructions ===

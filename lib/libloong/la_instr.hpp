@@ -161,8 +161,8 @@ namespace Opcode {
 	constexpr uint32_t SRLI_D     = 0x00450000;
 	constexpr uint32_t SRAI_W     = 0x00488000;
 	constexpr uint32_t SRAI_D     = 0x00490000;
-	constexpr uint32_t ROTRI_D    = 0x02400000;  // Rotate Right Immediate Doubleword (op10=0x009)
-	constexpr uint32_t ROTRI_W    = 0x00490000;  // Rotate Right Immediate Word (op16=0x0049)
+	constexpr uint32_t ROTRI_D    = 0x02400000;  // Rotate Right Immediate Doubleword (op16=0x0024)
+	constexpr uint32_t ROTRI_W    = 0x004C8000;  // Rotate Right Immediate Word (op15=0x00099)
 	constexpr uint32_t ROTR_W     = 0x001B0000;  // Rotate Right Word (op17)
 	constexpr uint32_t ROTR_D     = 0x001B8000;  // Rotate Right Doubleword (op17)
 	constexpr uint32_t SRL_D      = 0x00190000;
@@ -231,6 +231,7 @@ namespace Opcode {
 	constexpr uint32_t SYSCALL    = 0x002b0000;
 	constexpr uint32_t BREAK      = 0x002a0000;
 	constexpr uint32_t RDTIME_D   = 0x00006800;  // Read time counter
+	constexpr uint32_t CPUCFG     = 0x00006c00;  // Read CPU configuration
 
 	// Multiply/Divide
 	constexpr uint32_t MUL_W      = 0x001c0000;

@@ -1,8 +1,20 @@
 #include <cstdio>
 #include <cstring>
+#include <thread>
+#include <vector>
 extern "C" void fast_exit(int code);
 
 int main() {
+	std::vector<std::thread> threads;
+	for (int i = 0; i < 4; ++i)
+		threads.emplace_back([]{
+			printf("Hello from LoongArch C++20 std::thread 0x%X!\n",
+				std::this_thread::get_id());
+		});
+	for (auto& t : threads)
+		t.join();
+	printf("All threads joined, exiting main.\n");
+	fflush(stdout);
 	// If we don't return from main(), we can
 	// throw exceptions from VM function calls.
 	fast_exit(42);

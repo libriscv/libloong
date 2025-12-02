@@ -16,7 +16,7 @@ static std::unique_ptr<Machine> machine;
 struct DebugOptions {
 	std::string binary_path;
 	uint64_t max_instructions = 10'000'000ull;
-	size_t memory_max = 256 * 1024 * 1024; // 256 MB
+	size_t memory_max = 2048ull << 20; // 2 GiB
 	bool verbose_loader = true;
 	bool verbose_syscalls = true;
 	bool verbose_registers = false;
@@ -187,16 +187,18 @@ int main(int argc, char* argv[])
 		std::string_view binary_view(reinterpret_cast<const char*>(binary.data()), binary.size());
 
 		// Create machine options
-		MachineOptions options;
-		options.memory_max = opts.memory_max;
-		options.verbose_loader = opts.verbose_loader;
-		options.verbose_syscalls = opts.verbose_syscalls;
+		std::shared_ptr<MachineOptions> options = std::make_shared<MachineOptions>();
+		options->memory_max = opts.memory_max;
+		options->verbose_loader = opts.verbose_loader;
+		options->verbose_syscalls = opts.verbose_syscalls;
 
 		// Create machine
-		machine = std::make_unique<Machine>(binary_view, options);
+		machine = std::make_unique<Machine>(binary_view, *options);
+		machine->set_options(options);
 
 		// Setup minimal environment with program name
 		machine->setup_linux_syscalls();
+		machine->setup_posix_threads();
 		machine->setup_linux({"program"}, {"LC_TYPE=C", "LC_ALL=C", "USER=groot"});
 
 		// Create debug wrapper

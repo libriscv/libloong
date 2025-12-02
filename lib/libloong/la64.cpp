@@ -29,6 +29,7 @@ namespace loongarch
 	INSTRUCTION(UNIMPLEMENTED);
 	INSTRUCTION(NOP);
 	INSTRUCTION(RDTIME_D);
+	INSTRUCTION(CPUCFG);
 
 	// Arithmetic
 	INSTRUCTION(ADD_W);
@@ -420,6 +421,7 @@ namespace loongarch
 		if (instr.whole == Opcode::SYSCALL) return DECODED_INSTR(SYSCALL);
 		if (instr.whole == Opcode::BREAK) return DECODED_INSTR(UNIMPLEMENTED);
 		if ((instr.whole & 0xFFFFFC00) == Opcode::RDTIME_D) return DECODED_INSTR(RDTIME_D);
+		if ((instr.whole & 0xFFFFFC00) == Opcode::CPUCFG) return DECODED_INSTR(CPUCFG);
 
 		// Decode based on opcode
 		switch (op6) {
@@ -491,20 +493,15 @@ namespace loongarch
 				if (op16 == 0x0045) return DECODED_INSTR(SRLI_D);
 				if (op16 == 0x0048) return DECODED_INSTR(SRAI_W);
 				if (op16 == 0x0049) return DECODED_INSTR(SRAI_D);
-				// ROTRI.W: bits[31:16] = 0x0049, but with different ui5 position than SRAI.D
-				// Need to check more bits: ROTRI.W has bit pattern 0000 0000 0100 1001 (ui5 in bits[14:10])
-				// SRAI.D has bit pattern 0000 0000 0100 1001 (ui6 in bits[15:10])
-				// They overlap, so we distinguish by checking if bit 15 is used for shift amount
-				// Actually ROTRI.W is bits[31:21] = 0x00049 with ui5 in [14:10]
-				uint32_t op11 = (instr.whole >> 21) & 0x7FF;
-				if (op11 == 0x009) {  // 0x009 << 10 bits = 0x2400 for top bits check
-					// Check if this is ROTRI.W (ui5 < 32) vs SRAI.D (ui6 can be up to 63)
-					uint32_t shift_amt = (instr.whole >> 10) & 0x3F;
-					if (shift_amt < 32 && ((instr.whole >> 15) & 1) == 0)
-						return DECODED_INSTR(ROTRI_W);
-				}
 				// ROTRI.D uses bits[31:16] for opcode (16-bit opcode = 0x0024)
 				if (op16 == 0x0024) return DECODED_INSTR(ROTRI_D);
+			}
+
+			// ROTRI.W: bits[31:15] = 0x00099 (format DJUk5)
+			// ui5 is in bits[14:10], rj in bits[9:5], rd in bits[4:0]
+			{
+				uint32_t op15 = (instr.whole >> 15) & 0x1FFFF;
+				if (op15 == 0x00099) return DECODED_INSTR(ROTRI_W);
 			}
 
 			// ALSL.W and ALSL.D use bits [31:18] with sa2 in bits [16:15]

@@ -5,9 +5,15 @@
 #include <string>
 #include <vector>
 #include <functional>
+#include <memory>
 
 namespace loongarch
 {
+	// Forward declarations
+	struct Signals;
+	struct SignalAction;
+	struct MultiThreading;
+
 	struct alignas(LA_MACHINE_ALIGNMENT) Machine
 	{
 		using syscall_t = void(Machine&);
@@ -42,6 +48,7 @@ namespace loongarch
 		static void setup_minimal_syscalls();
 		static void setup_linux_syscalls();
 		void setup_accelerated_syscalls(); // Warning: modifies decoder cache
+		void set_options(const std::shared_ptr<MachineOptions> options); // Non-owning reference
 
 		// Execution
 		bool simulate(uint64_t max_instructions = UINT64_MAX, uint64_t counter = 0);
@@ -114,19 +121,9 @@ namespace loongarch
 		CPU cpu;
 		Memory memory;
 
-		// Multi-threading support
-		struct ThreadData {
-			int tid = 1;
-			address_t clear_tid_addr = 0;
-			address_t robust_list = 0;
-		};
-		int gettid() const noexcept { return m_threads.tid; }
-		void set_tid_address(address_t addr) noexcept { m_threads.clear_tid_addr = addr; }
-		address_t get_tid_address() const noexcept { return m_threads.clear_tid_addr; }
-
 		// Options
-		bool has_options() const noexcept { return m_options_ptr != nullptr; }
-		const MachineOptions& options() const { return *m_options_ptr; }
+		bool has_options() const noexcept { return m_options != nullptr; }
+		const MachineOptions& options() const { return *m_options; }
 
 		// Optional custom native-performance heap
 		bool has_arena() const noexcept { return m_arena != nullptr; }
@@ -150,13 +147,24 @@ namespace loongarch
 		};
 		std::vector<BytecodeStats> collect_bytecode_statistics() const;
 
+		// Signal handling
+		Signals& signals();
+		SignalAction& sigaction(int sig);
+
+		// Threading support
+		bool has_threads() const noexcept { return m_mt != nullptr; }
+		MultiThreading& threads();
+		int gettid();
+		void setup_posix_threads();
+
 	private:
 		uint64_t      m_counter = 0;
 		uint64_t      m_max_instructions = 0;
 		mutable void* m_userdata = nullptr;
-		const MachineOptions* m_options_ptr = nullptr;
-		ThreadData    m_threads;
+		std::shared_ptr<MachineOptions> m_options = nullptr;
 		std::unique_ptr<Arena> m_arena;
+		std::unique_ptr<Signals> m_signals;
+		std::unique_ptr<MultiThreading> m_mt;
 		static inline std::array<syscall_t*, LA_SYSCALLS_MAX> m_syscall_handlers = {};
 		static inline rdtime_callback_t* m_rdtime_handler = nullptr;
 

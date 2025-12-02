@@ -1,4 +1,5 @@
 #include "machine.hpp"
+#include <chrono>
 #include <cstring>
 #include <mutex>
 #include "native/heap.hpp"
@@ -166,6 +167,23 @@ namespace loongarch
 		// Deserialization not yet implemented
 		(void)vec;
 		return -1;
+	}
+
+	void Machine::set_rdtime(rdtime_callback_t* callback)
+	{
+		m_rdtime_handler = callback;
+	}
+
+	uint64_t Machine::rdtime()
+	{
+		if (m_rdtime_handler) {
+			return m_rdtime_handler(*this);
+		}
+
+		// Default: chrono based time
+		auto now = std::chrono::high_resolution_clock::now();
+		auto duration = now.time_since_epoch();
+		return std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count();
 	}
 
 } // loongarch

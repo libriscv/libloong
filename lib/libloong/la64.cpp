@@ -28,6 +28,7 @@ namespace loongarch
 	INSTRUCTION(INVALID);
 	INSTRUCTION(UNIMPLEMENTED);
 	INSTRUCTION(NOP);
+	INSTRUCTION(RDTIME_D);
 
 	// Arithmetic
 	INSTRUCTION(ADD_W);
@@ -418,6 +419,7 @@ namespace loongarch
 		// System instructions (checked first for exact match)
 		if (instr.whole == Opcode::SYSCALL) return DECODED_INSTR(SYSCALL);
 		if (instr.whole == Opcode::BREAK) return DECODED_INSTR(UNIMPLEMENTED);
+		if ((instr.whole & 0xFFFFFC00) == Opcode::RDTIME_D) return DECODED_INSTR(RDTIME_D);
 
 		// Decode based on opcode
 		switch (op6) {

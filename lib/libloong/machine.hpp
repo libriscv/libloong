@@ -11,6 +11,7 @@ namespace loongarch
 	struct alignas(LA_MACHINE_ALIGNMENT) Machine
 	{
 		using syscall_t = void(Machine&);
+		using rdtime_callback_t = uint64_t(Machine&);
 
 		// Construction
 		Machine(std::string_view binary, const MachineOptions& options = {});
@@ -65,6 +66,11 @@ namespace loongarch
 		void set_result(const T& value);
 		template <typename T = address_t>
 		T return_value() const;
+
+		// rdtime.d callback interface
+		static void set_rdtime(rdtime_callback_t* callback);
+		static rdtime_callback_t* get_rdtime_handler() { return m_rdtime_handler; }
+		uint64_t rdtime();
 
 		// System call argument helpers
 		template <typename T = address_t>
@@ -152,6 +158,7 @@ namespace loongarch
 		ThreadData    m_threads;
 		std::unique_ptr<Arena> m_arena;
 		static inline std::array<syscall_t*, LA_SYSCALLS_MAX> m_syscall_handlers = {};
+		static inline rdtime_callback_t* m_rdtime_handler = nullptr;
 
 		void push_argument(address_t& sp, address_t value);
 

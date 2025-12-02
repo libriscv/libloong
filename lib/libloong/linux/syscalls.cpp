@@ -30,6 +30,7 @@ namespace loongarch
 		LA_SYS_close = 57,
 		LA_SYS_ppoll = 73,
 		LA_SYS_fstat = 80,
+		LA_SYS_sched_getaffinity = 123,
 		LA_SYS_gettimeofday = 169,
 		LA_SYS_brk = 214,
 		LA_SYS_mmap = 222,
@@ -266,6 +267,25 @@ namespace loongarch
 			machine.template return_value<int>());
 	}
 
+	static void syscall_sched_getaffinity(Machine& machine)
+	{
+		auto [pid, cpusetsize, mask_addr] =
+			machine.template sysargs<int, size_t, address_t>();
+		(void)pid;
+		// For simplicity, assume single CPU (CPU 0)
+		if (cpusetsize >= sizeof(uint64_t) && mask_addr != 0) {
+			uint64_t mask = 1; // CPU 0
+			machine.memory.copy_to_guest(mask_addr, &mask, sizeof(mask));
+			machine.set_result(sizeof(uint64_t));
+		} else {
+			machine.set_result(-LA_EINVAL);
+		}
+		sysprint(machine, "sched_getaffinity(pid=%d, cpusetsize=%llu, mask=0x%llx) = %d\n",
+			pid, static_cast<uint64_t>(cpusetsize),
+			static_cast<uint64_t>(mask_addr),
+			machine.template return_value<int>());
+	}
+
 	// Getpid syscall
 	static void syscall_getpid(Machine& machine)
 	{
@@ -445,6 +465,13 @@ namespace loongarch
 			// Anonymous mapping - allocate new memory
 			auto new_addr = machine.memory.mmap_allocate(length);
 			machine.set_result(new_addr);
+		} else if ((flags & 0x10) == 0x0) {
+			// no fixed flag - force into new allocation
+			auto new_addr = machine.memory.mmap_allocate(length);
+			machine.set_result(new_addr);
+		} else if (addr < machine.memory.mmap_address()) {
+			// It's within the mmap region - allow
+			machine.set_result(addr);
 		} else {
 			// Fixed address mapping not supported for now
 			machine.set_result(-1);
@@ -582,6 +609,7 @@ namespace loongarch
 		install_syscall_handler(LA_SYS_set_robust_list, syscall_set_robust_list);
 		install_syscall_handler(LA_SYS_futex, syscall_futex);
 		install_syscall_handler(LA_SYS_gettid, syscall_gettid);
+		install_syscall_handler(LA_SYS_sched_getaffinity, syscall_sched_getaffinity);
 
 		// Process info
 		install_syscall_handler(LA_SYS_getpid, syscall_getpid);

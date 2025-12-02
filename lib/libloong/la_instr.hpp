@@ -230,6 +230,7 @@ namespace Opcode {
 	constexpr uint32_t LU52I_D    = 0x03000000;		// System
 	constexpr uint32_t SYSCALL    = 0x002b0000;
 	constexpr uint32_t BREAK      = 0x002a0000;
+	constexpr uint32_t RDTIME_D   = 0x00006800;  // Read time counter
 
 	// Multiply/Divide
 	constexpr uint32_t MUL_W      = 0x001c0000;

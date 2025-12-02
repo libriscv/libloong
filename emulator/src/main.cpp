@@ -155,7 +155,7 @@ static int run_program(const std::vector<uint8_t>& binary, const EmulatorOptions
 
 		// Run the program
 		if (opts.precise) {
-			machine->set_max_instructions(opts.max_instructions);
+			machine->set_max_instructions(opts.max_instructions ? opts.max_instructions : UINT64_MAX);
 			machine->set_instruction_counter(0);
 			machine->cpu.simulate_precise();
 		} else if (opts.max_instructions == 0) {

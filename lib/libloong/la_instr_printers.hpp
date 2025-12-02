@@ -66,6 +66,11 @@ struct InstrPrinters {
 		return snprintf(buf, len, "nop");
 	}
 
+	static int RDTIME_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		return snprintf(buf, len, "rdtime.d %s, %s",
+			reg_name(instr.r2.rd), reg_name(instr.r2.rj));
+	}
+
 	// === Arithmetic Instructions ===
 
 	static int ADD_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {

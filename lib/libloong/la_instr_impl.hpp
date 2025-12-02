@@ -642,6 +642,12 @@ struct InstrImpl {
 		(void)cpu; (void)instr;
 	}
 
+	static void RDTIME_D(cpu_t& cpu, la_instruction instr) {
+		// Read time counter
+		// rd = Machine::rdtime()
+		cpu.reg(instr.r2.rd) = cpu.machine().rdtime();
+	}
+
 	// === Memory Barrier Instructions ===
 
 	static void DBAR(cpu_t& cpu, la_instruction instr) {

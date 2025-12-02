@@ -49,6 +49,20 @@ TEST_CASE("Basic C program execution", "[basic]") {
 		REQUIRE(result.success);
 		REQUIRE(result.exit_code == 42);
 	}
+
+	SECTION("RDTIME.D") {
+		auto binary = builder.build(R"(
+			int main() {
+				unsigned long t1;
+				asm volatile("rdtime.d %0, $zero" : "=r"(t1));
+				return (t1 != 0) ? 42 : 1;
+			}
+		)", "rdtime_test");
+
+		auto result = run_binary(binary, 42);
+		REQUIRE(result.success);
+		REQUIRE(result.exit_code == 42);
+	}
 }
 
 TEST_CASE("Control flow", "[basic][control]") {

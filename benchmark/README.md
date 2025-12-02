@@ -85,21 +85,21 @@ On a modern x86_64 system (200 samples × 1000 iterations):
 
 ```
 === VMCall Overhead Tests ===
-                  empty function	median:      6ns	lowest:      6ns	[p75:      6ns  p90:      6ns  p99:      9ns]
+                  empty function	median:      3ns	lowest:      3ns	[p75:      3ns  p90:      3ns  p99:      4ns]
 
 === Argument Passing Overhead ===
-                          args=0	median:      7ns	lowest:      7ns	[p75:      7ns  p90:      7ns  p99:      9ns]
-                          args=1	median:      7ns	lowest:      7ns	[p75:      7ns  p90:      7ns  p99:     10ns]
-                          args=2	median:      7ns	lowest:      7ns	[p75:      7ns  p90:      7ns  p99:     12ns]
-                          args=3	median:      9ns	lowest:      8ns	[p75:      9ns  p90:      9ns  p99:     13ns]
-                          args=4	median:     10ns	lowest:      9ns	[p75:     10ns  p90:     10ns  p99:     13ns]
-                          args=5	median:     11ns	lowest:     11ns	[p75:     11ns  p90:     11ns  p99:     13ns]
-                          args=6	median:     12ns	lowest:     12ns	[p75:     12ns  p90:     12ns  p99:     14ns]
-                          args=7	median:     13ns	lowest:     13ns	[p75:     13ns  p90:     13ns  p99:     17ns]
-                          args=8	median:     15ns	lowest:     15ns	[p75:     15ns  p90:     15ns  p99:     17ns]
+                          args=0	median:      3ns	lowest:      3ns	[p75:      3ns  p90:      3ns  p99:      5ns]
+                          args=1	median:      4ns	lowest:      4ns	[p75:      4ns  p90:      4ns  p99:      6ns]
+                          args=2	median:      5ns	lowest:      4ns	[p75:      5ns  p90:      5ns  p99:      8ns]
+                          args=3	median:      6ns	lowest:      6ns	[p75:      6ns  p90:      6ns  p99:      8ns]
+                          args=4	median:      7ns	lowest:      6ns	[p75:      8ns  p90:      8ns  p99:     10ns]
+                          args=5	median:      9ns	lowest:      9ns	[p75:      9ns  p90:      9ns  p99:     12ns]
+                          args=6	median:     10ns	lowest:     10ns	[p75:     10ns  p90:     10ns  p99:     13ns]
+                          args=7	median:     11ns	lowest:     11ns	[p75:     11ns  p90:     11ns  p99:     14ns]
+                          args=8	median:     12ns	lowest:     12ns	[p75:     12ns  p90:     13ns  p99:     14ns]
 ```
 
-These results demonstrate libloong's **extremely low vmcall overhead**, with bare function calls taking just ~6ns and increasing by only ~0.5-1ns per additional argument. The tight distribution (low variance between median and p99) shows consistent, predictable performance.
+These results demonstrate libloong's **extremely low vmcall overhead**, with bare function calls taking just ~3ns and increasing by only ~1ns per additional argument. The tight distribution (low variance between median and p99) shows consistent, predictable performance.
 
 ## Design Principles
 

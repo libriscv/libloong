@@ -109,16 +109,17 @@ namespace loongarch
 		}
 
 	private:
-		Machine& m_machine;
-
 		// Single memory arena (mmap'd on POSIX, new[] otherwise)
 		uint8_t* m_arena = nullptr;
 		size_t m_arena_size = 0;
 
 		// Memory region boundaries
 		address_t m_rodata_start = 0;  // Start of read-only data
+		address_t m_arena_end_sub_rodata = 0; // End of arena minus rodata size
 		address_t m_data_start = 0;    // Start of writable data/heap
+		address_t m_arena_end_sub_data = 0;   // End of arena minus data size
 
+		Machine& m_machine;
 		std::string_view m_binary; // Non-owning reference to binary data
 
 		// Execute segments
@@ -154,10 +155,10 @@ namespace loongarch
 		void allocate_arena(size_t size);
 		void free_arena();
 		inline bool is_readable(address_t addr, size_t size = sizeof(address_t)) const noexcept {
-			return addr >= m_rodata_start && addr < m_arena_size - size;
+			return addr - m_rodata_start < m_arena_end_sub_rodata;
 		}
 		inline bool is_writable(address_t addr, size_t size = sizeof(address_t)) const noexcept {
-			return addr >= m_data_start && addr < m_arena_size - size;
+			return addr - m_data_start < m_arena_end_sub_data;
 		}
 		[[noreturn]] LA_COLD_PATH() static void protection_fault(address_t addr, const char* message);
 	};

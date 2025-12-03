@@ -113,7 +113,7 @@ INSTRUCTION(LA64_BC_SYSCALLIMM, la64_syscall_imm)
 	REGISTERS().pc = pc;
 	MACHINE().set_max_instructions(max_counter);
 	// Execute syscall from verified immediate
-	MACHINE().unchecked_system_call(DECODER().instr);
+	MACHINE().system_call(DECODER().instr);
 	// Restore max counter
 	max_counter = MACHINE().max_instructions();
 

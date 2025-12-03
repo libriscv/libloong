@@ -138,7 +138,7 @@ namespace loongarch
 		// Make the current PC visible
 		cpu.registers().pc = pc;
 		// Execute syscall from verified immediate
-		cpu.machine().unchecked_system_call(d->instr);
+		cpu.machine().system_call(d->instr);
 		// Return immediately using REG_RA
 		pc = REG(REG_RA);
 		if (LA_UNLIKELY(MACHINE().max_instructions() == 0))

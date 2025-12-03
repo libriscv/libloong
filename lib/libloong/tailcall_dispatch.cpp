@@ -155,7 +155,7 @@ namespace loongarch
 		cpu.registers().pc = pc;
 		counter.apply(MACHINE());
 		// Execute syscall from verified immediate
-		cpu.machine().unchecked_system_call(d->instr);
+		cpu.machine().system_call(d->instr);
 		// Restore max counter
 		counter.retrieve_counters(MACHINE());
 		// Return immediately using REG_RA

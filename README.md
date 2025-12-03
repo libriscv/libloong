@@ -76,8 +76,12 @@ Scale:          15336.0     0.012081     0.010433     0.013761
 Add:            19884.1     0.015094     0.012070     0.017555
 Triad:          13502.2     0.021949     0.017775     0.024309
 
-CoreMark 1.0 : 3002.069477 / GCC14.2.0 -O3 -DPERFORMANCE_RUN=1   / Static
+CoreMark 1.0 : 3032.528263 / GCC14.2.0 -O3 -DPERFORMANCE_RUN=1   / Static
 ```
+
+<img width="600" height="371" alt="CoreMark 1 0 interpreters, Dec 2025 (Ryzen 7950X)(1)" src="https://github.com/user-attachments/assets/3a2d14b3-47e9-49a8-b8d0-21ebbf31b752" />
+
+Register machines still stand strongest at the end of 2025.
 
 ## Documentation
 

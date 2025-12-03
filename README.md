@@ -76,7 +76,7 @@ Scale:          15336.0     0.012081     0.010433     0.013761
 Add:            19884.1     0.015094     0.012070     0.017555
 Triad:          13502.2     0.021949     0.017775     0.024309
 
-CoreMark 1.0 : 2959.140192 / GCC14.2.0 -O3 -DPERFORMANCE_RUN=1   / Static
+CoreMark 1.0 : 3002.069477 / GCC14.2.0 -O3 -DPERFORMANCE_RUN=1   / Static
 ```
 
 ## Documentation

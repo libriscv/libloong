@@ -1340,6 +1340,131 @@ struct InstrImpl {
 		vr_d.f[0] = vr_j.f[0] * vr_k.f[0];
 	}
 
+	static void FMOV_S(cpu_t& cpu, la_instruction instr) {
+		// Floating-point move (single precision)
+		uint32_t fd = instr.whole & 0x1F;
+		uint32_t fj = (instr.whole >> 5) & 0x1F;
+
+		const auto& vr_j = cpu.registers().getvr(fj);
+		auto& vr_d = cpu.registers().getvr(fd);
+		vr_d.f[0] = vr_j.f[0];
+	}
+
+	static void FADD_S(cpu_t& cpu, la_instruction instr) {
+		// Floating-point add (single precision)
+		uint32_t fd = instr.r3.rd;
+		uint32_t fj = instr.r3.rj;
+		uint32_t fk = instr.r3.rk;
+
+		const auto& vr_j = cpu.registers().getvr(fj);
+		const auto& vr_k = cpu.registers().getvr(fk);
+		auto& vr_d = cpu.registers().getvr(fd);
+		vr_d.f[0] = vr_j.f[0] + vr_k.f[0];
+	}
+
+	static void FSUB_S(cpu_t& cpu, la_instruction instr) {
+		// Floating-point subtract (single precision)
+		uint32_t fd = instr.r3.rd;
+		uint32_t fj = instr.r3.rj;
+		uint32_t fk = instr.r3.rk;
+
+		const auto& vr_j = cpu.registers().getvr(fj);
+		const auto& vr_k = cpu.registers().getvr(fk);
+		auto& vr_d = cpu.registers().getvr(fd);
+		vr_d.f[0] = vr_j.f[0] - vr_k.f[0];
+	}
+
+	static void FDIV_S(cpu_t& cpu, la_instruction instr) {
+		// Floating-point divide (single precision)
+		uint32_t fd = instr.r3.rd;
+		uint32_t fj = instr.r3.rj;
+		uint32_t fk = instr.r3.rk;
+
+		const auto& vr_j = cpu.registers().getvr(fj);
+		const auto& vr_k = cpu.registers().getvr(fk);
+		auto& vr_d = cpu.registers().getvr(fd);
+		vr_d.f[0] = vr_j.f[0] / vr_k.f[0];
+	}
+
+	static void FMAX_S(cpu_t& cpu, la_instruction instr) {
+		// Floating-point maximum (single precision)
+		uint32_t fd = instr.r3.rd;
+		uint32_t fj = instr.r3.rj;
+		uint32_t fk = instr.r3.rk;
+
+		const auto& vr_j = cpu.registers().getvr(fj);
+		const auto& vr_k = cpu.registers().getvr(fk);
+		auto& vr_d = cpu.registers().getvr(fd);
+		vr_d.f[0] = std::fmax(vr_j.f[0], vr_k.f[0]);
+	}
+
+	static void FMIN_S(cpu_t& cpu, la_instruction instr) {
+		// Floating-point minimum (single precision)
+		uint32_t fd = instr.r3.rd;
+		uint32_t fj = instr.r3.rj;
+		uint32_t fk = instr.r3.rk;
+
+		const auto& vr_j = cpu.registers().getvr(fj);
+		const auto& vr_k = cpu.registers().getvr(fk);
+		auto& vr_d = cpu.registers().getvr(fd);
+		vr_d.f[0] = std::fmin(vr_j.f[0], vr_k.f[0]);
+	}
+
+	static void FABS_S(cpu_t& cpu, la_instruction instr) {
+		// Floating-point absolute value (single precision)
+		uint32_t fd = instr.whole & 0x1F;
+		uint32_t fj = (instr.whole >> 5) & 0x1F;
+
+		const auto& vr_j = cpu.registers().getvr(fj);
+		auto& vr_d = cpu.registers().getvr(fd);
+		vr_d.f[0] = std::fabs(vr_j.f[0]);
+	}
+
+	static void FMADD_S(cpu_t& cpu, la_instruction instr) {
+		// Fused multiply-add (single precision): fd = fa + fj * fk
+		// 4R-type: fd[4:0], fj[9:5], fk[14:10], fa[19:15]
+		uint32_t fd = instr.r4.rd;
+		uint32_t fj = instr.r4.rj;
+		uint32_t fk = instr.r4.rk;
+		uint32_t fa = instr.r4.ra;
+
+		const auto& vr_j = cpu.registers().getvr(fj);
+		const auto& vr_k = cpu.registers().getvr(fk);
+		const auto& vr_a = cpu.registers().getvr(fa);
+		auto& vr_d = cpu.registers().getvr(fd);
+		vr_d.f[0] = vr_a.f[0] + vr_j.f[0] * vr_k.f[0];
+	}
+
+	static void FMSUB_S(cpu_t& cpu, la_instruction instr) {
+		// Fused multiply-subtract (single precision): fd = fk * fj - fa
+		// 4R-type: fd[4:0], fj[9:5], fk[14:10], fa[19:15]
+		uint32_t fd = instr.r4.rd;
+		uint32_t fj = instr.r4.rj;
+		uint32_t fk = instr.r4.rk;
+		uint32_t fa = instr.r4.ra;
+
+		const auto& vr_j = cpu.registers().getvr(fj);
+		const auto& vr_k = cpu.registers().getvr(fk);
+		const auto& vr_a = cpu.registers().getvr(fa);
+		auto& vr_d = cpu.registers().getvr(fd);
+		vr_d.f[0] = vr_k.f[0] * vr_j.f[0] - vr_a.f[0];
+	}
+
+	static void FLDX_S(cpu_t& cpu, la_instruction instr) {
+		// Floating-point indexed load (single precision)
+		auto addr = cpu.reg(instr.r3.rj) + cpu.reg(instr.r3.rk);
+		auto& vr = cpu.registers().getvr(instr.r3.rd);
+		vr.wu[0] = cpu.memory().template read<uint32_t, true>(addr);
+		vr.wu[1] = 0;
+	}
+
+	static void FSTX_S(cpu_t& cpu, la_instruction instr) {
+		// Floating-point indexed store (single precision)
+		auto addr = cpu.reg(instr.r3.rj) + cpu.reg(instr.r3.rk);
+		const auto& vr = cpu.registers().getvr(instr.r3.rd);
+		cpu.memory().template write<uint32_t, true>(addr, vr.wu[0]);
+	}
+
 	static void FSUB_D(cpu_t& cpu, la_instruction instr) {
 		// Floating-point subtract (double precision)
 		uint32_t fd = instr.r3.rd;

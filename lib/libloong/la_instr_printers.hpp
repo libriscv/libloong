@@ -472,8 +472,18 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 			instr.r3.rd, reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
 
+	static int FLDX_S(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		return snprintf(buf, len, "fldx.s $fa%u, %s, %s",
+			instr.r3.rd, reg_name(instr.r3.rj), reg_name(instr.r3.rk));
+	}
+
 	static int FSTX_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		return snprintf(buf, len, "fstx.d $fa%u, %s, %s",
+			instr.r3.rd, reg_name(instr.r3.rj), reg_name(instr.r3.rk));
+	}
+
+	static int FSTX_S(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		return snprintf(buf, len, "fstx.s $fa%u, %s, %s",
 			instr.r3.rd, reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
 
@@ -1078,6 +1088,12 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		return snprintf(buf, len, "fabs.d $fa%u, $fa%u", fd, fj);
 	}
 
+	static int FABS_S(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t fd = instr.whole & 0x1F;
+		uint32_t fj = (instr.whole >> 5) & 0x1F;
+		return snprintf(buf, len, "fabs.s $fa%u, $fa%u", fd, fj);
+	}
+
 	static int FNEG_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		uint32_t fd = instr.whole & 0x1F;
 		uint32_t fj = (instr.whole >> 5) & 0x1F;
@@ -1088,6 +1104,12 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		uint32_t fd = instr.whole & 0x1F;
 		uint32_t fj = (instr.whole >> 5) & 0x1F;
 		return snprintf(buf, len, "fmov.d $fa%u, $fa%u", fd, fj);
+	}
+
+	static int FMOV_S(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t fd = instr.whole & 0x1F;
+		uint32_t fj = (instr.whole >> 5) & 0x1F;
+		return snprintf(buf, len, "fmov.s $fa%u, $fa%u", fd, fj);
 	}
 
 	static int FCLASS(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
@@ -1154,6 +1176,13 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		return snprintf(buf, len, "fadd.d $fa%u, $fa%u, $fa%u", fd, fj, fk);
 	}
 
+	static int FADD_S(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t fd = instr.r3.rd;
+		uint32_t fj = instr.r3.rj;
+		uint32_t fk = instr.r3.rk;
+		return snprintf(buf, len, "fadd.s $fa%u, $fa%u, $fa%u", fd, fj, fk);
+	}
+
 	static int FMUL_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		uint32_t fd = instr.r3.rd;
 		uint32_t fj = instr.r3.rj;
@@ -1175,11 +1204,39 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		return snprintf(buf, len, "fsub.d $fa%u, $fa%u, $fa%u", fd, fj, fk);
 	}
 
+	static int FSUB_S(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t fd = instr.r3.rd;
+		uint32_t fj = instr.r3.rj;
+		uint32_t fk = instr.r3.rk;
+		return snprintf(buf, len, "fsub.s $fa%u, $fa%u, $fa%u", fd, fj, fk);
+	}
+
 	static int FDIV_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		uint32_t fd = instr.r3.rd;
 		uint32_t fj = instr.r3.rj;
 		uint32_t fk = instr.r3.rk;
 		return snprintf(buf, len, "fdiv.d $fa%u, $fa%u, $fa%u", fd, fj, fk);
+	}
+
+	static int FDIV_S(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t fd = instr.r3.rd;
+		uint32_t fj = instr.r3.rj;
+		uint32_t fk = instr.r3.rk;
+		return snprintf(buf, len, "fdiv.s $fa%u, $fa%u, $fa%u", fd, fj, fk);
+	}
+
+	static int FMAX_S(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t fd = instr.r3.rd;
+		uint32_t fj = instr.r3.rj;
+		uint32_t fk = instr.r3.rk;
+		return snprintf(buf, len, "fmax.s $fa%u, $fa%u, $fa%u", fd, fj, fk);
+	}
+
+	static int FMIN_S(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t fd = instr.r3.rd;
+		uint32_t fj = instr.r3.rj;
+		uint32_t fk = instr.r3.rk;
+		return snprintf(buf, len, "fmin.s $fa%u, $fa%u, $fa%u", fd, fj, fk);
 	}
 
 	static int FMSUB_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
@@ -1196,6 +1253,22 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		uint32_t fk = instr.r4.rk;
 		uint32_t fa = instr.r4.ra;
 		return snprintf(buf, len, "fmadd.d $fa%u, $fa%u, $fa%u, $fa%u", fd, fj, fk, fa);
+	}
+
+	static int FMADD_S(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t fd = instr.r4.rd;
+		uint32_t fj = instr.r4.rj;
+		uint32_t fk = instr.r4.rk;
+		uint32_t fa = instr.r4.ra;
+		return snprintf(buf, len, "fmadd.s $fa%u, $fa%u, $fa%u, $fa%u", fd, fj, fk, fa);
+	}
+
+	static int FMSUB_S(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t fd = instr.r4.rd;
+		uint32_t fj = instr.r4.rj;
+		uint32_t fk = instr.r4.rk;
+		uint32_t fa = instr.r4.ra;
+		return snprintf(buf, len, "fmsub.s $fa%u, $fa%u, $fa%u, $fa%u", fd, fj, fk, fa);
 	}
 
 	static int VFRSTPI_B(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {

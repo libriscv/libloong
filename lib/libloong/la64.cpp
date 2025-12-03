@@ -409,6 +409,17 @@ namespace loongarch
 	INSTRUCTION(FSTX_D);
 	INSTRUCTION(FCMP_COND_S);
 	INSTRUCTION(FCMP_COND_D);
+	INSTRUCTION(FMOV_S);
+	INSTRUCTION(FADD_S);
+	INSTRUCTION(FSUB_S);
+	INSTRUCTION(FDIV_S);
+	INSTRUCTION(FMAX_S);
+	INSTRUCTION(FMIN_S);
+	INSTRUCTION(FABS_S);
+	INSTRUCTION(FMADD_S);
+	INSTRUCTION(FMSUB_S);
+	INSTRUCTION(FLDX_S);
+	INSTRUCTION(FSTX_S);
 
 	// Decode function
 	const CPU::instruction_t& CPU::decode(format_t instr)
@@ -468,14 +479,24 @@ namespace loongarch
 
 			// FADD.D: op17 = 0x01010000
 			if (op17 == 0x01010000) return DECODED_INSTR(FADD_D);
+			// FADD.S: op17 = 0x01008000
+			if (op17 == 0x01008000) return DECODED_INSTR(FADD_S);
 			// FMUL.D: op17 = 0x01050000
 			if (op17 == 0x01050000) return DECODED_INSTR(FMUL_D);
 			// FMUL.S: op17 = 0x01048000
 			if (op17 == 0x01048000) return DECODED_INSTR(FMUL_S);
 			// FSUB.D: op17 = 0x01030000
 			if (op17 == 0x01030000) return DECODED_INSTR(FSUB_D);
+			// FSUB.S: op17 = 0x01028000
+			if (op17 == 0x01028000) return DECODED_INSTR(FSUB_S);
 			// FDIV.D: op17 = 0x01070000
 			if (op17 == 0x01070000) return DECODED_INSTR(FDIV_D);
+			// FDIV.S: op17 = 0x01068000
+			if (op17 == 0x01068000) return DECODED_INSTR(FDIV_S);
+			// FMAX.S: op17 = 0x01088000
+			if (op17 == 0x01088000) return DECODED_INSTR(FMAX_S);
+			// FMIN.S: op17 = 0x010A8000
+			if (op17 == 0x010A8000) return DECODED_INSTR(FMIN_S);
 
 			// Division/Modulo instructions
 			if (op17 == Opcode::DIV_W) return DECODED_INSTR(DIV_W);
@@ -562,10 +583,14 @@ namespace loongarch
 				if (op22_val == 0x4537) return DECODED_INSTR(MOVCF2GR);
 				// FABS.D: bits[31:10] = 0x4502
 				if (op22_val == 0x4502) return DECODED_INSTR(FABS_D);
+				// FABS.S: bits[31:10] = 0x4501
+				if (op22_val == 0x4501) return DECODED_INSTR(FABS_S);
 				// FNEG.D: bits[31:10] = 0x4506
 				if (op22_val == 0x4506) return DECODED_INSTR(FNEG_D);
 				// FMOV.D: bits[31:10] = 0x4526
 				if (op22_val == 0x4526) return DECODED_INSTR(FMOV_D);
+				// FMOV.S: bits[31:10] = 0x4525
+				if (op22_val == 0x4525) return DECODED_INSTR(FMOV_S);
 				// FCLASS.S: bits[31:10] = 0x450D
 				if (op22_val == 0x450D) return DECODED_INSTR(FCLASS_S);
 				// FCLASS.D: bits[31:10] = 0x450E
@@ -625,8 +650,12 @@ namespace loongarch
 				if (op12_4r == 0x082) {
 					return DECODED_INSTR(FMADD_D);
 				}
+				// FMADD.S: bits[31:20] = 0x081
+				if (op12_4r == 0x081) return DECODED_INSTR(FMADD_S);
 				// FMSUB.D: bits[31:20] = 0x086
 				if (op12_4r == 0x086) return DECODED_INSTR(FMSUB_D);
+				// FMSUB.S: bits[31:20] = 0x085
+				if (op12_4r == 0x085) return DECODED_INSTR(FMSUB_S);
 				// VFMADD.D: Vector FMA (bits[31:20] = 0x092)
 				if (op12_4r == 0x092) return DECODED_INSTR(VFMADD_D);
 				// NOTE: VFNMADD.D is handled in case 0x03 or has a different encoding
@@ -798,8 +827,12 @@ namespace loongarch
 			if ((instr.whole & 0xFFFC0000) == Opcode::STX_D) return DECODED_INSTR(STX_D);
 			// FLDX_D: Floating-point indexed load (double)
 			if ((instr.whole & 0xFFFC0000) == 0x38340000) return DECODED_INSTR(FLDX_D);
+			// FLDX_S: Floating-point indexed load (single) - 0x38300000
+			if ((instr.whole & 0xFFFC0000) == 0x38300000) return DECODED_INSTR(FLDX_S);
 			// FSTX_D: Floating-point indexed store
 			if ((instr.whole & 0xFFFC0000) == Opcode::FSTX_D) return DECODED_INSTR(FSTX_D);
+			// FSTX_S: Floating-point indexed store (single) - 0x38380000
+			if ((instr.whole & 0xFFFC0000) == 0x38380000) return DECODED_INSTR(FSTX_S);
 			// VLDX: Vector indexed load (LSX 128-bit)
 			if ((instr.whole & 0xFFFC0000) == 0x38400000) return DECODED_INSTR(VLDX);
 			// VSTX: Vector indexed store (LSX 128-bit)

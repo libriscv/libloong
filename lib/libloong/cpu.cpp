@@ -90,7 +90,7 @@ namespace loongarch
 	typename CPU::NextExecuteReturn CPU::next_execute_segment(address_t pc)
 	{
 		auto segment = machine().memory.exec_segment_for(pc);
-		if (!segment) {
+		if (segment->empty()) {
 			throw MachineException(EXECUTION_SPACE_PROTECTION_FAULT,
 				"Jump outside execute segment", pc);
 		}

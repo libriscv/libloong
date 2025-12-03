@@ -4,7 +4,8 @@
 
 namespace loongarch
 {
-	struct DecodedExecuteSegment {		DecodedExecuteSegment(address_t begin, address_t end)
+	struct DecodedExecuteSegment {
+		DecodedExecuteSegment(address_t begin, address_t end)
 			: m_exec_begin(begin), m_exec_end(end) {}
 
 		~DecodedExecuteSegment() {

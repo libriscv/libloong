@@ -283,7 +283,7 @@ std::shared_ptr<DecodedExecuteSegment> Memory::exec_segment_for(address_t pc) co
 	for (auto& seg : m_exec) {
 		if (seg->is_within(pc)) return seg;
 	}
-	return nullptr;
+	return CPU::empty_execute_segment();
 }
 
 void Memory::evict_execute_segments()

@@ -272,8 +272,22 @@ TEST_CASE("GuestStdString - SSO and heap allocation", "[native]")
 	CompilerOptions opts;
 	opts.optimization = 2;
 	CodeBuilder builder;
-	auto binary = builder.build(FAST_EXIT_FUNCTION + R"(
+	auto binary = builder.build_cpp(FAST_EXIT_FUNCTION + R"(
+		#include <string>
 		int main() { return 0; }
+		asm(".pushsection .text\n"
+			".global stringcall\n"
+			".type stringcall, @function\n"
+			"stringcall:\n"
+			"	li.w $a7, 499\n"
+			"	syscall 0\n"
+			"	ret\n"
+			".popsection\n");
+		extern "C" void stringcall(const std::string* str);
+
+		void test_syscall(std::string* str) {
+			stringcall(str);
+		}
 	)", "guest_string_test", opts);
 
 	TestMachine test_machine(binary);
@@ -281,6 +295,14 @@ TEST_CASE("GuestStdString - SSO and heap allocation", "[native]")
 
 	setup_native_system_calls(machine);
 	test_machine.setup_linux();
+	static bool syscall_entered = false;
+	test_machine.machine().install_syscall_handler(499,
+		[](Machine& m) {
+			auto [str] = m.sysargs<const GuestStdString*>();
+			REQUIRE(!str->empty());
+			REQUIRE(str->to_string(m) == "Test string from syscall");
+			syscall_entered = true;
+		});
 
 	SECTION("Small String Optimization (SSO)") {
 		ScopedCppString str(machine);
@@ -317,6 +339,16 @@ TEST_CASE("GuestStdString - SSO and heap allocation", "[native]")
 
 		str = "Third";
 		REQUIRE(str->to_string(machine) == "Third");
+	}
+
+	SECTION("String host call") {
+		ScopedCppString str(machine, "Test string from syscall");
+		for (unsigned i = 0; i < 10; i++) {
+			syscall_entered = false;
+			test_machine.vmcall("stringcall", str);
+			REQUIRE(!test_machine.machine().instruction_limit_reached());
+			REQUIRE(syscall_entered);
+		}
 	}
 }
 
@@ -438,5 +470,100 @@ TEST_CASE("GuestStdVector - resize operations", "[native]")
 		REQUIRE(vec->size() == 3);
 		REQUIRE(vec->at(machine, 0) == 1);
 		REQUIRE(vec->at(machine, 2) == 3);
+	}
+}
+
+TEST_CASE("Composite types with fix_addresses", "[native]")
+{
+	CodeBuilder builder;
+	auto binary = builder.build(FAST_EXIT_FUNCTION + R"(
+		int main() { return 0; }
+	)", "composite");
+	TestMachine test_machine(binary);
+	auto& machine = test_machine.machine();
+	setup_native_system_calls(machine);
+
+	SECTION("Struct with GuestStdString and GuestStdVector<GuestStdString>") {
+		struct Dialogue {
+			GuestStdString speaker;
+			GuestStdVector<GuestStdString> lines;
+
+			Dialogue(Machine& m, const std::string& spk, const std::vector<std::string>& lns)
+				: speaker(m, spk), lines(m)
+			{
+				for (const auto& line : lns)
+					lines.push_back(m, line);
+			}
+
+			void fix_addresses(Machine& m, address_t self) {
+				speaker.fix_addresses(m, self + offsetof(Dialogue, speaker));
+				lines.fix_addresses(m, self + offsetof(Dialogue, lines));
+			}
+		};
+
+		// Create a Dialogue with SSO strings
+		ScopedArenaObject<Dialogue> dlg(machine,
+			machine,
+			"Alice",
+			std::vector<std::string>{"Hi", "Hello", "How are you?"});
+
+		// Verify speaker (SSO)
+		REQUIRE(dlg->speaker.size == 5);
+		REQUIRE(dlg->speaker.to_string(machine) == "Alice");
+
+		// Verify lines vector
+		REQUIRE(dlg->lines.size() == 3);
+		REQUIRE(dlg->lines.at(machine, 0).to_string(machine) == "Hi");
+		REQUIRE(dlg->lines.at(machine, 1).to_string(machine) == "Hello");
+		REQUIRE(dlg->lines.at(machine, 2).to_string(machine) == "How are you?");
+
+		// Verify SSO pointers are correctly set
+		REQUIRE(dlg->speaker.ptr == dlg.address() + offsetof(Dialogue, speaker) + offsetof(GuestStdString, data));
+
+		// Verify vector element SSO pointers
+		for (size_t i = 0; i < dlg->lines.size(); i++) {
+			const auto& line = dlg->lines.at(machine, i);
+			if (line.size <= GuestStdString::SSO) {
+				address_t expected_ptr = dlg->lines.address_at(i) + offsetof(GuestStdString, data);
+				REQUIRE(line.ptr == expected_ptr);
+			}
+		}
+	}
+
+	SECTION("Struct with long strings (heap allocation)") {
+		struct Dialogue {
+			GuestStdString speaker;
+			GuestStdVector<GuestStdString> lines;
+
+			Dialogue(Machine& m, const std::string& spk, const std::vector<std::string>& lns)
+				: speaker(m, spk), lines(m)
+			{
+				for (const auto& line : lns)
+					lines.push_back(m, line);
+			}
+
+			void fix_addresses(Machine& m, address_t self) {
+				speaker.fix_addresses(m, self + offsetof(Dialogue, speaker));
+				lines.fix_addresses(m, self + offsetof(Dialogue, lines));
+			}
+		};
+
+		// Create a Dialogue with long strings
+		ScopedArenaObject<Dialogue> dlg(machine,
+			machine,
+			"Very long speaker name that exceeds SSO",
+			std::vector<std::string>{
+				"This is a very long line that exceeds SSO buffer size",
+				"Another long line here"
+			});
+
+		// Verify speaker (heap allocated)
+		REQUIRE(dlg->speaker.size > GuestStdString::SSO);
+		REQUIRE(dlg->speaker.to_string(machine) == "Very long speaker name that exceeds SSO");
+
+		// Verify lines vector
+		REQUIRE(dlg->lines.size() == 2);
+		REQUIRE(dlg->lines.at(machine, 0).to_string(machine) == "This is a very long line that exceeds SSO buffer size");
+		REQUIRE(dlg->lines.at(machine, 1).to_string(machine) == "Another long line here");
 	}
 }

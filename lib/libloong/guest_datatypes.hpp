@@ -19,7 +19,14 @@ struct is_guest_stdvector : std::false_type {};
 template <typename T>
 struct is_guest_stdvector<GuestStdVector<T>> : std::true_type {};
 
-// View into libstdc++'s std::string (compatible with libstdc++ and libc++)
+// Type trait for detecting types that support fix_addresses
+template <typename T, typename = void>
+struct has_fix_addresses : std::false_type {};
+
+template <typename T>
+struct has_fix_addresses<T, std::void_t<decltype(std::declval<T>().fix_addresses(std::declval<Machine&>(), std::declval<address_t>()))>> : std::true_type {};
+
+// View into libstdc++'s std::string
 struct GuestStdString {
 	static constexpr std::size_t SSO = 15;
 
@@ -108,6 +115,11 @@ struct GuestStdString {
 		if (size <= SSO) {
 			this->ptr = self + offsetof(GuestStdString, data);
 		}
+	}
+
+	void fix_addresses(Machine& machine, address_t self)
+	{
+		this->move(self);
 	}
 
 	void free(Machine& machine)
@@ -381,6 +393,26 @@ struct GuestStdVector {
 		}
 	}
 
+	void fix_addresses(Machine& machine, address_t self) {
+		(void)self; // Not used for vectors themselves
+		// Fix addresses in elements if they need it
+		if constexpr (std::is_same_v<T, GuestStdString>) {
+			if (this->size() > 0) {
+				T* array = machine.memory.template writable_memarray<T>(this->data(), this->size());
+				for (std::size_t i = 0; i < this->size(); i++) {
+					array[i].fix_addresses(machine, this->data() + i * sizeof(T));
+				}
+			}
+		} else if constexpr (is_guest_stdvector<T>::value) {
+			if (this->size() > 0) {
+				T* array = machine.memory.template writable_memarray<T>(this->data(), this->size());
+				for (std::size_t i = 0; i < this->size(); i++) {
+					array[i].fix_addresses(machine, this->data() + i * sizeof(T));
+				}
+			}
+		}
+	}
+
 	std::size_t size_bytes() const noexcept { return ptr_end - ptr_begin; }
 	std::size_t capacity_bytes() const noexcept { return ptr_capacity - ptr_begin; }
 
@@ -419,15 +451,20 @@ struct ScopedArenaObject {
 			throw std::bad_alloc();
 		}
 		this->m_ptr = m_machine->memory.template writable_memarray<T>(this->m_addr, 1);
-		// Adjust the SSO pointer if the object is a std::string
+
+		// Construct the object
 		if constexpr (std::is_same_v<T, GuestStdString>) {
 			new (m_ptr) T(machine, std::forward<Args>(args)...);
-			this->m_ptr->move(this->m_addr);
 		} else if constexpr (is_guest_stdvector<T>::value) {
 			new (m_ptr) T(machine, std::forward<Args>(args)...);
 		} else {
 			// Construct the object in place (as if trivially constructible)
 			new (m_ptr) T{std::forward<Args>(args)...};
+		}
+
+		// Fix addresses if the type supports it
+		if constexpr (has_fix_addresses<T>::value) {
+			this->m_ptr->fix_addresses(machine, this->m_addr);
 		}
 	}
 

@@ -319,6 +319,11 @@ void Script::patch_host_functions()
 		// Check if function exists in guest
 		try {
 			auto addr = address_of(name);
+			if (addr == 0) {
+				fmt::print(stderr,
+					"Warning: Host function '{}' is missing in guest, skipping\n", name);
+				continue;
+			}
 
 			if (m_options.verbose) {
 				fmt::print("Patching host function '{}' at address 0x{:x} to syscall {}\n",
@@ -333,8 +338,10 @@ void Script::patch_host_functions()
 			entry.instr = binding.syscall_num;
 
 			// Install into decoder cache
-			auto& exec_seg = *m_machine->memory.exec_segment_for(addr);
-			exec_seg.set(addr, entry);
+			auto exec_seg = m_machine->memory.exec_segment_for(addr);
+			if (!exec_seg->empty()) {
+				exec_seg->set(addr, entry);
+			}
 
 		} catch (const ScriptException&) {
 			// Function not found in guest - skip

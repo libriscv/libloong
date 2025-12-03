@@ -82,6 +82,9 @@ public:
 	template<typename Ret = int, typename... Args>
     Ret call(const std::string& function_name, Args&&... args) {
 		const address_t addr = address_of(function_name);
+		if (addr == 0) {
+			throw ScriptException("Function not found: " + function_name);
+		}
 		return call<Ret>(addr, std::forward<Args>(args)...);
     }
 

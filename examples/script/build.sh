@@ -16,7 +16,7 @@ cmake "$SCRIPT_DIR" \
     -DCMAKE_CXX_STANDARD=20
 
 echo "Building..."
-cmake --build . --target script_example -j$(nproc)
+cmake --build . -j$(nproc)
 
 ln -fs "$BUILD_DIR"/script_example "$SCRIPT_DIR/script_example"
 

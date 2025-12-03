@@ -42,6 +42,7 @@ add_library(libloong_script STATIC
     script.cpp
     script.hpp
     host_bindings.hpp
+    api_generator.hpp
 )
 
 # Create an alias for consistency with FetchContent usage
@@ -57,11 +58,17 @@ target_link_libraries(libloong_script PUBLIC
     fmt::fmt
 )
 
-# Only build example if this is the main project
+# Only build examples if this is the main project
 if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
+    # Original example (code snippet based)
     add_executable(script_example
         example.cpp
     )
-
     target_link_libraries(script_example PRIVATE libloong_script)
+
+    # New example (project-based with API generation)
+    add_executable(script_example_new
+        example_new.cpp
+    )
+    target_link_libraries(script_example_new PRIVATE libloong_script)
 endif()

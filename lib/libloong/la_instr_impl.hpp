@@ -1328,6 +1328,18 @@ struct InstrImpl {
 		vr_d.df[0] = vr_j.df[0] * vr_k.df[0];
 	}
 
+	static void FMUL_S(cpu_t& cpu, la_instruction instr) {
+		// Floating-point multiply (single precision)
+		uint32_t fd = instr.r3.rd;
+		uint32_t fj = instr.r3.rj;
+		uint32_t fk = instr.r3.rk;
+
+		const auto& vr_j = cpu.registers().getvr(fj);
+		const auto& vr_k = cpu.registers().getvr(fk);
+		auto& vr_d = cpu.registers().getvr(fd);
+		vr_d.f[0] = vr_j.f[0] * vr_k.f[0];
+	}
+
 	static void FSUB_D(cpu_t& cpu, la_instruction instr) {
 		// Floating-point subtract (double precision)
 		uint32_t fd = instr.r3.rd;

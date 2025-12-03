@@ -1161,6 +1161,13 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		return snprintf(buf, len, "fmul.d $fa%u, $fa%u, $fa%u", fd, fj, fk);
 	}
 
+	static int FMUL_S(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t fd = instr.r3.rd;
+		uint32_t fj = instr.r3.rj;
+		uint32_t fk = instr.r3.rk;
+		return snprintf(buf, len, "fmul.s $fa%u, $fa%u, $fa%u", fd, fj, fk);
+	}
+
 	static int FSUB_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		uint32_t fd = instr.r3.rd;
 		uint32_t fj = instr.r3.rj;

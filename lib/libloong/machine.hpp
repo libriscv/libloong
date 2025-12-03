@@ -17,6 +17,7 @@ namespace loongarch
 	struct alignas(LA_MACHINE_ALIGNMENT) Machine
 	{
 		using syscall_t = void(Machine&);
+		using unknown_syscall_t = void(Machine&, int);
 		using rdtime_callback_t = uint64_t(Machine&);
 
 		// Construction
@@ -67,6 +68,7 @@ namespace loongarch
 
 		// System call interface
 		static void install_syscall_handler(unsigned sysnum, syscall_t* handler);
+		static void set_unknown_syscall_handler(unknown_syscall_t* handler);
 		void system_call(unsigned sysnum);
 		void unchecked_system_call(unsigned sysnum);
 		template <typename T = address_t>
@@ -166,6 +168,7 @@ namespace loongarch
 		std::unique_ptr<Signals> m_signals;
 		std::unique_ptr<MultiThreading> m_mt;
 		static inline std::array<syscall_t*, LA_SYSCALLS_MAX> m_syscall_handlers = {};
+		static inline unknown_syscall_t* m_unknown_syscall_handler = nullptr;
 		static inline rdtime_callback_t* m_rdtime_handler = nullptr;
 
 		void push_argument(address_t& sp, address_t value);

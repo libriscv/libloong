@@ -313,7 +313,7 @@ namespace loongarch
 	static void syscall_getpid(Machine& machine)
 	{
 		(void)machine;
-		machine.set_result(1);  // Fake PID
+		machine.set_result(0);  // Fake PID
 	}
 
 	static void syscall_getuid(Machine& machine)

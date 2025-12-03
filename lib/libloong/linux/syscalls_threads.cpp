@@ -202,13 +202,13 @@ namespace loongarch
 		// clone
 		this->install_syscall_handler(220,
 		[](Machine& machine) {
-			/* int clone(int (*fn)(void *arg), void *child_stack, int flags, void *arg,
+			/* int clone(int (*fn)(void *arg), int flags, void *child_stack, void *arg,
 						 void *parent_tidptr, void *tls, void *child_tidptr) */
 			const int  flags = machine.sysarg<int>(0);
 			const auto stack = machine.sysarg<address_t>(1);
 			const auto  ptid = machine.sysarg<address_t>(3);
-			const auto   tls = machine.sysarg<address_t>(2);
-			const auto  ctid = machine.sysarg<address_t>(4);
+			const auto   tls = machine.sysarg<address_t>(4);
+			const auto  ctid = machine.sysarg<address_t>(5);
 			auto* parent = machine.threads().get_thread();
 			auto* thread = machine.threads().create(flags, ctid, ptid, stack, tls, 0, 0);
 			thprint(machine,

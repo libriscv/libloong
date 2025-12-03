@@ -16,7 +16,8 @@ namespace loongarch
 			handler(*this);
 			return;
 		}
-		throw MachineException(ILLEGAL_OPERATION, "Unknown system call", syscall_number);
+		// Call unknown syscall handler if registered
+		m_unknown_syscall_handler(*this, syscall_number);
 	}
 
 	inline void Machine::unchecked_system_call(unsigned syscall_number)
@@ -29,6 +30,11 @@ namespace loongarch
 		if (syscall_number < m_syscall_handlers.size()) {
 			m_syscall_handlers[syscall_number] = handler;
 		}
+	}
+
+	inline void Machine::set_unknown_syscall_handler(unknown_syscall_t* handler)
+	{
+		m_unknown_syscall_handler = handler;
 	}
 
 	template <typename T>

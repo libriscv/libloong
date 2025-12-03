@@ -17,11 +17,14 @@ namespace loongarch
 		// Initialize all system call handlers to a throwing stub on first creation (thread-safe)
 		static std::once_flag init_flag;
 		std::call_once(init_flag, []() {
+			m_unknown_syscall_handler = [](Machine& m, int sysnum) {
+				throw MachineException(UNIMPLEMENTED_SYSCALL,
+					"Unimplemented system call", sysnum);
+			};
 			for (auto& handler : m_syscall_handlers) {
 				handler = [](Machine& m) {
 					const int sysnum = static_cast<int>(m.cpu.reg(REG_A7));
-					throw MachineException(UNIMPLEMENTED_SYSCALL,
-						"Unimplemented system call", sysnum);
+					m_unknown_syscall_handler(m, sysnum);
 				};
 			}
 		});

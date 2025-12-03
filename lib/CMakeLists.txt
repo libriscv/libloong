@@ -93,9 +93,6 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clan
 		-Wall -Wextra -Wno-unused-parameter
 		-fno-rtti
 	)
-	if (NOT LA_DEBUG)
-		target_compile_options(loong PRIVATE -O3)
-	endif()
 endif()
 
 # Platform-specific settings

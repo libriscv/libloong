@@ -1,14 +1,14 @@
 #pragma once
 
-#include <libloong/machine.hpp>
-#include <string>
-#include <vector>
-#include <memory>
 #include <filesystem>
-#include <stdexcept>
 #include <functional>
+#include <libloong/machine.hpp>
+#include <memory>
+#include <stdexcept>
+#include <string>
 #include <unordered_map>
-#include "host_bindings.hpp"
+#include <vector>
+#include "api_generator.hpp"
 
 namespace loongarch::script {
 

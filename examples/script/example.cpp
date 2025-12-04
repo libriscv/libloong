@@ -1,12 +1,7 @@
 #include "script.hpp"
-#include "host_bindings.hpp"
-#include "api_generator.hpp"
 #include <fmt/core.h>
 #include <cmath>
 #include <cassert>
-#include <filesystem>
-#include <type_traits>
-
 using namespace loongarch::script;
 
 // Language trait system for compile-time language selection
@@ -27,8 +22,14 @@ struct LanguageTraits {
 	using ScopedVectorType = std::conditional_t<IsRust, loongarch::ScopedRustVector<T>, loongarch::ScopedCppVector<T>>;
 };
 
+// Example 2: Stateful host functions can access user data
 namespace {
-	void init_basic_functions()
+	static struct UserState {
+		int counter = 0;
+		int random_value = 5;
+	} user_state;
+
+	void init_host_functions()
 	{
 		// Register host functions globally at load time
 		HostBindings::register_function(
@@ -50,29 +51,14 @@ namespace {
 				fmt::print("  [HOST] sqrt({:.2f}) called\n", x);
 				return std::sqrt(x);
 			});
-	}
 
-	static struct BasicFunctionsInit {
-		BasicFunctionsInit() { init_basic_functions(); }
-	} basic_functions_init;
-}
-
-// Example 2: Stateful host functions (can capture state)
-namespace {
-	static struct UserState {
-		int counter = 0;
-	} user_state;
-
-	void init_stateful_functions()
-	{
 		HostBindings::register_function(
 			"int get_counter()",
 			[](loongarch::Machine& m) -> int {
 				UserState& state = *m.get_userdata<Script>()->get_userdata<UserState>();
 				fmt::print("  [HOST] get_counter() = {}\n", state.counter);
 				return state.counter;
-			}
-		);
+			});
 
 		HostBindings::register_function(
 			"void increment_counter()",
@@ -89,147 +75,48 @@ namespace {
 				state.counter = 0;
 				fmt::print("  [HOST] reset_counter()\n");
 			});
-	}
 
-	static struct StatefulFunctionsInit {
-		StatefulFunctionsInit() { init_stateful_functions(); }
-	} stateful_functions_init;
+		HostBindings::register_function(
+			"int get_random()",
+			[](loongarch::Machine& m) -> int {
+				UserState& state = *m.get_userdata<Script>()->get_userdata<UserState>();
+				fmt::print("  [HOST] get_random() = {}\n", state.random_value);
+				return state.random_value++;
+			});
+	}
 }
 
 // Example 3: String handling host functions (unified C++ and Rust)
 namespace {
-	// Template helper to get the correct string type based on language mode
-	template<bool IsRust>
-	using StringType = std::conditional_t<IsRust, loongarch::GuestRustString, loongarch::GuestStdString>;
-
-	// Template helper to get the correct vector type based on language mode
-	template<bool IsRust, typename T>
-	using VectorType = std::conditional_t<IsRust, loongarch::GuestRustVector<T>, loongarch::GuestStdVector<T>>;
-
-	// Unified implementation of log_message that works for both C++ and Rust
-	template<bool IsRust>
-	void log_message_impl(loongarch::Machine& machine, const StringType<IsRust>* msg) {
-		try {
-			fmt::print("  [LOG] {}\n", msg->to_view(machine));
-		} catch (const std::exception& e) {
-			fmt::print("  [ERROR] Failed to read string: {}\n", e.what());
-		}
-	}
-
-	// Unified implementation of string_length that works for both C++ and Rust
-	template<bool IsRust>
-	int string_length_impl(loongarch::Machine& machine, const StringType<IsRust>* str) {
-		int len;
-		if constexpr (IsRust) {
-			len = static_cast<int>(str->len);
-		} else {
-			len = static_cast<int>(str->size);
-		}
-		fmt::print("  [HOST] string_length() = {}\n", len);
-		return len;
-	}
-
-	// Unified implementation of print_vector_sum that works for both C++ and Rust
-	template<bool IsRust>
-	void print_vector_sum_impl(loongarch::Machine& machine, const VectorType<IsRust, int>* vec) {
-		int sum = 0;
-		const int* arr = vec->as_array(machine);
-		for (size_t i = 0; i < vec->size(); i++) {
-			sum += arr[i];
-		}
-		fmt::print("  [HOST] print_vector_sum({} elements) = {}\n", vec->size(), sum);
-	}
-
-	// Unified implementation of do_dialogue that works for both C++ and Rust
-	template<bool IsRust>
-	void do_dialogue_impl(loongarch::Machine& machine, const void* dlg_ptr) {
-		using StringType = StringType<IsRust>;
-		using VectorType = VectorType<IsRust, StringType>;
-
-		struct Dialogue {
-			StringType speaker;
-			VectorType lines;
-		};
-
-		const Dialogue* dlg = static_cast<const Dialogue*>(dlg_ptr);
-		try {
-			fmt::print("  [DIALOGUE] Speaker: {}\n", dlg->speaker.to_view(machine));
-			const StringType* lines_arr = dlg->lines.as_array(machine);
-			for (size_t i = 0; i < dlg->lines.size(); i++) {
-				fmt::print("  [DIALOGUE]   Line {}: {}\n", i + 1, lines_arr[i].to_view(machine));
-			}
-		} catch (const std::exception& e) {
-			fmt::print("  [ERROR] Failed to read dialogue: {}\n", e.what());
-		}
-	}
-
+	template <typename Lang>
 	void init_string_functions() {
-		// Register C++ versions
+		using StringType = typename Lang::StringType;
+		using IntVectorType = typename Lang::template VectorType<int>;
+
 		HostBindings::register_function(
 			"void log_message(const std::string& msg)",
-			[](loongarch::Machine& machine, const loongarch::GuestStdString* msg) {
-				log_message_impl<false>(machine, msg);
-			}
-		);
+			[](loongarch::Machine& machine, const StringType* msg) {
+				fmt::print("  [LOG] {}\n", msg->to_view(machine));
+			});
 
 		HostBindings::register_function(
 			"int string_length(const std::string& str)",
-			[](loongarch::Machine& machine, const loongarch::GuestStdString* str) -> int {
-				return string_length_impl<false>(machine, str);
-			}
-		);
+			[](loongarch::Machine& machine, const StringType* str) -> int {
+				fmt::print("  [HOST] string_length() = {}\n", str->size());
+				return str->size();
+			});
 
 		HostBindings::register_function(
 			"void print_vector_sum(const std::vector<int>& vec)",
-			[](loongarch::Machine& machine, const loongarch::GuestStdVector<int>* vec) {
-				print_vector_sum_impl<false>(machine, vec);
-			}
-		);
-
-		// Register Rust versions
-		HostBindings::register_function(
-			"void rust_log_message(const std::string& msg)",
-			[](loongarch::Machine& machine, const loongarch::GuestRustString* msg) {
-				log_message_impl<true>(machine, msg);
-			}
-		);
-
-		HostBindings::register_function(
-			"int rust_string_length(const std::string& str)",
-			[](loongarch::Machine& machine, const loongarch::GuestRustString* str) -> int {
-				return string_length_impl<true>(machine, str);
-			}
-		);
-
-		HostBindings::register_function(
-			"void rust_print_vector_sum(const std::vector<int>& vec)",
-			[](loongarch::Machine& machine, const loongarch::GuestRustVector<int>* vec) {
-				print_vector_sum_impl<true>(machine, vec);
-			}
-		);
+			[](loongarch::Machine& machine, const IntVectorType* vec) {
+				int sum = 0;
+				const int* arr = vec->as_array(machine);
+				for (size_t i = 0; i < vec->size(); i++) {
+					sum += arr[i];
+				}
+				fmt::print("  [HOST] print_vector_sum({} elements) = {}\n", vec->size(), sum);
+			});
 	}
-
-	static struct StringFunctionsInit {
-		StringFunctionsInit() { init_string_functions(); }
-	} string_functions_init;
-}
-
-// Example 4: Random number generator
-namespace {
-	static int random_value = 5;
-
-	void init_random_functions() {
-		HostBindings::register_function(
-			"int get_random()",
-			[](loongarch::Machine&) -> int {
-				return random_value++;
-			}
-		);
-	}
-
-	static struct RandomFunctionsInit {
-		RandomFunctionsInit() { init_random_functions(); }
-	} random_functions_init;
 }
 
 // ============================================================================
@@ -385,6 +272,9 @@ void run_all_examples(const ScriptOptions& options) {
 
 	// Shared user state for examples
 	static UserState user_state;
+
+	init_host_functions();
+	init_string_functions<Lang>();
 
 	// Example 1: Basic host functions
 	fmt::print("Example 1: Basic host functions\n");

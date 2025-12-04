@@ -498,4 +498,4 @@ private:
 	}
 };
 
-} // namespace loongarch::script
+} // loongarch::script

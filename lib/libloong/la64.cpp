@@ -406,6 +406,8 @@ namespace loongarch
 	INSTRUCTION(FDIV_D);
 	INSTRUCTION(FMSUB_D);
 	INSTRUCTION(FMADD_D);
+	INSTRUCTION(FNMADD_D);
+	INSTRUCTION(FNMSUB_D);
 	INSTRUCTION(FLDX_D);
 	INSTRUCTION(FSTX_D);
 	INSTRUCTION(FCMP_COND_S);
@@ -419,6 +421,8 @@ namespace loongarch
 	INSTRUCTION(FABS_S);
 	INSTRUCTION(FMADD_S);
 	INSTRUCTION(FMSUB_S);
+	INSTRUCTION(FNMADD_S);
+	INSTRUCTION(FNMSUB_S);
 	INSTRUCTION(FLDX_S);
 	INSTRUCTION(FSTX_S);
 
@@ -560,8 +564,13 @@ namespace loongarch
 				// Byte reversal instructions
 				if (op22_val == 0x00000C) return DECODED_INSTR(REVB_2H);
 				if (op22_val == 0x00000D) return DECODED_INSTR(REVB_4H);
+				if (op22_val == 0x00000E) return DECODED_INSTR(REVB_2W);
 				if (op22_val == 0x00000F) return DECODED_INSTR(REVB_D);
+				if (op22_val == 0x000010) return DECODED_INSTR(REVH_2W);
+				if (op22_val == 0x000011) return DECODED_INSTR(REVH_D);
 				// Bit reversal instructions
+				if (op22_val == 0x000012) return DECODED_INSTR(BITREV_4B);
+				if (op22_val == 0x000013) return DECODED_INSTR(BITREV_8B);
 				if (op22_val == 0x000014) return DECODED_INSTR(BITREV_W);
 				if (op22_val == 0x000015) return DECODED_INSTR(BITREV_D);
 				// EXT.W.B and EXT.W.H
@@ -660,9 +669,18 @@ namespace loongarch
 				if (op12_4r == 0x086) return DECODED_INSTR(FMSUB_D);
 				// FMSUB.S: bits[31:20] = 0x085
 				if (op12_4r == 0x085) return DECODED_INSTR(FMSUB_S);
+				// FNMADD.S: bits[31:20] = 0x089
+				if (op12_4r == 0x089) return DECODED_INSTR(FNMADD_S);
+				// FNMADD.D: bits[31:20] = 0x08A
+				if (op12_4r == 0x08A) return DECODED_INSTR(FNMADD_D);
+				// FNMSUB.S: bits[31:20] = 0x08D
+				if (op12_4r == 0x08D) return DECODED_INSTR(FNMSUB_S);
+				// FNMSUB.D: bits[31:20] = 0x08E
+				if (op12_4r == 0x08E) return DECODED_INSTR(FNMSUB_D);
 				// VFMADD.D: Vector FMA (bits[31:20] = 0x092)
 				if (op12_4r == 0x092) return DECODED_INSTR(VFMADD_D);
-				// NOTE: VFNMADD.D is handled in case 0x03 or has a different encoding
+				// VFNMADD.D: Vector FNMADD (bits[31:20] = 0x09A)
+				if (op12_4r == 0x09A) return DECODED_INSTR(VFNMADD_D);
 				// LASX vector FMA instructions (XVFMADD, XVFMSUB, XVFNMADD, XVFNMSUB)
 				// XVFMADD.S: bits[31:20] = 0x0A1
 				if (op12_4r == 0x0A1) return DECODED_INSTR(XVFMADD_S);

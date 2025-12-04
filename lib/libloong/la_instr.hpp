@@ -258,6 +258,11 @@ namespace Opcode {
 	// Byte reversal (2R-type, bits[31:10] identify instruction)
 	constexpr uint32_t REVB_2H    = 0x00003000;  // Reverse bytes in 2 halfwords (op22=0x00000C)
 	constexpr uint32_t REVB_4H    = 0x00003400;  // Reverse bytes in 4 halfwords (op22=0x00000D)
+	constexpr uint32_t REVB_2W    = 0x00003800;  // Reverse bytes in 2 words (op22=0x00000E)
+	constexpr uint32_t REVH_2W    = 0x00004000;  // Reverse halfwords in 2 words (op22=0x000010)
+	constexpr uint32_t REVH_D     = 0x00004400;  // Reverse halfwords in doubleword (op22=0x000011)
+	constexpr uint32_t BITREV_4B  = 0x00004800;  // Bit reverse 4 bytes (op22=0x000012)
+	constexpr uint32_t BITREV_8B  = 0x00004C00;  // Bit reverse 8 bytes (op22=0x000013)
 } // Opcode
 
 struct InstructionHelpers {	// Sign extend immediate values

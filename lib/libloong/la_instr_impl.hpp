@@ -1523,6 +1523,66 @@ struct InstrImpl {
 		vr_d.df[0] = vr_a.df[0] + vr_j.df[0] * vr_k.df[0];
 	}
 
+	static void FNMADD_S(cpu_t& cpu, la_instruction instr) {
+		// Fused negative multiply-add (single precision): fd = -(fa + fj * fk)
+		// 4R-type: fd[4:0], fj[9:5], fk[14:10], fa[19:15]
+		uint32_t fd = instr.r4.rd;
+		uint32_t fj = instr.r4.rj;
+		uint32_t fk = instr.r4.rk;
+		uint32_t fa = instr.r4.ra;
+
+		const auto& vr_j = cpu.registers().getvr(fj);
+		const auto& vr_k = cpu.registers().getvr(fk);
+		const auto& vr_a = cpu.registers().getvr(fa);
+		auto& vr_d = cpu.registers().getvr(fd);
+		vr_d.f[0] = -(vr_a.f[0] + vr_j.f[0] * vr_k.f[0]);
+	}
+
+	static void FNMADD_D(cpu_t& cpu, la_instruction instr) {
+		// Fused negative multiply-add (double precision): fd = -(fa + fj * fk)
+		// 4R-type: fd[4:0], fj[9:5], fk[14:10], fa[19:15]
+		uint32_t fd = instr.r4.rd;
+		uint32_t fj = instr.r4.rj;
+		uint32_t fk = instr.r4.rk;
+		uint32_t fa = instr.r4.ra;
+
+		const auto& vr_j = cpu.registers().getvr(fj);
+		const auto& vr_k = cpu.registers().getvr(fk);
+		const auto& vr_a = cpu.registers().getvr(fa);
+		auto& vr_d = cpu.registers().getvr(fd);
+		vr_d.df[0] = -(vr_a.df[0] + vr_j.df[0] * vr_k.df[0]);
+	}
+
+	static void FNMSUB_S(cpu_t& cpu, la_instruction instr) {
+		// Fused negative multiply-subtract (single precision): fd = -(fj * fk - fa) = fa - fj * fk
+		// 4R-type: fd[4:0], fj[9:5], fk[14:10], fa[19:15]
+		uint32_t fd = instr.r4.rd;
+		uint32_t fj = instr.r4.rj;
+		uint32_t fk = instr.r4.rk;
+		uint32_t fa = instr.r4.ra;
+
+		const auto& vr_j = cpu.registers().getvr(fj);
+		const auto& vr_k = cpu.registers().getvr(fk);
+		const auto& vr_a = cpu.registers().getvr(fa);
+		auto& vr_d = cpu.registers().getvr(fd);
+		vr_d.f[0] = vr_a.f[0] - vr_j.f[0] * vr_k.f[0];
+	}
+
+	static void FNMSUB_D(cpu_t& cpu, la_instruction instr) {
+		// Fused negative multiply-subtract (double precision): fd = -(fj * fk - fa) = fa - fj * fk
+		// 4R-type: fd[4:0], fj[9:5], fk[14:10], fa[19:15]
+		uint32_t fd = instr.r4.rd;
+		uint32_t fj = instr.r4.rj;
+		uint32_t fk = instr.r4.rk;
+		uint32_t fa = instr.r4.ra;
+
+		const auto& vr_j = cpu.registers().getvr(fj);
+		const auto& vr_k = cpu.registers().getvr(fk);
+		const auto& vr_a = cpu.registers().getvr(fa);
+		auto& vr_d = cpu.registers().getvr(fd);
+		vr_d.df[0] = vr_a.df[0] - vr_j.df[0] * vr_k.df[0];
+	}
+
 	static void CLO_W(cpu_t& cpu, la_instruction instr) {
 		uint32_t val = static_cast<uint32_t>(cpu.reg(instr.r2.rj));
 		cpu.reg(instr.r2.rd) = ~val ? __builtin_clz(~val) : 32;

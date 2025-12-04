@@ -1277,6 +1277,38 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		return snprintf(buf, len, "fmsub.s $fa%u, $fa%u, $fa%u, $fa%u", fd, fj, fk, fa);
 	}
 
+	static int FNMADD_S(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t fd = instr.r4.rd;
+		uint32_t fj = instr.r4.rj;
+		uint32_t fk = instr.r4.rk;
+		uint32_t fa = instr.r4.ra;
+		return snprintf(buf, len, "fnmadd.s $fa%u, $fa%u, $fa%u, $fa%u", fd, fj, fk, fa);
+	}
+
+	static int FNMADD_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t fd = instr.r4.rd;
+		uint32_t fj = instr.r4.rj;
+		uint32_t fk = instr.r4.rk;
+		uint32_t fa = instr.r4.ra;
+		return snprintf(buf, len, "fnmadd.d $fa%u, $fa%u, $fa%u, $fa%u", fd, fj, fk, fa);
+	}
+
+	static int FNMSUB_S(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t fd = instr.r4.rd;
+		uint32_t fj = instr.r4.rj;
+		uint32_t fk = instr.r4.rk;
+		uint32_t fa = instr.r4.ra;
+		return snprintf(buf, len, "fnmsub.s $fa%u, $fa%u, $fa%u, $fa%u", fd, fj, fk, fa);
+	}
+
+	static int FNMSUB_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t fd = instr.r4.rd;
+		uint32_t fj = instr.r4.rj;
+		uint32_t fk = instr.r4.rk;
+		uint32_t fa = instr.r4.ra;
+		return snprintf(buf, len, "fnmsub.d $fa%u, $fa%u, $fa%u, $fa%u", fd, fj, fk, fa);
+	}
+
 	static int VFRSTPI_B(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		uint32_t vd = instr.whole & 0x1F;
 		uint32_t vj = (instr.whole >> 5) & 0x1F;

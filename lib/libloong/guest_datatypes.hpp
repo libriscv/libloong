@@ -19,6 +19,17 @@ struct is_guest_stdvector : std::false_type {};
 template <typename T>
 struct is_guest_stdvector<GuestStdVector<T>> : std::true_type {};
 
+// Forward declaration for GuestRustVector
+template <typename T>
+struct GuestRustVector;
+
+// Type trait for identifying GuestRustVector
+template <typename T>
+struct is_guest_rustvector : std::false_type {};
+
+template <typename T>
+struct is_guest_rustvector<GuestRustVector<T>> : std::true_type {};
+
 // Type trait for detecting types that support fix_addresses
 template <typename T, typename = void>
 struct has_fix_addresses : std::false_type {};
@@ -528,9 +539,9 @@ struct ScopedArenaObject {
 		this->m_ptr = m_machine->memory.template writable_memarray<T>(this->m_addr, 1);
 
 		// Construct the object
-		if constexpr (std::is_same_v<T, GuestStdString>) {
+		if constexpr (std::is_same_v<T, GuestStdString> || std::is_same_v<T, GuestRustString>) {
 			new (m_ptr) T(machine, std::forward<Args>(args)...);
-		} else if constexpr (is_guest_stdvector<T>::value) {
+		} else if constexpr (is_guest_stdvector<T>::value || is_guest_rustvector<T>::value) {
 			new (m_ptr) T(machine, std::forward<Args>(args)...);
 		} else {
 			// Construct the object in place (as if trivially constructible)
@@ -603,7 +614,8 @@ private:
 	}
 
 	void free_standard_types() {
-		if constexpr (is_guest_stdvector<T>::value || std::is_same_v<T, GuestStdString>) {
+		if constexpr (is_guest_stdvector<T>::value || is_guest_rustvector<T>::value ||
+		              std::is_same_v<T, GuestStdString> || std::is_same_v<T, GuestRustString>) {
 			if (this->m_ptr) {
 				this->m_ptr->free(*this->m_machine);
 			}

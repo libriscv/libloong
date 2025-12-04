@@ -77,34 +77,92 @@ namespace {
 	} stateful_functions_init;
 }
 
-// Example 3: String handling host functions (C++ versions)
+// Example 3: String handling host functions (unified C++ and Rust)
 namespace {
+	// Template helper to get the correct string type based on language mode
+	template<bool IsRust>
+	using StringType = std::conditional_t<IsRust, loongarch::GuestRustString, loongarch::GuestStdString>;
+
+	// Template helper to get the correct vector type based on language mode
+	template<bool IsRust, typename T>
+	using VectorType = std::conditional_t<IsRust, loongarch::GuestRustVector<T>, loongarch::GuestStdVector<T>>;
+
+	// Unified implementation of log_message that works for both C++ and Rust
+	template<bool IsRust>
+	void log_message_impl(loongarch::Machine& machine, const StringType<IsRust>* msg) {
+		try {
+			fmt::print("  [LOG] {}\n", msg->to_view(machine));
+		} catch (const std::exception& e) {
+			fmt::print("  [ERROR] Failed to read string: {}\n", e.what());
+		}
+	}
+
+	// Unified implementation of string_length that works for both C++ and Rust
+	template<bool IsRust>
+	int string_length_impl(loongarch::Machine& machine, const StringType<IsRust>* str) {
+		int len;
+		if constexpr (IsRust) {
+			len = static_cast<int>(str->len);
+		} else {
+			len = static_cast<int>(str->size);
+		}
+		fmt::print("  [HOST] string_length() = {}\n", len);
+		return len;
+	}
+
+	// Unified implementation of print_vector_sum that works for both C++ and Rust
+	template<bool IsRust>
+	void print_vector_sum_impl(loongarch::Machine& machine, const VectorType<IsRust, int>* vec) {
+		int sum = 0;
+		const int* arr = vec->as_array(machine);
+		for (size_t i = 0; i < vec->size(); i++) {
+			sum += arr[i];
+		}
+		fmt::print("  [HOST] print_vector_sum({} elements) = {}\n", vec->size(), sum);
+	}
+
 	void init_string_functions() {
+		// Register C++ versions
 		HostBindings::register_function(
 			"void log_message(const std::string& msg)",
 			[](loongarch::Machine& machine, const loongarch::GuestStdString* msg) {
-				fmt::print("  [LOG] {}\n", msg->to_view(machine));
+				log_message_impl<false>(machine, msg);
 			}
 		);
 
 		HostBindings::register_function(
 			"int string_length(const std::string& str)",
 			[](loongarch::Machine& machine, const loongarch::GuestStdString* str) -> int {
-				int len = static_cast<int>(str->size);
-				fmt::print("  [HOST] string_length() = {}\n", len);
-				return len;
+				return string_length_impl<false>(machine, str);
 			}
 		);
 
 		HostBindings::register_function(
 			"void print_vector_sum(const std::vector<int>& vec)",
 			[](loongarch::Machine& machine, const loongarch::GuestStdVector<int>* vec) {
-				int sum = 0;
-				const int* arr = vec->as_array(machine);
-				for (size_t i = 0; i < vec->size(); i++) {
-					sum += arr[i];
-				}
-				fmt::print("  [HOST] print_vector_sum({} elements) = {}\n", vec->size(), sum);
+				print_vector_sum_impl<false>(machine, vec);
+			}
+		);
+
+		// Register Rust versions
+		HostBindings::register_function(
+			"void rust_log_message(const std::string& msg)",
+			[](loongarch::Machine& machine, const loongarch::GuestRustString* msg) {
+				log_message_impl<true>(machine, msg);
+			}
+		);
+
+		HostBindings::register_function(
+			"int rust_string_length(const std::string& str)",
+			[](loongarch::Machine& machine, const loongarch::GuestRustString* str) -> int {
+				return string_length_impl<true>(machine, str);
+			}
+		);
+
+		HostBindings::register_function(
+			"void rust_print_vector_sum(const std::vector<int>& vec)",
+			[](loongarch::Machine& machine, const loongarch::GuestRustVector<int>* vec) {
+				print_vector_sum_impl<true>(machine, vec);
 			}
 		);
 	}
@@ -112,44 +170,6 @@ namespace {
 	static struct StringFunctionsInit {
 		StringFunctionsInit() { init_string_functions(); }
 	} string_functions_init;
-}
-
-// Example 3b: String handling host functions (Rust versions)
-namespace {
-	void init_rust_string_functions() {
-		HostBindings::register_function(
-			"void rust_log_message(const std::string& msg)",
-			[](loongarch::Machine& machine, const loongarch::GuestRustString* msg) {
-				try {
-					fmt::print("  [LOG] {}\n", msg->to_view(machine));
-				} catch (const std::exception& e) {
-					fmt::print("  [ERROR] Failed to read string: {}\n", e.what());
-				}
-			});
-
-		HostBindings::register_function(
-			"int rust_string_length(const std::string& str)",
-			[](loongarch::Machine& machine, const loongarch::GuestRustString* str) -> int {
-				int len = static_cast<int>(str->len);
-				fmt::print("  [HOST] rust_string_length() = {}\n", len);
-				return len;
-			});
-
-		HostBindings::register_function(
-			"void rust_print_vector_sum(const std::vector<int>& vec)",
-			[](loongarch::Machine& m, const loongarch::GuestRustVector<int>* vec) {
-				int sum = 0;
-				const int* arr = vec->as_array(m);
-				for (size_t i = 0; i < vec->size(); i++) {
-					sum += arr[i];
-				}
-				fmt::print("  [HOST] rust_print_vector_sum({} elements) = {}\n", vec->size(), sum);
-			});
-	}
-
-	static struct RustStringFunctionsInit {
-		RustStringFunctionsInit() { init_rust_string_functions(); }
-	} rust_string_functions_init;
 }
 
 // Example 4: Random number generator
@@ -170,12 +190,56 @@ namespace {
 	} random_functions_init;
 }
 
+void print_usage(const char* program_name) {
+	fmt::print("Usage: {} [OPTIONS]\n\n", program_name);
+	fmt::print("Options:\n");
+	fmt::print("  --generate-bindings    Generate API bindings for C++ and Rust guest projects\n");
+	fmt::print("  --language <lang>      Specify guest language: 'cpp' or 'rust' (default: cpp)\n");
+	fmt::print("  -v, --verbose          Enable verbose output (compilation, patching, warnings)\n");
+	fmt::print("  -h, --help             Show this help message\n\n");
+	fmt::print("Examples:\n");
+	fmt::print("  {}                          # Run with C++ guest\n", program_name);
+	fmt::print("  {} --language rust          # Run with Rust guest\n", program_name);
+	fmt::print("  {} -v --language cpp        # Run with verbose output\n", program_name);
+	fmt::print("  {} --generate-bindings      # Generate API bindings\n", program_name);
+}
+
 int main(int argc, char* argv[]) {
 	fmt::print("LoongScript Framework - Project-Based Example\n");
 	fmt::print("===================================================\n\n");
 
+	// Parse command line arguments
+	bool verbose = false;
+	bool generate_bindings = false;
+	std::string language = "cpp";
+
+	for (int i = 1; i < argc; i++) {
+		std::string arg = argv[i];
+
+		if (arg == "-h" || arg == "--help") {
+			print_usage(argv[0]);
+			return 0;
+		} else if (arg == "-v" || arg == "--verbose") {
+			verbose = true;
+		} else if (arg == "--generate-bindings") {
+			generate_bindings = true;
+		} else if (arg == "--language") {
+			if (i + 1 < argc) {
+				language = argv[++i];
+			} else {
+				fmt::print(stderr, "Error: --language requires an argument\n\n");
+				print_usage(argv[0]);
+				return 1;
+			}
+		} else {
+			fmt::print(stderr, "Error: Unknown option '{}'\n\n", arg);
+			print_usage(argv[0]);
+			return 1;
+		}
+	}
+
 	// Check for --generate-bindings flag
-	if (argc > 1 && std::string(argv[1]) == "--generate-bindings") {
+	if (generate_bindings) {
 		fmt::print("Generating API bindings...\n");
 
 		// Generate C++ API
@@ -196,12 +260,6 @@ int main(int argc, char* argv[]) {
 		return 0;
 	}
 
-	// Check for --language flag
-	std::string language = "cpp";
-	if (argc > 2 && std::string(argv[1]) == "--language") {
-		language = argv[2];
-	}
-
 	// Determine which guest executable to load
 	std::string guest_path;
 	if (language == "cpp") {
@@ -220,11 +278,18 @@ int main(int argc, char* argv[]) {
 		return 1;
 	}
 
+	if (verbose) {
+		fmt::print("Verbose mode enabled\n");
+	}
 	fmt::print("Loading {} guest executable: {}\n\n", language, guest_path);
+
+	// Create ScriptOptions with verbose flag
+	ScriptOptions options;
+	options.verbose = verbose;
 
 	fmt::print("Example 1: Basic host functions\n");
 	try {
-		Script script(guest_path);
+		Script script(guest_path, options);
 		script.set_userdata<UserState>(&user_state);
 
 		fmt::print("  Calling compute(10, 32):\n");
@@ -243,7 +308,7 @@ int main(int argc, char* argv[]) {
 
 	fmt::print("Example 2: Stateful host callbacks\n");
 	try {
-		Script script(guest_path);
+		Script script(guest_path, options);
 		script.set_userdata<UserState>(&user_state);
 
 		const int result = script.call<int>("test_counter");
@@ -257,7 +322,7 @@ int main(int argc, char* argv[]) {
 
 	fmt::print("Example 3: Events with cached function addresses\n");
 	try {
-		Script script(guest_path);
+		Script script(guest_path, options);
 		script.set_userdata<UserState>(&user_state);
 
 		// Create Event objects - they cache the function address
@@ -277,8 +342,8 @@ int main(int argc, char* argv[]) {
 
 	fmt::print("Example 4: Multiple Script instances share bindings\n");
 	try {
-		Script script1(guest_path);
-		Script script2(guest_path);
+		Script script1(guest_path, options);
+		Script script2(guest_path, options);
 
 		script1.set_userdata<UserState>(&user_state);
 		script2.set_userdata<UserState>(&user_state);
@@ -299,9 +364,9 @@ int main(int argc, char* argv[]) {
 		return 1;
 	}
 
-	fmt::print("Example 5: String and vector handling\n");
+	fmt::print("Example 5: String and vector handling with vmcall\n");
 	try {
-		Script script(guest_path);
+		Script script(guest_path, options);
 		script.set_userdata<UserState>(&user_state);
 
 		fmt::print("  Calling test_string_operations():\n");
@@ -311,6 +376,48 @@ int main(int argc, char* argv[]) {
 		fmt::print("  Calling test_vector_operations():\n");
 		const int vec_result = script.call<int>("test_vector_operations");
 		fmt::print("  Result: {}\n\n", vec_result);
+
+	} catch (const ScriptException& e) {
+		fmt::print(stderr, "  Error: {}\n\n", e.what());
+		return 1;
+	}
+
+	fmt::print("Example 6: Passing strings and vectors to guest via vmcall\n");
+	try {
+		Script script(guest_path, options);
+		script.set_userdata<UserState>(&user_state);
+
+		// Template lambda to handle both C++ and Rust guests
+		auto run_example_6 = [&]<typename StringType, typename VectorType>() {
+			// Pass a string to guest function
+			fmt::print("  Passing string to guest:\n");
+			StringType message{script.machine(), "Hello from host!"};
+			Event<int(StringType)> process_msg{script, "process_message"};
+			const int len = process_msg(message);
+			fmt::print("  Guest returned length: {}\n", len);
+
+			// Pass a vector to guest function
+			fmt::print("  Passing vector to guest:\n");
+			VectorType numbers{script.machine(), std::vector<int>{10, 20, 30, 40, 50}};
+			Event<int(VectorType)> sum_nums{script, "sum_numbers"};
+			const int sum = sum_nums(numbers);
+			fmt::print("  Guest returned sum: {}\n", sum);
+
+			// Pass both string and vector
+			fmt::print("  Passing string and vector together:\n");
+			StringType speaker{script.machine(), "Alice"};
+			VectorType scores{script.machine(), std::vector<int>{95, 87, 92, 88, 90}};
+			Event<void(StringType, VectorType)> process_dlg{script, "process_dialogue"};
+			process_dlg(speaker, scores);
+		};
+
+		// Dispatch to the appropriate types based on language
+		if (language == "cpp") {
+			run_example_6.template operator()<loongarch::ScopedCppString, loongarch::ScopedCppVector<int>>();
+		} else {
+			run_example_6.template operator()<loongarch::ScopedRustString, loongarch::ScopedRustVector<int>>();
+		}
+		fmt::print("\n");
 
 	} catch (const ScriptException& e) {
 		fmt::print(stderr, "  Error: {}\n\n", e.what());

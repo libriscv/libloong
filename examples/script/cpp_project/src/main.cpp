@@ -52,6 +52,25 @@ int test_vector_operations() {
 	return static_cast<int>(numbers.size()); // Should return 5
 }
 
+// New functions that accept strings and vectors from host via vmcall
+int process_message(const std::string& msg) {
+	log_message("Guest received: " + msg);
+	return static_cast<int>(msg.length());
+}
+
+int sum_numbers(const std::vector<int>& numbers) {
+	int sum = 0;
+	for (int num : numbers) {
+		sum += num;
+	}
+	return sum;
+}
+
+void process_dialogue(const std::string& speaker, const std::vector<int>& scores) {
+	log_message("Processing dialogue from: " + speaker);
+	print_vector_sum(scores);
+}
+
 } // extern "C"
 
 // Main function for standalone execution (if needed)

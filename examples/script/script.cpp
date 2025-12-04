@@ -320,8 +320,10 @@ void Script::patch_host_functions()
 		try {
 			auto addr = address_of(name);
 			if (addr == 0) {
-				fmt::print(stderr,
-					"Warning: Host function '{}' is missing in guest, skipping\n", name);
+				if (m_options.verbose) {
+					fmt::print(stderr,
+						"Warning: Host function '{}' is missing in guest, skipping\n", name);
+				}
 				continue;
 			}
 
@@ -344,9 +346,9 @@ void Script::patch_host_functions()
 			}
 
 		} catch (const ScriptException&) {
-			// Function not found in guest - skip
+			// Function not found in guest - skip silently unless verbose
 			if (m_options.verbose) {
-				fmt::print("Host function '{}' not found in guest, skipping\n", name);
+				fmt::print("Warning: Host function '{}' not found in guest, skipping\n", name);
 			}
 		}
 	}

@@ -78,6 +78,32 @@ pub extern "C" fn test_vector_operations() -> c_int {
 	numbers.len() as c_int
 }
 
+// New functions that accept strings and vectors from host via vmcall
+#[no_mangle]
+pub extern "C" fn process_message(msg: &String) -> c_int {
+    unsafe {
+        let greeting = format!("Guest received: {}", msg);
+        let rust_greeting = String::from(greeting);
+        rust_log_message(&rust_greeting);
+        msg.len() as c_int
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn sum_numbers(numbers: &Vec<c_int>) -> c_int {
+    numbers.iter().sum()
+}
+
+#[no_mangle]
+pub extern "C" fn process_dialogue(speaker: &String, scores: &Vec<c_int>) {
+    unsafe {
+        let msg = format!("Processing dialogue from: {}", speaker);
+        let rust_msg = String::from(msg);
+        rust_log_message(&rust_msg);
+        rust_print_vector_sum(scores);
+    }
+}
+
 fn main() {
     unsafe {
         fast_exit(0);

@@ -371,6 +371,12 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 			reg_name(instr.ri12.rd), reg_name(instr.ri12.rj), imm);
 	}
 
+	static int PRELD(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		int32_t imm = InstructionHelpers::sign_extend_12(instr.ri12.imm);
+		return snprintf(buf, len, "preld %u, %s, %d",
+			instr.ri12.rd, reg_name(instr.ri12.rj), imm);
+	}
+
 	static int ST_B(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		int32_t imm = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		return snprintf(buf, len, "st.b %s, %s, %d",

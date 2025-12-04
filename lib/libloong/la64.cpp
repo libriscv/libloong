@@ -89,6 +89,7 @@ namespace loongarch
 	INSTRUCTION(LD_BU);
 	INSTRUCTION(LD_HU);
 	INSTRUCTION(LD_WU);
+	INSTRUCTION(PRELD);
 	INSTRUCTION(ST_B);
 	INSTRUCTION(ST_H);
 	INSTRUCTION(ST_W);
@@ -761,6 +762,7 @@ namespace loongarch
 			if (op22 == (Opcode::LD_BU & 0xFFC00000)) return DECODED_INSTR(LD_BU);
 			if (op22 == (Opcode::LD_HU & 0xFFC00000)) return DECODED_INSTR(LD_HU);
 			if (op22 == (Opcode::LD_WU & 0xFFC00000)) return DECODED_INSTR(LD_WU);
+			if (op22 == (Opcode::PRELD & 0xFFC00000)) return DECODED_INSTR(PRELD);
 			// Store instructions
 			if (op22 == (Opcode::ST_B & 0xFFC00000)) return DECODED_INSTR(ST_B);
 			if (op22 == (Opcode::ST_H & 0xFFC00000)) return DECODED_INSTR(ST_H);

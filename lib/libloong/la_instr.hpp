@@ -178,6 +178,7 @@ namespace Opcode {
 	constexpr uint32_t LD_BU      = 0x2a000000;
 	constexpr uint32_t LD_HU      = 0x2a400000;
 	constexpr uint32_t LD_WU      = 0x2a800000;
+	constexpr uint32_t PRELD      = 0x2ac00000;
 	constexpr uint32_t ST_B       = 0x29000000;
 	constexpr uint32_t ST_H       = 0x29400000;
 	constexpr uint32_t ST_W       = 0x29800000;

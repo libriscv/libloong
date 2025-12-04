@@ -305,6 +305,10 @@ struct InstrImpl {
 			cpu.reg(instr.ri12.rd) = (uint64_t)cpu.memory().template read<uint32_t, true>(addr);
 	}
 
+	static void PRELD(cpu_t&, la_instruction) {
+		// PRELD (prefetch for load) is a hint instruction, implemented as no-op
+	}
+
 	static void ST_B(cpu_t& cpu, la_instruction instr) {
 		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		cpu.memory().template write<uint8_t, true>(addr, cpu.reg(instr.ri12.rd));

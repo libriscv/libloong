@@ -310,12 +310,12 @@ TEST_CASE("GuestStdString - SSO and heap allocation", "[native]")
 
 		// String fits in SSO buffer (15 bytes or less)
 		str = "Small";
-		REQUIRE(str->size == 5);
+		REQUIRE(str->size() == 5);
 		REQUIRE(str->to_string(machine) == "Small");
 
 		// Maximum SSO string
 		str = "123456789012345"; // 15 characters
-		REQUIRE(str->size == 15);
+		REQUIRE(str->size() == 15);
 		REQUIRE(str->to_string(machine) == "123456789012345");
 	}
 
@@ -325,7 +325,7 @@ TEST_CASE("GuestStdString - SSO and heap allocation", "[native]")
 		// String exceeds SSO buffer
 		const std::string long_str = "This is a very long string that exceeds SSO";
 		str = long_str;
-		REQUIRE(str->size == long_str.size());
+		REQUIRE(str->size() == long_str.size());
 		REQUIRE(str->to_string(machine) == long_str);
 	}
 
@@ -508,7 +508,7 @@ TEST_CASE("Composite types with fix_addresses", "[native]")
 			std::vector<std::string>{"Hi", "Hello", "How are you?"});
 
 		// Verify speaker (SSO)
-		REQUIRE(dlg->speaker.size == 5);
+		REQUIRE(dlg->speaker.size() == 5);
 		REQUIRE(dlg->speaker.to_string(machine) == "Alice");
 
 		// Verify lines vector
@@ -523,7 +523,7 @@ TEST_CASE("Composite types with fix_addresses", "[native]")
 		// Verify vector element SSO pointers
 		for (size_t i = 0; i < dlg->lines.size(); i++) {
 			const auto& line = dlg->lines.at(machine, i);
-			if (line.size <= GuestStdString::SSO) {
+			if (line.size() <= GuestStdString::SSO) {
 				address_t expected_ptr = dlg->lines.address_at(i) + offsetof(GuestStdString, data);
 				REQUIRE(line.ptr == expected_ptr);
 			}
@@ -558,7 +558,7 @@ TEST_CASE("Composite types with fix_addresses", "[native]")
 			});
 
 		// Verify speaker (heap allocated)
-		REQUIRE(dlg->speaker.size > GuestStdString::SSO);
+		REQUIRE(dlg->speaker.size() > GuestStdString::SSO);
 		REQUIRE(dlg->speaker.to_string(machine) == "Very long speaker name that exceeds SSO");
 
 		// Verify lines vector

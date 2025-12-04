@@ -42,48 +42,49 @@ struct GuestStdString {
 	static constexpr std::size_t SSO = 15;
 
 	address_t ptr;
-	address_t size;
+	address_t len;
 	union {
 		char data[SSO + 1];
 		address_t capacity;
 	};
 
-	constexpr GuestStdString() noexcept : ptr(0), size(0), capacity(0) {}
+	constexpr GuestStdString() noexcept : ptr(0), len(0), capacity(0) {}
 
 	GuestStdString(Machine& machine, std::string_view str = "")
-		: ptr(0), size(0), capacity(0)
+		: ptr(0), len(0), capacity(0)
 	{
 		this->set_string(machine, 0, str);
 	}
 
 	GuestStdString(Machine& machine, address_t self, std::string_view str = "")
-		: ptr(0), size(0), capacity(0)
+		: ptr(0), len(0), capacity(0)
 	{
 		this->set_string(machine, self, str);
 	}
 
-	bool empty() const noexcept { return size == 0; }
+	bool empty() const noexcept { return len == 0; }
+	size_t size() const noexcept { return len; }
 
 	std::string to_string(const Machine& machine, std::size_t max_len = 16UL << 20) const
 	{
-		if (this->size <= SSO)
-			return std::string(data, size);
-		else if (this->size > max_len)
+		if (this->size() <= SSO)
+			return std::string(data, size());
+		else if (this->size() > max_len)
 			throw std::runtime_error("Guest std::string too large (size > 16MB)");
 		// Copy the string from guest memory
-		std::string result(size, '\0');
-		machine.memory.copy_from_guest(result.data(), ptr, size);
+		std::string result(size(), '\0');
+		machine.memory.copy_from_guest(result.data(), ptr, size());
 		return result;
 	}
 
 	std::string_view to_view(const Machine& machine, std::size_t max_len = 16UL << 20) const
 	{
-		if (this->size <= SSO)
-			return std::string_view(data, size);
-		else if (this->size > max_len)
+		if (this->size() <= SSO)
+			return std::string_view(data, size());
+		else if (this->size() > max_len)
 			throw std::runtime_error("Guest std::string too large (size > 16MB)");
 		// View the string from guest memory
-		return machine.memory.memview(ptr, size);
+		return machine.memory.memview(ptr, size());
 	}
 
 	void set_string(Machine& machine, address_t self, const void* str, std::size_t len, bool use_memarray = true)
@@ -93,14 +94,14 @@ struct GuestStdString {
 		if (len <= SSO)
 		{
 			this->ptr = self + offsetof(GuestStdString, data);
-			this->size = len;
+			this->len = len;
 			std::memcpy(this->data, str, len);
 			this->data[len] = '\0';
 		}
 		else
 		{
 			this->ptr = machine.arena().malloc(len+1);
-			this->size = len;
+			this->len = len;
 			this->capacity = len;
 			if (use_memarray)
 			{
@@ -123,7 +124,7 @@ struct GuestStdString {
 
 	void move(address_t self)
 	{
-		if (size <= SSO) {
+		if (size() <= SSO) {
 			this->ptr = self + offsetof(GuestStdString, data);
 		}
 	}
@@ -135,11 +136,11 @@ struct GuestStdString {
 
 	void free(Machine& machine)
 	{
-		if (size > SSO) {
+		if (size() > SSO) {
 			machine.arena().free(ptr);
 		}
 		this->ptr = 0;
-		this->size = 0;
+		this->len = 0;
 	}
 };
 
@@ -158,6 +159,7 @@ struct GuestRustString {
 	}
 
 	bool empty() const noexcept { return len == 0; }
+	size_t size() const noexcept { return len; }
 
 	std::string to_string(const Machine& machine, std::size_t max_len = 16UL << 20) const
 	{

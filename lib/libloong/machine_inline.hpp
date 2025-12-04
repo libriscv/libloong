@@ -81,7 +81,10 @@ namespace loongarch
 	template <typename T>
 	inline T Machine::sysarg(int idx) const
 	{
-		if constexpr (std::is_integral_v<T> && !std::is_enum_v<T>)
+		if constexpr (std::is_pointer_v<remove_cvref_t<T>>) {
+			return (T)memory.template memarray<std::remove_pointer_t<std::remove_reference_t<T>>>(cpu.reg(REG_A0 + idx), 1);
+		}
+		else if constexpr (std::is_integral_v<T> && !std::is_enum_v<T>)
 			return static_cast<T>(cpu.reg(REG_A0 + idx));
 		else if constexpr (std::is_same_v<T, float>)
 			return cpu.registers().getfl32(REG_FA0 + idx);
@@ -94,9 +97,6 @@ namespace loongarch
 				cpu.reg(REG_A0 + idx), cpu.reg(REG_A0 + idx + 1));
 		else if constexpr (is_stdstring<T>::value)
 			return memory.memstring(cpu.reg(REG_A0 + idx));
-		else if constexpr (std::is_pointer_v<remove_cvref_t<T>>) {
-			return (T)memory.template memarray<std::remove_pointer_t<std::remove_reference_t<T>>>(cpu.reg(REG_A0 + idx), 1);
-		}
 		else if constexpr (std::is_standard_layout_v<remove_cvref_t<T>> && std::is_trivial_v<remove_cvref_t<T>>) {
 			T value;
 			memory.copy_from_guest(&value, cpu.reg(REG_A0 + idx), sizeof(T));
@@ -112,7 +112,9 @@ namespace loongarch
 		size_t i = 0;
 		size_t f = 0;
 		([&] {
-			if constexpr (std::is_integral_v<Args>) {
+			if constexpr (std::is_pointer_v<remove_cvref_t<Args>>)
+				std::get<Indices>(retval) = sysarg<Args>(i++);
+			else if constexpr (std::is_integral_v<Args>) {
 				std::get<Indices>(retval) = sysarg<Args>(i++);
 				if constexpr (sizeof(Args) > sizeof(address_t)) i++; // uses 2 registers
 			}

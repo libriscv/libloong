@@ -920,12 +920,12 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 
 	static int BITREV_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		return snprintf(buf, len, "bitrev.w %s, %s",
-			reg_name(instr.r3.rd), reg_name(instr.r3.rj));
+			reg_name(instr.r2.rd), reg_name(instr.r2.rj));
 	}
 
 	static int BITREV_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		return snprintf(buf, len, "bitrev.d %s, %s",
-			reg_name(instr.r3.rd), reg_name(instr.r3.rj));
+			reg_name(instr.r2.rd), reg_name(instr.r2.rj));
 	}
 
 	// === ALSL.W ===

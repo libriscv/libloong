@@ -560,6 +560,9 @@ namespace loongarch
 				if (op22_val == 0x00000C) return DECODED_INSTR(REVB_2H);
 				if (op22_val == 0x00000D) return DECODED_INSTR(REVB_4H);
 				if (op22_val == 0x00000F) return DECODED_INSTR(REVB_D);
+				// Bit reversal instructions
+				if (op22_val == 0x000014) return DECODED_INSTR(BITREV_W);
+				if (op22_val == 0x000015) return DECODED_INSTR(BITREV_D);
 				// EXT.W.B and EXT.W.H
 				if (op22_val == 0x000017) return DECODED_INSTR(EXT_W_B);
 				if (op22_val == 0x000016) return DECODED_INSTR(EXT_W_H);

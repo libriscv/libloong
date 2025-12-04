@@ -207,6 +207,8 @@ struct GuestRustString {
 		this->set_string(machine, str.data(), str.size());
 	}
 
+	void fix_addresses(Machine&, address_t) {} // No-op
+
 	void free(Machine& machine)
 	{
 		if (ptr != 0) {
@@ -657,6 +659,23 @@ struct GuestRustVector {
 		}
 	}
 
+	GuestRustVector(Machine& machine, const std::vector<std::string>& vec)
+		: ptr(0), capacity(0), len(0)
+	{
+		static_assert(std::is_same_v<T, GuestRustString>, "GuestRustVector<T> must be a vector of GuestRustString");
+		if (vec.empty())
+			return;
+
+		// Specialization for std::vector<std::string>
+		this->ptr = machine.arena().malloc(vec.size() * sizeof(T));
+		this->capacity = vec.size();
+		this->len = vec.size();
+		T* array = machine.memory.template writable_memarray<T>(this->ptr, vec.size());
+		for (std::size_t i = 0; i < vec.size(); i++) {
+			new (&array[i]) T(machine, vec[i]);
+		}
+	}
+
 	GuestRustVector(Machine& machine, const std::vector<T>& vec)
 		: ptr(0), capacity(0), len(0)
 	{
@@ -719,6 +738,8 @@ struct GuestRustVector {
 		T* array = machine.memory.template writable_memarray<T>(this->ptr, vec.size());
 		std::copy(vec.begin(), vec.end(), array);
 	}
+
+	void fix_addresses(Machine&, address_t) {} // No-op
 
 	void free(Machine& machine) {
 		if (this->ptr != 0) {

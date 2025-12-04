@@ -122,15 +122,18 @@ public:
 		std::string name = parse_function_name(signature);
 
 		// Check if already registered
-		if (registry.bindings.find(name) != registry.bindings.end()) {
-			throw std::runtime_error("Host function '" + name + "' already registered");
+		int reuse_syscall = 0;
+		auto it_exists = registry.bindings.find(name);
+		if (it_exists != registry.bindings.end()) {
+			registry.bindings.erase(it_exists);
+			reuse_syscall = it_exists->second.syscall_num;
 		}
 
 		// Allocate syscall number
 		if (registry.next_syscall > SYSCALL_MAX) {
 			throw std::runtime_error("Too many host functions registered");
 		}
-		const int syscall_num = registry.next_syscall++;
+		int syscall_num = reuse_syscall ? reuse_syscall : registry.next_syscall++;
 
 		// Convert callable to std::function
 		using traits = function_traits<std::remove_reference_t<F>>;
@@ -225,7 +228,7 @@ public:
 			stubs += "    \".global " + name + "\\n\"\n";
 			stubs += "    \".type " + name + ", @function\\n\"\n";
 			stubs += "    \"" + name + ":\\n\"\n";
-			stubs += "    \"  ret\\n\"\n";
+			stubs += "    \"  break 0\\n\"\n";
 			stubs += "    \".popsection\\n\");\n";
 		}
 		return stubs;

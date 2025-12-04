@@ -400,10 +400,16 @@ int main(int argc, char* argv[]) {
 	if (generate_bindings) {
 		fmt::print("Generating API bindings...\n");
 
+		init_host_functions();
+		init_string_functions<LanguageTraits<false>>();
+
 		// Generate C++ API
 		const std::filesystem::path cpp_api_path = "cpp_project/libloong_api.hpp";
 		APIGenerator::write_cpp_api(cpp_api_path);
 		fmt::print("  C++ API: {}\n", cpp_api_path.string());
+
+		init_host_functions();
+		init_string_functions<LanguageTraits<true>>();
 
 		// Generate Rust API with scanning for #[no_mangle] functions
 		const std::filesystem::path rust_api_path = "rust_project/libloong_api.rs";

@@ -150,7 +150,7 @@ private:
 			output += "    \".global " + name + "\\n\",\n";
 			output += "    \".type " + name + ", @function\\n\",\n";
 			output += "    \"" + name + ":\\n\",\n";
-			output += "    \"  ret\\n\",\n";
+			output += "    \"  break 0\\n\",\n";
 		}
 
 		output += "    \".popsection\\n\"";
@@ -257,18 +257,13 @@ private:
 		if (type == "double") return "f64";
 		if (type == "bool") return "bool";
 
-		// Check if this is a Rust-specific function (starts with "rust_")
-		bool is_rust_func = func_name.find("rust_") == 0;
-
 		// Handle std::string
 		if (type.find("std::string") != std::string::npos) {
-			if (is_rust_func && was_const_ref) {
+			if (was_const_ref) {
 				// For Rust functions with const std::string&, use &String
 				return "&String";
-			} else if (is_rust_func) {
-				return "*const GuestRustString";
 			} else {
-				return "*const GuestStdString";
+				return "*const GuestRustString";
 			}
 		}
 
@@ -289,7 +284,7 @@ private:
 				// Translate element type
 				std::string rust_element = translate_cpp_type_to_rust(element_type, func_name);
 
-				if (is_rust_func && was_const_ref) {
+				if (was_const_ref) {
 					// For Rust functions with const std::vector<T>&, use &Vec<T>
 					return "&Vec<" + rust_element + ">";
 				} else {

@@ -31,16 +31,18 @@ static std::pair<int, std::string> execute_command(const std::string& command) {
 
 // Constructor: Load from existing ELF binary
 Script::Script(const std::string& elf_path, const ScriptOptions& options)
-	: m_binary(load_elf_file(elf_path))
-	, m_options(options)
+	: m_userdata(options.userdata),
+	  m_binary(load_elf_file(elf_path)),
+	  m_options(options)
 {
 	initialize_machine();
 }
 
 // Internal constructor from binary data
 Script::Script(std::vector<uint8_t> binary, const ScriptOptions& options)
-	: m_binary(std::move(binary))
-	, m_options(options)
+	: m_userdata(options.userdata),
+	  m_binary(std::move(binary)),
+	  m_options(options)
 {
 	initialize_machine();
 }

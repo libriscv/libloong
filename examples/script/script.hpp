@@ -35,6 +35,7 @@ struct ScriptOptions {
     size_t memory_max = 256 * 1024 * 1024;  // 256 MB
     size_t stack_size = 2 * 1024 * 1024;    // 2 MB
     size_t brk_size = 1 * 1024 * 1024;      // 1 MB
+	void* userdata = nullptr;          // User data pointer
 
     // Compilation options
     std::string compiler = "loongarch64-linux-gnu-g++-14";

@@ -277,9 +277,6 @@ void run_example_4(const std::string& guest_path, const ScriptOptions& options, 
 	Script script1(guest_path, options);
 	Script script2(guest_path, options);
 
-	script1.set_userdata<UserState>(&user_state);
-	script2.set_userdata<UserState>(&user_state);
-
 	fmt::print("  Script 1: compute(5, 10) =");
 	const int result1 = script1.call<int>("compute", 5, 10);
 	fmt::print(" {}\n", result1);
@@ -393,7 +390,6 @@ void run_all_examples(const ScriptOptions& options) {
 	fmt::print("Example 1: Basic host functions\n");
 	try {
 		Script script(guest_path, options);
-		script.set_userdata<UserState>(&user_state);
 		run_example_1<Lang>(script);
 	} catch (const std::exception& e) {
 		fmt::print(stderr, "  Error: {}\n\n", e.what());
@@ -404,7 +400,6 @@ void run_all_examples(const ScriptOptions& options) {
 	fmt::print("Example 2: Stateful host callbacks\n");
 	try {
 		Script script(guest_path, options);
-		script.set_userdata<UserState>(&user_state);
 		run_example_2<Lang>(script);
 	} catch (const ScriptException& e) {
 		fmt::print(stderr, "  Error: {}\n\n", e.what());
@@ -415,7 +410,6 @@ void run_all_examples(const ScriptOptions& options) {
 	fmt::print("Example 3: Events with cached function addresses\n");
 	try {
 		Script script(guest_path, options);
-		script.set_userdata<UserState>(&user_state);
 		run_example_3<Lang>(script);
 	} catch (const ScriptException& e) {
 		fmt::print(stderr, "  Error: {}\n\n", e.what());
@@ -435,7 +429,6 @@ void run_all_examples(const ScriptOptions& options) {
 	fmt::print("Example 5: String and vector handling with vmcall\n");
 	try {
 		Script script(guest_path, options);
-		script.set_userdata<UserState>(&user_state);
 		run_example_5<Lang>(script);
 	} catch (const ScriptException& e) {
 		fmt::print(stderr, "  Error: {}\n\n", e.what());
@@ -446,7 +439,6 @@ void run_all_examples(const ScriptOptions& options) {
 	fmt::print("Example 6: Passing strings and vectors to guest via vmcall\n");
 	try {
 		Script script(guest_path, options);
-		script.set_userdata<UserState>(&user_state);
 		run_example_6<Lang>(script);
 	} catch (const ScriptException& e) {
 		fmt::print(stderr, "  Error: {}\n\n", e.what());
@@ -457,7 +449,6 @@ void run_all_examples(const ScriptOptions& options) {
 	fmt::print("Example 7: Complex nested datatypes\n");
 	try {
 		Script script(guest_path, options);
-		script.set_userdata<UserState>(&user_state);
 		run_example_7<Lang>(script);
 	} catch (const ScriptException& e) {
 		fmt::print(stderr, "  Error: {}\n\n", e.what());
@@ -550,6 +541,7 @@ int main(int argc, char* argv[]) {
 	// Create ScriptOptions with verbose flag
 	ScriptOptions options;
 	options.verbose = verbose;
+	options.userdata = &user_state;
 
 	// Dispatch to the appropriate language template
 	try {

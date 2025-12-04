@@ -104,6 +104,25 @@ pub extern "C" fn process_dialogue(speaker: &String, scores: &Vec<c_int>) {
     }
 }
 
+// Example 7: Complex nested datatypes
+#[repr(C)]
+pub struct Dialogue {
+    speaker: String,
+    lines: Vec<String>,
+}
+
+#[no_mangle]
+pub extern "C" fn do_dialogue(dlg: &Dialogue) {
+    unsafe {
+        let intro = format!("Dialogue by {}:", dlg.speaker);
+        rust_log_message(&intro);
+        for line in &dlg.lines {
+            let formatted = format!("  {}", line);
+            rust_log_message(&formatted);
+        }
+    }
+}
+
 fn main() {
     unsafe {
         fast_exit(0);

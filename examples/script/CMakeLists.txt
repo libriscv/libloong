@@ -65,10 +65,4 @@ if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
         example.cpp
     )
     target_link_libraries(script_example PRIVATE libloong_script)
-
-    # New example (project-based with API generation)
-    add_executable(script_example_new
-        example_new.cpp
-    )
-    target_link_libraries(script_example_new PRIVATE libloong_script)
 endif()

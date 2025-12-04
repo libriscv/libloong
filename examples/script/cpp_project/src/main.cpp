@@ -71,6 +71,19 @@ void process_dialogue(const std::string& speaker, const std::vector<int>& scores
 	print_vector_sum(scores);
 }
 
+// Example 7: Complex nested datatypes
+struct Dialogue {
+	std::string speaker;
+	std::vector<std::string> lines;
+};
+
+void do_dialogue(const Dialogue& dlg) {
+	log_message("Dialogue by " + dlg.speaker + ":");
+	for (const auto& line : dlg.lines) {
+		log_message("  " + line);
+	}
+}
+
 } // extern "C"
 
 // Main function for standalone execution (if needed)

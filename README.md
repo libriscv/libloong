@@ -4,6 +4,8 @@ A LoongArch userspace emulator library, based on the design and architecture of 
 
 It's currently a work in progress, but is able to boot into main() for full Linux glibc guest programs. Hurray!
 
+For discussions & help, [visit Discord](https://discord.gg/n4GcXr66X5).
+
 ## Features
 
 - Fast LoongArch interpreter with decoder cache
@@ -26,7 +28,7 @@ make -j$(nproc)
 CMake configuration options:
 
 - `LA_DEBUG=ON/OFF` - Enable debug output (default: OFF)
-- `LA_BINARY_TRANSLATION=ON/OFF` - Enable binary translation (experimental, default: OFF)
+- `LA_BINARY_TRANSLATION=ON/OFF` - Enable binary translation (unimplemented, default: OFF)
 - `LA_THREADED=ON/OFF` - Enable threaded bytecode dispatch (default: ON)
 - `LA_MASKED_MEMORY_BITS=N` - Set masked memory arena size to 2^N bytes (0 = disabled, default: 0)
 

@@ -24,9 +24,18 @@ set(SOURCES
 	fuzz.cpp
 )
 
-# Fuzzer executable
+# Instruction Fuzzer
 add_executable(vmfuzzer ${SOURCES})
 target_link_libraries(vmfuzzer loong)
 target_link_libraries(vmfuzzer "-fsanitize=${FUZZER_MODE}" "-fsanitize=fuzzer")
 target_link_libraries(vmfuzzer "-fprofile-instr-generate")
 target_link_libraries(vmfuzzer "--coverage" "-fuse-ld=lld")
+target_compile_definitions(vmfuzzer PUBLIC FUZZER=1)
+
+# ELF Fuzzer
+add_executable(elffuzzer ${SOURCES})
+target_link_libraries(elffuzzer loong)
+target_link_libraries(elffuzzer "-fsanitize=${FUZZER_MODE}" "-fsanitize=fuzzer")
+target_link_libraries(elffuzzer "-fprofile-instr-generate")
+target_link_libraries(elffuzzer "--coverage" "-fuse-ld=lld")
+target_compile_definitions(elffuzzer PUBLIC FUZZER=2)

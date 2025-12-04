@@ -62,6 +62,27 @@ static void fuzz_instruction_set(const uint8_t* data, size_t len)
 	}
 }
 
+static void fuzz_elf_binary(const uint8_t* data, size_t len)
+{
+	try
+	{
+		// Create machine from ELF binary in fuzzer input data
+		Machine machine { std::string_view{reinterpret_cast<const char*>(data), len}, {} };
+
+		// Start execution at entry point
+		machine.cpu.jump(machine.memory.start_address());
+
+		// Let's avoid infinite loops by limiting instruction count
+		machine.simulate(MAX_INSTRUCTIONS);
+	}
+	catch (const std::exception &e)
+	{
+		// Silently catch exceptions during fuzzing
+		// Uncomment for debugging:
+		// printf(">>> Exception: %s\n", e.what());
+	}
+}
+
 /**
  * LibFuzzer entry point
  * This function is called by LibFuzzer for each test input
@@ -69,6 +90,12 @@ static void fuzz_instruction_set(const uint8_t* data, size_t len)
 extern "C"
 int LLVMFuzzerTestOneInput(const uint8_t* data, size_t len)
 {
+#if FUZZER == 1
 	fuzz_instruction_set(data, len);
+#elif FUZZER == 2
+	fuzz_elf_binary(data, len);
+#else
+	#error "FUZZER macro not defined or invalid"
+#endif
 	return 0;
 }

@@ -1,4 +1,3 @@
-// Include auto-generated API bindings
 #![allow(unused)]
 #![allow(dead_code)]
 #![allow(non_camel_case_types)]
@@ -36,6 +35,7 @@ pub extern "C" fn test_counter() -> c_int {
         increment_counter();
         increment_counter();
         let after = get_counter();
+        println!("  [GUEST] Counter: initial = {}, after = {}", initial, after);
 
         reset_counter();
         let _reset_val = get_counter();
@@ -54,37 +54,37 @@ pub extern "C" fn factorial(n: c_int) -> c_int {
 }
 
 #[no_mangle]
+pub extern "C" fn greet(name: &String) {
+    unsafe {
+        let greeting = format!("Hello, {}!", name);
+        rust_log_message(&greeting);
+    }
+}
+
+#[no_mangle]
 pub extern "C" fn test_string_operations() -> c_int {
     unsafe {
-        // Create a Rust String and pass it to the host
-        let test_str = String::from("Hello from Rust!");
-
-        // Pass the reference directly - the API now accepts &String
+        let test_str = String::from("Hello, LoongScript!");
         let len = rust_string_length(&test_str);
-
-        // Log it too
-        rust_log_message(&test_str);
-
-        len
+        len // Should return 19
     }
 }
 
 #[no_mangle]
 pub extern "C" fn test_vector_operations() -> c_int {
-	let numbers: Vec<c_int> = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    let numbers: Vec<c_int> = vec![10, 20, 30, 40, 50];
     unsafe {
         rust_print_vector_sum(&numbers);
     }
-	numbers.len() as c_int
+    numbers.len() as c_int // Should return 5
 }
 
-// New functions that accept strings and vectors from host via vmcall
+// Functions that accept strings and vectors from host via vmcall
 #[no_mangle]
 pub extern "C" fn process_message(msg: &String) -> c_int {
     unsafe {
-        let greeting = format!("Guest received: {}", msg);
-        let rust_greeting = String::from(greeting);
-        rust_log_message(&rust_greeting);
+        let greeting = format!("Processing message: {}", msg);
+        rust_log_message(&greeting);
         msg.len() as c_int
     }
 }
@@ -97,14 +97,17 @@ pub extern "C" fn sum_numbers(numbers: &Vec<c_int>) -> c_int {
 #[no_mangle]
 pub extern "C" fn process_dialogue(speaker: &String, scores: &Vec<c_int>) {
     unsafe {
-        let msg = format!("Processing dialogue from: {}", speaker);
-        let rust_msg = String::from(msg);
-        rust_log_message(&rust_msg);
+        let msg = format!("Speaker: {}", speaker);
+        rust_log_message(&msg);
+        for score in scores {
+            let score_msg = format!("  Score: {}", score);
+            rust_log_message(&score_msg);
+        }
         rust_print_vector_sum(scores);
     }
 }
 
-// Example 7: Complex nested datatypes
+// Complex nested datatypes
 #[repr(C)]
 pub struct Dialogue {
     speaker: String,
@@ -123,7 +126,9 @@ pub extern "C" fn do_dialogue(dlg: &Dialogue) {
     }
 }
 
+// Main function for standalone execution (if needed)
 fn main() {
+    println!(">>> Hello from the LoongScript Guest!");
     unsafe {
         fast_exit(0);
     }

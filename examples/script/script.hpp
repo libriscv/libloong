@@ -71,9 +71,9 @@ public:
 					addr, std::forward<Args>(args)...
 				);
 			} else {
-				return m_machine->template vmcall<UINT64_MAX>(
-					addr, std::forward<Args>(args)...
-				);
+				m_machine->template vmcall<UINT64_MAX>(
+					addr, std::forward<Args>(args)...);
+				return m_machine->return_value<Ret>();
 			}
         } catch (const MachineException& e) {
 			handle_exception(e);

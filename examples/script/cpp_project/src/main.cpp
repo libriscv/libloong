@@ -1,5 +1,5 @@
 #include "../libloong_api.hpp"
-#include <cstdio>
+#include <fmt/core.h>
 
 // Example guest functions that can be called from host
 
@@ -24,6 +24,8 @@ int test_counter() {
 	increment_counter();
 	increment_counter();
 	int after = get_counter();
+	fmt::print("  [GUEST] Counter: initial = {}, after = {}\n", initial, after);
+	fflush(stdout);
 
 	reset_counter();
 	int reset_val = get_counter();
@@ -32,7 +34,7 @@ int test_counter() {
 }
 
 void greet(const std::string& name) {
-	log_message("Hello, " + name);
+	log_message(fmt::format("Hello, {}!", name));
 }
 
 int factorial(int n) {
@@ -54,7 +56,7 @@ int test_vector_operations() {
 
 // New functions that accept strings and vectors from host via vmcall
 int process_message(const std::string& msg) {
-	log_message("Guest received: " + msg);
+	log_message(fmt::format("Processing message: {}", msg));
 	return static_cast<int>(msg.length());
 }
 
@@ -67,7 +69,10 @@ int sum_numbers(const std::vector<int>& numbers) {
 }
 
 void process_dialogue(const std::string& speaker, const std::vector<int>& scores) {
-	log_message("Processing dialogue from: " + speaker);
+	log_message(fmt::format("Speaker: {}", speaker));
+	for (auto& score : scores) {
+		log_message(fmt::format("  Score: {}", score));
+	}
 	print_vector_sum(scores);
 }
 
@@ -78,9 +83,9 @@ struct Dialogue {
 };
 
 void do_dialogue(const Dialogue& dlg) {
-	log_message("Dialogue by " + dlg.speaker + ":");
+	log_message(fmt::format("Dialogue by: {}", dlg.speaker));
 	for (const auto& line : dlg.lines) {
-		log_message("  " + line);
+		log_message(fmt::format("  {}", line));
 	}
 }
 
@@ -88,8 +93,7 @@ void do_dialogue(const Dialogue& dlg) {
 
 // Main function for standalone execution (if needed)
 int main() {
-	// This main is not used for vmcall, but can be used for testing
-	printf("Guest app loaded, ready for vmcalls\n");
+	fmt::print(">>> Hello from the LoongScript Guest!\n");
+	fflush(stdout);
 	fast_exit(0);
-	return 0;
 }

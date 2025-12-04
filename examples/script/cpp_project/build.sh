@@ -1,5 +1,7 @@
 #!/bin/bash
 set -e
+export CC=loongarch64-linux-gnu-gcc-14
+export CXX=loongarch64-linux-gnu-g++-14
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD_DIR="$SCRIPT_DIR/build"

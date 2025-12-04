@@ -9,7 +9,6 @@ if(NOT CMAKE_CXX_STANDARD_REQUIRED)
     set(CMAKE_CXX_STANDARD_REQUIRED ON)
 endif()
 
-# Dependencies
 include(FetchContent)
 
 # Fetch libfmt

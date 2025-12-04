@@ -80,16 +80,6 @@ namespace loongarch
 		if (!this->m_mt)
 			this->m_mt = std::make_unique<MultiThreading>(*this);
 
-		static constexpr int SYSCALL_CLONE        = 220;
-		static constexpr int SYSCALL_CLONE3	      = 435;
-		static constexpr int SYSCALL_SCHED_YIELD  = 124;
-		static constexpr int SYSCALL_EXIT         = 93;
-		static constexpr int SYSCALL_EXIT_GROUP   = 94;
-		static constexpr int SYSCALL_FUTEX        = 98;
-		static constexpr int SYSCALL_FUTEX_TIME64 = 422;
-		static constexpr int SYSCALL_TKILL        = 130;
-		static constexpr int SYSCALL_TGKILL       = 131;
-
 		// exit & exit_group
 		this->install_syscall_handler(93,
 		[](Machine& machine) {

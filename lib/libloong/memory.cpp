@@ -99,7 +99,8 @@ void Memory::free_arena()
 void Memory::parse_symbols(const Elf::Header* ehdr, const MachineOptions& options)
 {
 	// Validate section header table
-	if (ehdr->shoff + ehdr->shnum * sizeof(Elf::SectionHeader) > m_binary.size()) {
+	const address_t sh_table_end = ehdr->shoff + ehdr->shnum * sizeof(Elf::SectionHeader);
+	if (sh_table_end > m_binary.size() || sh_table_end < ehdr->shoff) {
 		if (options.verbose_loader) {
 			fprintf(stderr, "Warning: Invalid section header table\n");
 		}
@@ -120,12 +121,20 @@ void Memory::parse_symbols(const Elf::Header* ehdr, const MachineOptions& option
 			symtab = shdr;
 			// String table is usually the linked section
 			if (shdr->link < ehdr->shnum) {
+				const address_t strtab_end = ehdr->shoff + shdr->link * sizeof(Elf::SectionHeader);
+				if (strtab_end > m_binary.size() || strtab_end < ehdr->shoff) {
+					throw MachineException(INVALID_PROGRAM, "Invalid string table section");
+				}
 				strtab = reinterpret_cast<const Elf::SectionHeader*>(
 					m_binary.data() + ehdr->shoff + shdr->link * sizeof(Elf::SectionHeader));
 			}
 		} else if (shdr->type == Elf::SHT_DYNSYM) {
 			dynsym = shdr;
 			if (shdr->link < ehdr->shnum) {
+				const address_t dynstr_end = ehdr->shoff + shdr->link * sizeof(Elf::SectionHeader);
+				if (dynstr_end > m_binary.size() || dynstr_end < ehdr->shoff) {
+					throw MachineException(INVALID_PROGRAM, "Invalid dynamic string table section");
+				}
 				dynstr = reinterpret_cast<const Elf::SectionHeader*>(
 					m_binary.data() + ehdr->shoff + shdr->link * sizeof(Elf::SectionHeader));
 			}

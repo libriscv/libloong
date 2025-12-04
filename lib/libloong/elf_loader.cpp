@@ -26,6 +26,13 @@ void Memory::binary_loader(const MachineOptions& options)
 	this->m_elf_phentsize = sizeof(Elf::ProgramHeader);
 	this->m_elf_phnum = ehdr->phnum;
 	// phdr address will be set after we know the base address
+	if (ehdr->phnum == 0 || ehdr->phentsize != sizeof(Elf::ProgramHeader) || ehdr->phnum > 256) {
+		throw MachineException(INVALID_PROGRAM, "Invalid program headers in ELF file");
+	}
+	const address_t elf_phdr_end_address = ehdr->phoff + ehdr->phnum * sizeof(Elf::ProgramHeader);
+	if (elf_phdr_end_address > this->m_binary.size() || elf_phdr_end_address < ehdr->phoff) {
+		throw MachineException(INVALID_PROGRAM, "Program headers invalid");
+	}
 
 	// Find memory bounds
 	address_t min_addr = ~address_t(0);
@@ -38,6 +45,9 @@ void Memory::binary_loader(const MachineOptions& options)
 		if (phdr->type == Elf::PT_LOAD) {
 			address_t start = phdr->vaddr;
 			address_t end = phdr->vaddr + phdr->memsz;
+			if (end > options.memory_max || end < start) {
+				throw MachineException(INVALID_PROGRAM, "ELF segment invalid", phdr->vaddr);
+			}
 			min_addr = std::min(min_addr, start);
 			max_addr = std::max(max_addr, end);
 			if ((phdr->flags & Elf::PF_W) && start < first_writable) {
@@ -107,8 +117,17 @@ void Memory::binary_loader(const MachineOptions& options)
 
 		if (phdr->type == Elf::PT_LOAD && phdr->filesz > 0) {
 			const size_t offset = phdr->vaddr;
-			if (offset + phdr->filesz > m_arena_size || offset + phdr->filesz < offset) {
-				throw MachineException(INVALID_PROGRAM, "ELF segment exceeds memory arena", phdr->vaddr);
+			const address_t end_vaddr = offset + phdr->filesz;
+			if (end_vaddr > m_arena_size || end_vaddr < offset) {
+				throw MachineException(INVALID_PROGRAM, "ELF segment invalid", phdr->vaddr);
+			}
+			const address_t file_end = offset + phdr->filesz;
+			if (file_end > m_arena_size || file_end < offset) {
+				throw MachineException(INVALID_PROGRAM, "ELF segment invalid", phdr->vaddr);
+			}
+			if (phdr->offset + phdr->filesz > m_binary.size() ||
+				phdr->offset + phdr->filesz < phdr->offset) {
+				throw MachineException(INVALID_PROGRAM, "ELF segment invalid", phdr->vaddr);
 			}
 			std::memcpy(m_arena + offset, m_binary.data() + phdr->offset, phdr->filesz);
 			// Execute segment creation
@@ -133,6 +152,4 @@ void Memory::binary_loader(const MachineOptions& options)
 	//process_relocations(ehdr, options);
 }
 
-// Removed template instantiation
-
-} // namespace loongarch
+} // loongarch

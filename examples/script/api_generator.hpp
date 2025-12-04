@@ -80,14 +80,23 @@ extern "C" __attribute__((noreturn)) void fast_exit(int code);
 		output += generate_rust_asm_stubs();
 		output += "\n";
 
-		// Generate extern "C" declarations
+		// Generate unsafe extern "C" declarations (sys_* functions)
+		output += "// Private FFI declarations (unsafe)\n";
 		output += "extern \"C\" {\n";
 		for (const auto& [name, binding] : HostBindings::get_bindings()) {
 			output += "    ";
-			output += translate_cpp_to_rust_signature(binding.signature);
+			output += translate_cpp_to_rust_signature(binding.signature, true);
 			output += "\n";
 		}
 		output += "}\n\n";
+
+		// Generate safe public wrapper functions
+		output += "// Public safe API wrappers\n";
+		for (const auto& [name, binding] : HostBindings::get_bindings()) {
+			output += generate_safe_wrapper(name, binding.signature);
+			output += "\n";
+		}
+		output += "\n";
 
 		// Add fast_exit
 		output += R"(
@@ -147,9 +156,11 @@ private:
 		output += "    \".pushsection .text\\n\",\n";
 
 		for (const auto& [name, binding] : HostBindings::get_bindings()) {
-			output += "    \".global " + name + "\\n\",\n";
-			output += "    \".type " + name + ", @function\\n\",\n";
-			output += "    \"" + name + ":\\n\",\n";
+			// Generate sys_* function name for FFI
+			std::string sys_name = "sys_" + name;
+			output += "    \".global " + sys_name + "\\n\",\n";
+			output += "    \".type " + sys_name + ", @function\\n\",\n";
+			output += "    \"" + sys_name + ":\\n\",\n";
 			output += "    \"  break 0\\n\",\n";
 		}
 
@@ -159,9 +170,10 @@ private:
 	}
 
 	// Translate C++ function signature to Rust
-	static std::string translate_cpp_to_rust_signature(const std::string& cpp_sig) {
+	static std::string translate_cpp_to_rust_signature(const std::string& cpp_sig, bool add_sys_prefix = false) {
 		// Parse C++ signature: "return_type function_name(args)"
 		// Output Rust: "pub fn function_name(args) -> return_type;"
+		// If add_sys_prefix is true, output: "fn sys_function_name(args) -> return_type;"
 
 		std::string sig = cpp_sig;
 
@@ -203,13 +215,93 @@ private:
 		std::string args_rust = translate_cpp_args_to_rust(args_cpp, func_name);
 
 		// Build Rust signature
-		std::string result = "pub fn " + func_name + "(" + args_rust + ")";
+		std::string actual_func_name = add_sys_prefix ? ("sys_" + func_name) : func_name;
+		std::string visibility = add_sys_prefix ? "" : "pub ";
+		std::string result = visibility + "fn " + actual_func_name + "(" + args_rust + ")";
 		if (return_type_rust != "()") {
 			result += " -> " + return_type_rust;
 		}
 		result += ";";
 
 		return result;
+	}
+
+	// Generate a safe wrapper function that calls the unsafe sys_* function
+	static std::string generate_safe_wrapper(const std::string& name, const std::string& cpp_sig) {
+		// Parse the C++ signature to extract return type and arguments
+		std::string sig = cpp_sig;
+
+		// Find opening parenthesis
+		size_t paren_pos = sig.find('(');
+		if (paren_pos == std::string::npos) {
+			return "";
+		}
+
+		// Extract function name
+		size_t name_end = paren_pos;
+		while (name_end > 0 && std::isspace(sig[name_end - 1])) {
+			--name_end;
+		}
+		size_t name_start = name_end;
+		while (name_start > 0 && (std::isalnum(sig[name_start - 1]) || sig[name_start - 1] == '_')) {
+			--name_start;
+		}
+
+		// Extract return type
+		std::string return_type_cpp = sig.substr(0, name_start);
+		while (!return_type_cpp.empty() && std::isspace(return_type_cpp.back())) {
+			return_type_cpp.pop_back();
+		}
+
+		// Extract arguments
+		size_t close_paren = sig.find(')', paren_pos);
+		if (close_paren == std::string::npos) {
+			return "";
+		}
+		std::string args_cpp = sig.substr(paren_pos + 1, close_paren - paren_pos - 1);
+
+		// Translate return type
+		std::string return_type_rust = translate_cpp_type_to_rust(return_type_cpp, name);
+
+		// Translate arguments
+		std::string args_rust = translate_cpp_args_to_rust(args_cpp, name);
+
+		// Build wrapper function
+		std::string output = "#[inline]\npub fn " + name + "(" + args_rust + ")";
+		if (return_type_rust != "()") {
+			output += " -> " + return_type_rust;
+		}
+		output += " {\n";
+		output += "    unsafe {\n";
+		output += "        sys_" + name + "(";
+
+		// Add argument forwarding
+		if (!args_cpp.empty()) {
+			std::vector<std::string> args = split_args(args_cpp);
+			for (size_t i = 0; i < args.size(); ++i) {
+				if (i > 0) output += ", ";
+
+				// Extract argument name
+				std::string arg = args[i];
+				size_t last_space = arg.rfind(' ');
+				std::string arg_name;
+				if (last_space != std::string::npos) {
+					arg_name = arg.substr(last_space + 1);
+					while (!arg_name.empty() && std::isspace(arg_name.front())) {
+						arg_name.erase(0, 1);
+					}
+				} else {
+					arg_name = "arg" + std::to_string(i);
+				}
+				output += arg_name;
+			}
+		}
+
+		output += ")\n";
+		output += "    }\n";
+		output += "}\n";
+
+		return output;
 	}
 
 	static std::string translate_cpp_type_to_rust(const std::string& cpp_type, const std::string& func_name = "") {
@@ -457,10 +549,6 @@ private:
 	                                    const std::filesystem::path& src_path) {
 		auto functions = scan_rust_no_mangle_functions(src_path);
 
-		if (functions.empty()) {
-			return;
-		}
-
 		// Create .cargo directory if it doesn't exist
 		std::filesystem::path cargo_dir = project_root / ".cargo";
 		std::filesystem::create_directories(cargo_dir);
@@ -473,7 +561,7 @@ private:
 		}
 
 		file << "# Auto-generated by libloong API generator\n";
-		file << "# This config prevents dead code elimination of guest functions\n\n";
+		file << "# This config prevents dead code elimination of guest functions and host stubs\n\n";
 		file << "[build]\n";
 		file << "target = \"loongarch64-unknown-linux-gnu\"\n\n";
 		file << "[target.loongarch64-unknown-linux-gnu]\n";
@@ -484,9 +572,14 @@ private:
 		file << "  \"-C\", \"link-arg=-static\",\n";
 		file << "  \"-C\", \"link-arg=-Wl,-Ttext-segment=0x200000\",\n";
 
-		// Add --undefined flag for each function to prevent DCE
+		// Add --undefined flag for guest functions to prevent DCE
 		for (const auto& fn_name : functions) {
 			file << "  \"-C\", \"link-arg=-Wl,--undefined=" << fn_name << "\",\n";
+		}
+
+		// Add --undefined flag for sys_* host function stubs to prevent DCE
+		for (const auto& [name, binding] : HostBindings::get_bindings()) {
+			file << "  \"-C\", \"link-arg=-Wl,--undefined=sys_" << name << "\",\n";
 		}
 
 		file << "]\n";

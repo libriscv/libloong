@@ -318,40 +318,36 @@ void Script::dispatch_callback(Machine& machine, int syscall_num) {
 void Script::patch_host_functions()
 {
 	for (const auto& [name, binding] : HostBindings::get_bindings()) {
-		// Check if function exists in guest
-		try {
-			auto addr = address_of(name);
-			if (addr == 0) {
-				if (m_options.verbose) {
-					fmt::print(stderr,
-						"Warning: Host function '{}' is missing in guest, skipping\n", name);
-				}
-				continue;
-			}
+		// Try to find sys_* symbol first (for Rust), then fall back to name (for C++)
+		address_t addr = address_of(name);
+		if (addr == 0x0) {
+			addr = address_of("sys_" + name);
+		}
 
+		if (addr == 0) {
 			if (m_options.verbose) {
-				fmt::print("Patching host function '{}' at address 0x{:x} to syscall {}\n",
-					name, addr, binding.syscall_num);
+				fmt::print(stderr,
+					"Warning: Host function '{}' is missing in guest, skipping\n", name);
 			}
+			continue;
+		}
 
-			// Create decoder cache entry for SYSCALLIMM bytecode
-			DecoderData entry;
-			entry.bytecode = LA64_BC_SYSCALLIMM;
-			entry.handler_idx = 0; // Invalid
-			entry.block_bytes = 0; // Diverges here
-			entry.instr = binding.syscall_num;
+		if (m_options.verbose) {
+			fmt::print("Patching host function '{}' at address 0x{:x} to syscall {}\n",
+				name, addr, binding.syscall_num);
+		}
 
-			// Install into decoder cache
-			auto exec_seg = m_machine->memory.exec_segment_for(addr);
-			if (!exec_seg->empty()) {
-				exec_seg->set(addr, entry);
-			}
+		// Create decoder cache entry for SYSCALLIMM bytecode
+		DecoderData entry;
+		entry.bytecode = LA64_BC_SYSCALLIMM;
+		entry.handler_idx = 0; // Invalid
+		entry.block_bytes = 0; // Diverges here
+		entry.instr = binding.syscall_num;
 
-		} catch (const ScriptException&) {
-			// Function not found in guest - skip silently unless verbose
-			if (m_options.verbose) {
-				fmt::print("Warning: Host function '{}' not found in guest, skipping\n", name);
-			}
+		// Install into decoder cache
+		auto exec_seg = m_machine->memory.exec_segment_for(addr);
+		if (!exec_seg->empty()) {
+			exec_seg->set(addr, entry);
 		}
 	}
 }

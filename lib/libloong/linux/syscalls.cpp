@@ -16,7 +16,7 @@ namespace loongarch
 	static constexpr int64_t LA_ENOTTY = 25;
 
 	// Syscall numbers (LoongArch Linux ABI)
-	enum LA_Syscalls {
+	enum [[maybe_unused]] LA_Syscalls {
 		LA_SYS_ioctl = 29,
 		LA_SYS_fcntl = 25,
 		LA_SYS_writev = 66,
@@ -387,7 +387,8 @@ namespace loongarch
 	{
 		// Stub: just return success
 		machine.set_result(0);
-		sysprint(machine, "rt_sigprocmask() = 0 (stub)\n");
+		sysprint(machine, "rt_sigprocmask() = %d (stub)\n",
+			machine.template return_value<int>());
 	}
 
 	static void syscall_tkill(Machine& machine)

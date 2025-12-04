@@ -53,6 +53,31 @@ pub extern "C" fn factorial(n: c_int) -> c_int {
     }
 }
 
+#[no_mangle]
+pub extern "C" fn test_string_operations() -> c_int {
+    unsafe {
+        // Create a Rust String and pass it to the host
+        let test_str = String::from("Hello from Rust!");
+
+        // Pass the reference directly - the API now accepts &String
+        let len = rust_string_length(&test_str);
+
+        // Log it too
+        rust_log_message(&test_str);
+
+        len
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn test_vector_operations() -> c_int {
+	let numbers: Vec<c_int> = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    unsafe {
+        rust_print_vector_sum(&numbers);
+    }
+	numbers.len() as c_int
+}
+
 fn main() {
     unsafe {
         fast_exit(0);

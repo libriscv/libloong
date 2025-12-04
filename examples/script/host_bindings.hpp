@@ -160,16 +160,40 @@ public:
 		registry.handlers[idx] = wrapper;
 	}
 
-	// Append user-defined header content
-	static void append_header_content(const std::string& content) {
+	// Append user-defined C++ header content
+	static void append_cpp_header_content(const std::string& content) {
 		auto& registry = get_registry();
-		registry.header += content + "\n";
+		registry.cpp_header += content + "\n";
 	}
 
-	// Get user-defined header content
-	static const std::string& get_header() {
+	// Append user-defined Rust header content
+	static void append_rust_header_content(const std::string& content) {
 		auto& registry = get_registry();
-		return registry.header;
+		registry.rust_header += content + "\n";
+	}
+
+	// Legacy method - adds to both C++ and Rust headers
+	static void append_header_content(const std::string& content) {
+		append_cpp_header_content(content);
+		// For Rust, we would need to translate, so just skip it
+		// Users should use the specific methods instead
+	}
+
+	// Get user-defined C++ header content
+	static const std::string& get_cpp_header() {
+		auto& registry = get_registry();
+		return registry.cpp_header;
+	}
+
+	// Get user-defined Rust header content
+	static const std::string& get_rust_header() {
+		auto& registry = get_registry();
+		return registry.rust_header;
+	}
+
+	// Legacy method for backwards compatibility
+	static const std::string& get_header() {
+		return get_cpp_header();
 	}
 
 	// Get all registered bindings
@@ -237,7 +261,8 @@ private:
 		std::unordered_map<std::string, HostBinding> bindings;
 		std::vector<std::function<void(Machine&)>> handlers; // Direct syscall lookup vector
 		unsigned next_syscall = SYSCALL_BASE;
-		std::string header; // User-defined header content
+		std::string cpp_header; // User-defined C++ header content
+		std::string rust_header; // User-defined Rust header content
 	};
 
 	// Singleton registry

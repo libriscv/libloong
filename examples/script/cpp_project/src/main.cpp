@@ -40,6 +40,18 @@ int factorial(int n) {
 	return n * factorial(n - 1);
 }
 
+int test_string_operations() {
+	std::string test_str = "Hello, LoongScript!";
+	int len = string_length(test_str);
+	return len; // Should return 19
+}
+
+int test_vector_operations() {
+	std::vector<int> numbers = {10, 20, 30, 40, 50};
+	print_vector_sum(numbers);
+	return static_cast<int>(numbers.size()); // Should return 5
+}
+
 } // extern "C"
 
 // Main function for standalone execution (if needed)

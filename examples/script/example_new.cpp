@@ -77,7 +77,7 @@ namespace {
 	} stateful_functions_init;
 }
 
-// Example 3: String handling host functions
+// Example 3: String handling host functions (C++ versions)
 namespace {
 	void init_string_functions() {
 		HostBindings::register_function(
@@ -86,11 +86,70 @@ namespace {
 				fmt::print("  [LOG] {}\n", msg->to_view(machine));
 			}
 		);
+
+		HostBindings::register_function(
+			"int string_length(const std::string& str)",
+			[](loongarch::Machine& machine, const loongarch::GuestStdString* str) -> int {
+				int len = static_cast<int>(str->size);
+				fmt::print("  [HOST] string_length() = {}\n", len);
+				return len;
+			}
+		);
+
+		HostBindings::register_function(
+			"void print_vector_sum(const std::vector<int>& vec)",
+			[](loongarch::Machine& machine, const loongarch::GuestStdVector<int>* vec) {
+				int sum = 0;
+				const int* arr = vec->as_array(machine);
+				for (size_t i = 0; i < vec->size(); i++) {
+					sum += arr[i];
+				}
+				fmt::print("  [HOST] print_vector_sum({} elements) = {}\n", vec->size(), sum);
+			}
+		);
 	}
 
 	static struct StringFunctionsInit {
 		StringFunctionsInit() { init_string_functions(); }
 	} string_functions_init;
+}
+
+// Example 3b: String handling host functions (Rust versions)
+namespace {
+	void init_rust_string_functions() {
+		HostBindings::register_function(
+			"void rust_log_message(const std::string& msg)",
+			[](loongarch::Machine& machine, const loongarch::GuestRustString* msg) {
+				try {
+					fmt::print("  [LOG] {}\n", msg->to_view(machine));
+				} catch (const std::exception& e) {
+					fmt::print("  [ERROR] Failed to read string: {}\n", e.what());
+				}
+			});
+
+		HostBindings::register_function(
+			"int rust_string_length(const std::string& str)",
+			[](loongarch::Machine& machine, const loongarch::GuestRustString* str) -> int {
+				int len = static_cast<int>(str->len);
+				fmt::print("  [HOST] rust_string_length() = {}\n", len);
+				return len;
+			});
+
+		HostBindings::register_function(
+			"void rust_print_vector_sum(const std::vector<int>& vec)",
+			[](loongarch::Machine& m, const loongarch::GuestRustVector<int>* vec) {
+				int sum = 0;
+				const int* arr = vec->as_array(m);
+				for (size_t i = 0; i < vec->size(); i++) {
+					sum += arr[i];
+				}
+				fmt::print("  [HOST] rust_print_vector_sum({} elements) = {}\n", vec->size(), sum);
+			});
+	}
+
+	static struct RustStringFunctionsInit {
+		RustStringFunctionsInit() { init_rust_string_functions(); }
+	} rust_string_functions_init;
 }
 
 // Example 4: Random number generator
@@ -234,6 +293,24 @@ int main(int argc, char* argv[]) {
 
 		assert(result1 == 15);
 		assert(result2 == 25);
+
+	} catch (const ScriptException& e) {
+		fmt::print(stderr, "  Error: {}\n\n", e.what());
+		return 1;
+	}
+
+	fmt::print("Example 5: String and vector handling\n");
+	try {
+		Script script(guest_path);
+		script.set_userdata<UserState>(&user_state);
+
+		fmt::print("  Calling test_string_operations():\n");
+		const int str_result = script.call<int>("test_string_operations");
+		fmt::print("  Result: {}\n", str_result);
+
+		fmt::print("  Calling test_vector_operations():\n");
+		const int vec_result = script.call<int>("test_vector_operations");
+		fmt::print("  Result: {}\n\n", vec_result);
 
 	} catch (const ScriptException& e) {
 		fmt::print(stderr, "  Error: {}\n\n", e.what());

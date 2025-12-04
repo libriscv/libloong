@@ -132,6 +132,81 @@ struct GuestStdString {
 	}
 };
 
+// View into Rust's String (same layout as Vec<u8>: ptr, capacity, len)
+struct GuestRustString {
+	address_t len;
+	address_t ptr;
+	address_t capacity;
+
+	constexpr GuestRustString() noexcept : len(0), ptr(0), capacity(0) {}
+
+	GuestRustString(Machine& machine, std::string_view str = "")
+		: len(0), ptr(0), capacity(0)
+	{
+		this->set_string(machine, str);
+	}
+
+	bool empty() const noexcept { return len == 0; }
+
+	std::string to_string(const Machine& machine, std::size_t max_len = 16UL << 20) const
+	{
+		if (this->len == 0)
+			return std::string();
+		else if (this->len > max_len)
+			throw std::runtime_error("Guest Rust String too large (len > 16MB)");
+		// Copy the string from guest memory
+		std::string result(len, '\0');
+		machine.memory.copy_from_guest(result.data(), ptr, len);
+		return result;
+	}
+
+	std::string_view to_view(const Machine& machine, std::size_t max_len = 16UL << 20) const
+	{
+		if (this->len == 0)
+			return std::string_view();
+		else if (this->len > max_len)
+			throw std::runtime_error("Guest Rust String too large (len > 16MB)");
+		// View the string from guest memory
+		return machine.memory.memview(ptr, len);
+	}
+
+	void set_string(Machine& machine, const void* str, std::size_t length, bool use_memarray = true)
+	{
+		this->free(machine);
+
+		if (length > 0)
+		{
+			this->ptr = machine.arena().malloc(length);
+			this->capacity = length;
+			this->len = length;
+			if (use_memarray)
+			{
+				char* dst = machine.memory.template writable_memarray<char>(this->ptr, length);
+				std::memcpy(dst, str, length);
+			}
+			else
+			{
+				machine.memory.copy_to_guest(this->ptr, str, length);
+			}
+		}
+	}
+
+	void set_string(Machine& machine, std::string_view str)
+	{
+		this->set_string(machine, str.data(), str.size());
+	}
+
+	void free(Machine& machine)
+	{
+		if (ptr != 0) {
+			machine.arena().free(ptr);
+		}
+		this->ptr = 0;
+		this->capacity = 0;
+		this->len = 0;
+	}
+};
+
 // View into libstdc++ and LLVM libc++ std::vector (same layout)
 template <typename T>
 struct GuestStdVector {
@@ -547,11 +622,101 @@ struct is_scoped_guest_object : std::false_type {};
 template <typename T>
 struct is_scoped_guest_object<ScopedArenaObject<T>> : std::true_type {};
 
+// View into Rust's Vec<T> (layout: ptr, capacity, len)
 template <typename T>
-struct is_scoped_guest_stdvector : std::false_type {};
+struct GuestRustVector {
+	address_t len;
+	address_t ptr;
+	address_t capacity;
 
-template <typename T>
-struct is_scoped_guest_stdvector<ScopedArenaObject<GuestStdVector<T>>> : std::true_type {};
+	constexpr GuestRustVector() noexcept : len(0), ptr(0), capacity(0) {}
+
+	GuestRustVector(Machine& machine, std::size_t elements)
+		: len(0), ptr(0), capacity(0)
+	{
+		if (elements > 0) {
+			this->ptr = machine.arena().malloc(elements * sizeof(T));
+			this->capacity = elements;
+			this->len = elements;
+			T* array = machine.memory.template writable_memarray<T>(this->ptr, elements);
+			for (std::size_t i = 0; i < elements; i++) {
+				new (&array[i]) T();
+			}
+		}
+	}
+
+	GuestRustVector(Machine& machine, const std::vector<T>& vec)
+		: ptr(0), capacity(0), len(0)
+	{
+		if (!vec.empty())
+			this->assign(machine, vec);
+	}
+
+	address_t data() const noexcept { return ptr; }
+
+	std::size_t size() const noexcept { return len; }
+
+	bool empty() const noexcept { return len == 0; }
+
+	std::size_t capacity_value() const noexcept { return capacity; }
+
+	T& at(Machine& machine, std::size_t index, std::size_t max_bytes = 16UL << 20) {
+		if (index >= len)
+			throw std::out_of_range("Guest Rust Vec index out of range");
+		if (len * sizeof(T) > max_bytes)
+			throw std::runtime_error("Guest Rust Vec has size > max_bytes");
+		return machine.memory.template writable_memarray<T>(ptr, len)[index];
+	}
+
+	const T& at(Machine& machine, std::size_t index, std::size_t max_bytes = 16UL << 20) const {
+		if (index >= len)
+			throw std::out_of_range("Guest Rust Vec index out of range");
+		if (len * sizeof(T) > max_bytes)
+			throw std::runtime_error("Guest Rust Vec has size > max_bytes");
+		return machine.memory.template memarray<T>(ptr, len)[index];
+	}
+
+	T* as_array(Machine& machine, std::size_t max_bytes = 16UL << 20) {
+		if (len * sizeof(T) > max_bytes)
+			throw std::runtime_error("Guest Rust Vec has size > max_bytes");
+		return machine.memory.template writable_memarray<T>(data(), len);
+	}
+
+	const T* as_array(const Machine& machine, std::size_t max_bytes = 16UL << 20) const {
+		if (len * sizeof(T) > max_bytes)
+			throw std::runtime_error("Guest Rust Vec has size > max_bytes");
+		return machine.memory.template memarray<T>(data(), len);
+	}
+
+	std::vector<T> to_vector(const Machine& machine) const {
+		if (len == 0)
+			return std::vector<T>();
+		const T* array = machine.memory.template memarray<T>(data(), len);
+		return std::vector<T>(&array[0], &array[len]);
+	}
+
+	void assign(Machine& machine, const std::vector<T>& vec)
+	{
+		this->free(machine);
+		if (vec.empty())
+			return;
+
+		this->ptr = machine.arena().malloc(vec.size() * sizeof(T));
+		this->capacity = vec.size();
+		this->len = vec.size();
+		T* array = machine.memory.template writable_memarray<T>(this->ptr, vec.size());
+		std::copy(vec.begin(), vec.end(), array);
+	}
+
+	void free(Machine& machine) {
+		if (this->ptr != 0) {
+			machine.arena().free(this->ptr);
+			this->ptr = 0;
+			this->capacity = 0;
+			this->len = 0;
+		}
+	}
+};
 
 // Convenience aliases
 using CppString = GuestStdString;
@@ -560,5 +725,12 @@ using CppVector = GuestStdVector<T>;
 using ScopedCppString = ScopedArenaObject<GuestStdString>;
 template <typename T>
 using ScopedCppVector = ScopedArenaObject<GuestStdVector<T>>;
+
+using RustString = GuestRustString;
+template <typename T>
+using RustVector = GuestRustVector<T>;
+using ScopedRustString = ScopedArenaObject<GuestRustString>;
+template <typename T>
+using ScopedRustVector = ScopedArenaObject<GuestRustVector<T>>;
 
 } // namespace loongarch

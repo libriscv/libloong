@@ -1153,7 +1153,7 @@ struct InstrImpl {
 
 		const auto& vr_j = cpu.registers().getvr(fj);
 		auto& vr_d = cpu.registers().getvr(fd);
-		vr_d.df[0] = vr_j.df[0];
+		vr_d.du[0] = vr_j.du[0];
 	}
 
 	static void FCLASS_S(cpu_t& cpu, la_instruction instr) {

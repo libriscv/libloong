@@ -146,14 +146,14 @@ struct GuestStdString {
 
 // View into Rust's String (same layout as Vec<u8>: ptr, capacity, len)
 struct GuestRustString {
-	address_t len;
-	address_t ptr;
 	address_t capacity;
+	address_t ptr;
+	address_t len;
 
-	constexpr GuestRustString() noexcept : len(0), ptr(0), capacity(0) {}
+	constexpr GuestRustString() noexcept : capacity(0), ptr(0), len(0) {}
 
 	GuestRustString(Machine& machine, std::string_view str = "")
-		: len(0), ptr(0), capacity(0)
+		: capacity(0), ptr(0), len(0)
 	{
 		this->set_string(machine, str);
 	}

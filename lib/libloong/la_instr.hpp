@@ -127,6 +127,7 @@ namespace Opcode {
 	constexpr uint32_t SUB_D      = 0x00118000;
 	constexpr uint32_t ADDI_W     = 0x02800000;
 	constexpr uint32_t ADDI_D     = 0x02c00000;
+	constexpr uint32_t ADDU16I_D  = 0x10000000;
 
 	// Comparison operations
 	constexpr uint32_t SLT        = 0x00120000;

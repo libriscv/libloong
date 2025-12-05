@@ -30,6 +30,7 @@ namespace loongarch
 	INSTRUCTION(NOP);
 	INSTRUCTION(RDTIME_D);
 	INSTRUCTION(CPUCFG);
+	INSTRUCTION(BREAK);
 
 	// Arithmetic
 	INSTRUCTION(ADD_W);
@@ -40,6 +41,7 @@ namespace loongarch
 	INSTRUCTION(SLTU);
 	INSTRUCTION(ADDI_W);
 	INSTRUCTION(ADDI_D);
+	INSTRUCTION(ADDU16I_D);
 
 	// Division/Modulo
 	INSTRUCTION(DIV_W);
@@ -448,7 +450,7 @@ namespace loongarch
 
 		// System instructions (checked first for exact match)
 		if (instr.whole == Opcode::SYSCALL) return DECODED_INSTR(SYSCALL);
-		if (instr.whole == Opcode::BREAK) return DECODED_INSTR(UNIMPLEMENTED);
+		if (instr.whole == Opcode::BREAK) return DECODED_INSTR(BREAK);
 		if ((instr.whole & 0xFFFFFC00) == Opcode::RDTIME_D) return DECODED_INSTR(RDTIME_D);
 		if ((instr.whole & 0xFFFFFC00) == Opcode::CPUCFG) return DECODED_INSTR(CPUCFG);
 
@@ -755,6 +757,11 @@ namespace loongarch
 			}
 		}
 			break;
+
+		case 0x04: // ADDU16I.D (0x10000000)
+			if (op6 == 0x04) return DECODED_INSTR(ADDU16I_D);
+			break;
+
 		case 0x05: // LU12I.W (0x14000000) / LU32I.D (0x16000000)
 			// Need to check bits[31:25] to distinguish:
 			// LU12I.W: 0001010 (0x0A), LU32I.D: 0001011 (0x0B)

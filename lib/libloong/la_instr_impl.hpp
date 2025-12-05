@@ -51,6 +51,12 @@ struct InstrImpl {
 		cpu.reg(instr.ri12.rd) = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
 	}
 
+	static void ADDU16I_D(cpu_t& cpu, la_instruction instr) {
+		int32_t si16 = InstructionHelpers::sign_extend_16(instr.ri16.imm);
+		int64_t offset = (int64_t)(si16 << 16);
+		cpu.reg(instr.ri16.rd) = cpu.reg(instr.ri16.rj) + offset;
+	}
+
 	// === Division/Modulo Instructions ===
 
 	static void DIV_W(cpu_t& cpu, la_instruction instr) {
@@ -647,6 +653,13 @@ struct InstrImpl {
 		(void)instr;
 		const int syscall_nr = static_cast<uint32_t>(cpu.reg(REG_A7));
 		cpu.machine().system_call(syscall_nr);
+	}
+
+	static void BREAK(cpu_t& cpu, la_instruction instr) {
+		(void)instr;
+		// BREAK instruction - currently hardcoded to syscall 0
+		// TODO: Extract the 15-bit code field from the instruction for proper handling
+		cpu.machine().system_call(0);
 	}
 
 	static void NOP(cpu_t& cpu, la_instruction instr) {

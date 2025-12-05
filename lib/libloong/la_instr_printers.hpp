@@ -117,6 +117,12 @@ struct InstrPrinters {
 			reg_name(instr.ri12.rd), reg_name(instr.ri12.rj), imm);
 	}
 
+	static int ADDU16I_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		int32_t imm = InstructionHelpers::sign_extend_16(instr.ri16.imm);
+		return snprintf(buf, len, "addu16i.d %s, %s, %d",
+			reg_name(instr.ri16.rd), reg_name(instr.ri16.rj), imm);
+	}
+
 	// === Division/Modulo Instructions ===
 
 	static int DIV_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
@@ -694,6 +700,12 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 	static int SYSCALL(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		const uint32_t imm = instr.whole & 0xFFF;
 		return snprintf(buf, len, "syscall 0x%x", imm);
+	}
+
+	static int BREAK(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		// BREAK instruction has a 15-bit code field in bits [14:0]
+		uint32_t code = instr.whole & 0x7FFF;
+		return snprintf(buf, len, "break 0x%x", code);
 	}
 
 	// === Memory Barriers ===

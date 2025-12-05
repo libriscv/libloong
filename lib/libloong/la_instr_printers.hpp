@@ -509,30 +509,30 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		// BEQZ uses ri21 format: rj at bits[9:5], 21-bit offset split across bits[25:10] and [4:0]
 		int32_t offset = InstructionHelpers::sign_extend_21(instr.ri21.offs_lo, instr.ri21.offs_hi) << 2;
 		addr_t target = pc + offset;
-		return snprintf(buf, len, "beqz %s, 0x%lx",
-			reg_name(instr.ri21.rj), (unsigned long)target);
+		return snprintf(buf, len, "beqz %s, %d # 0x%lx",
+			reg_name(instr.ri21.rj), offset, (unsigned long)target);
 	}
 
 	static int BNEZ(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t pc) {
 		// BNEZ uses ri21 format: rj at bits[9:5], 21-bit offset split across bits[25:10] and [4:0]
 		int32_t offset = InstructionHelpers::sign_extend_21(instr.ri21.offs_lo, instr.ri21.offs_hi) << 2;
 		addr_t target = pc + offset;
-		return snprintf(buf, len, "bnez %s, 0x%lx",
-			reg_name(instr.ri21.rj), (unsigned long)target);
+		return snprintf(buf, len, "bnez %s, %d # 0x%lx",
+			reg_name(instr.ri21.rj), offset, (unsigned long)target);
 	}
 
 	static int BEQ(char* buf, size_t len, const cpu_t& cpu, la_instruction instr, addr_t pc) {
 		int32_t offset = InstructionHelpers::sign_extend_16(instr.ri16.imm) << 2;
 		addr_t target = pc + offset;
-		return snprintf(buf, len, "beq %s, %s, 0x%lx",
-			reg_name(instr.ri16.rj), reg_name(instr.ri16.rd), (unsigned long)target);
+		return snprintf(buf, len, "beq %s, %s, %d # 0x%lx",
+			reg_name(instr.ri16.rj), reg_name(instr.ri16.rd), offset, (unsigned long)target);
 	}
 
 	static int BNE(char* buf, size_t len, const cpu_t& cpu, la_instruction instr, addr_t pc) {
 		int32_t offset = InstructionHelpers::sign_extend_16(instr.ri16.imm) << 2;
 		addr_t target = pc + offset;
-		return snprintf(buf, len, "bne %s, %s, 0x%lx",
-			reg_name(instr.ri16.rj), reg_name(instr.ri16.rd), (unsigned long)target);
+		return snprintf(buf, len, "bne %s, %s, %d # 0x%lx",
+			reg_name(instr.ri16.rj), reg_name(instr.ri16.rd), offset, (unsigned long)target);
 	}
 
 	static int BLT(char* buf, size_t len, const cpu_t& cpu, la_instruction instr, addr_t pc) {
@@ -556,22 +556,22 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		addr_t target = pc + offset;
 		if (instr.ri16.rd == 0) {
 			// BGE rd, $zero, target is equivalent to BGEZ rd, target
-			return snprintf(buf, len, "bgez %s, 0x%lx",
-				reg_name(instr.ri16.rj), (unsigned long)target);
+			return snprintf(buf, len, "bgez %s, %d # 0x%lx",
+				reg_name(instr.ri16.rj), offset, (unsigned long)target);
 		} else if (instr.ri16.rj == 0) {
 			// BGE $zero, rd, target is equivalent to BLEZ rd, target
-			return snprintf(buf, len, "blez %s, 0x%lx",
-				reg_name(instr.ri16.rd), (unsigned long)target);
+			return snprintf(buf, len, "blez %s, %d # 0x%lx",
+				reg_name(instr.ri16.rd), offset, (unsigned long)target);
 		}
-		return snprintf(buf, len, "bge %s, %s, 0x%lx",
-			reg_name(instr.ri16.rj), reg_name(instr.ri16.rd), (unsigned long)target);
+		return snprintf(buf, len, "bge %s, %s, %d # 0x%lx",
+			reg_name(instr.ri16.rj), reg_name(instr.ri16.rd), offset, (unsigned long)target);
 	}
 
 	static int BLTU(char* buf, size_t len, const cpu_t& cpu, la_instruction instr, addr_t pc) {
 		int32_t offset = InstructionHelpers::sign_extend_16(instr.ri16.imm) << 2;
 		addr_t target = pc + offset;
-		return snprintf(buf, len, "bltu %s, %s, 0x%lx",
-			reg_name(instr.ri16.rj), reg_name(instr.ri16.rd), (unsigned long)target);
+		return snprintf(buf, len, "bltu %s, %s, %d # 0x%lx",
+			reg_name(instr.ri16.rj), reg_name(instr.ri16.rd), offset, (unsigned long)target);
 	}
 
 	static int BGEU(char* buf, size_t len, const cpu_t& cpu, la_instruction instr, addr_t pc) {
@@ -584,13 +584,13 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 	static int B(char* buf, size_t len, const cpu_t& cpu, la_instruction instr, addr_t pc) {
 		int32_t offset = InstructionHelpers::sign_extend_26(instr.i26.offs()) << 2;
 		addr_t target = pc + offset;
-		return snprintf(buf, len, "b 0x%lx", (unsigned long)target);
+		return snprintf(buf, len, "b  %d # 0x%lx", offset, (unsigned long)target);
 	}
 
 	static int BL(char* buf, size_t len, const cpu_t& cpu, la_instruction instr, addr_t pc) {
 		int32_t offset = InstructionHelpers::sign_extend_26(instr.i26.offs()) << 2;
 		addr_t target = pc + offset;
-		return snprintf(buf, len, "bl 0x%lx", (unsigned long)target);
+		return snprintf(buf, len, "bl  %d # 0x%lx", offset, (unsigned long)target);
 	}
 
 	static int JIRL(char* buf, size_t len, const cpu_t& cpu, la_instruction instr, addr_t pc) {
@@ -669,7 +669,7 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 	static int BSTRPICK_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		uint32_t msbd = (instr.whole >> 16) & 0x3F;
 		uint32_t lsbd = (instr.whole >> 10) & 0x3F;
-		return snprintf(buf, len, "bstrpick.d %s, %s, %u, %u",
+		return snprintf(buf, len, "bstrpick.d %s, %s, 0x%x, 0x%x",
 			reg_name(instr.ri16.rd), reg_name(instr.ri16.rj), msbd, lsbd);
 	}
 
@@ -689,8 +689,9 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 
 	// === System Instructions ===
 
-	static int SYSCALL(char* buf, size_t len, const cpu_t&, la_instruction, addr_t) {
-		return snprintf(buf, len, "syscall");
+	static int SYSCALL(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		const uint32_t imm = instr.whole & 0xFFF;
+		return snprintf(buf, len, "syscall 0x%x", imm);
 	}
 
 	// === Memory Barriers ===

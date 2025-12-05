@@ -26,18 +26,10 @@ namespace loongarch
 		handler_t get_handler() const noexcept {
 			return m_handlers[handler_idx];
 		}
-		static uint8_t compute_handler_for(handler_t handler) {
-			// Search for existing handler
-			for (size_t i = 0; i < m_handlers.size(); ++i) {
-				if (m_handlers[i] == handler) {
-					return static_cast<uint8_t>(i);
-				}
-			}
-
-			// Add new handler
-			m_handlers.push_back(handler);
-			return static_cast<uint8_t>(m_handlers.size() - 1);
+		handler_t get_extended_handler() const noexcept {
+			return m_handlers[256u + handler_idx];
 		}
+		static uint16_t compute_handler_for(handler_t handler);
 
 	private:
 		static inline std::vector<handler_t> m_handlers;

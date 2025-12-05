@@ -17,7 +17,8 @@ extern void populate_decoder_cache(DecodedExecuteSegment& segment, address_t exe
 
 Memory::Memory(Machine& machine,
 	std::string_view binary, const MachineOptions& options)
-	: m_machine(machine), m_binary(binary)
+	: m_machine(machine), m_binary(binary),
+	  m_main_exec_segment(nullptr)
 {
 	if (!binary.empty()) {
 		binary_loader(options);

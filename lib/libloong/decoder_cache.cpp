@@ -37,11 +37,13 @@ namespace loongarch
 	}
 
 	// Determine the bytecode for a given instruction
-	static uint8_t determine_bytecode(uint32_t instr)
+	static uint8_t determine_bytecode(const uint32_t instr, const uint16_t handler_idx)
 	{
 		// Check for system call first
 		if (instr == Opcode::SYSCALL) {
 			return LA64_BC_SYSCALL;
+		} else if (instr == Opcode::BREAK) {
+			return LA64_BC_FUNCTION;
 		}
 
 		// Check for popular instructions and assign specific bytecodes
@@ -481,7 +483,7 @@ namespace loongarch
 		}
 
 		// Fallback: regular function (non-PC-modifying)
-		return LA64_BC_FUNCTION;
+		return LA64_BC_FUNCTION + (handler_idx >> 8);
 	}
 
 	// Populate decoder cache for an execute segment
@@ -491,7 +493,7 @@ namespace loongarch
 		// Round down to nearest instruction boundary (4 bytes)
 		// This safely handles segments where .text + .rodata are merged
 		const size_t aligned_size = code_size & ~size_t(3);
-		if (aligned_size == 0) {
+		if (aligned_size < 4) {
 			// No complete instructions to cache
 			segment.set_decoder_cache(nullptr, 0);
 			return;
@@ -511,25 +513,26 @@ namespace loongarch
 		// This computes how many bytes until the next diverging instruction
 		const uint32_t* instr_ptr = reinterpret_cast<const uint32_t*>(code);
 		uint32_t accumulated_bytes = 0;
-		std::unordered_map<typename DecoderData::handler_t, uint8_t> handler_map;
+		std::unordered_map<typename DecoderData::handler_t, uint16_t> handler_map;
 		for (size_t i = num_instructions; i-- > 0; ) {
 			const uint32_t instr = instr_ptr[i];
 
 			// Decode and cache the handler for fast dispatch
 			const auto& decoded = CPU::decode(la_instruction{instr});
 			auto it = handler_map.find(decoded.handler);
+			uint16_t handler_idx = 0;
 			if (it != handler_map.end()) {
 				// Existing handler
-				cache[i].handler_idx = it->second;
+				handler_idx = it->second;
 			} else {
 				// New handler
-				const uint8_t handler_idx = DecoderData::compute_handler_for(decoded.handler);
+				handler_idx = DecoderData::compute_handler_for(decoded.handler);
 				handler_map.insert_or_assign(decoded.handler, handler_idx);
-				cache[i].handler_idx = handler_idx;
 			}
 
 			// Set bytecode for threaded dispatch
-			cache[i].bytecode = determine_bytecode(instr);
+			cache[i].bytecode = determine_bytecode(instr, handler_idx);
+			cache[i].handler_idx = handler_idx & 0xFF;
 			// Optimize instruction bits for popular bytecodes
 			// The optimizer may also modify the bytecode if needed,
 			// typically to rewrite cases where rd == zero register.
@@ -556,6 +559,20 @@ namespace loongarch
 
 		// Store the cache in the segment
 		segment.set_decoder_cache(cache, num_instructions);
+	}
+
+	uint16_t DecoderData::compute_handler_for(handler_t handler)
+	{
+		// Search for existing handler
+		for (size_t i = 0; i < m_handlers.size(); ++i) {
+			if (m_handlers[i] == handler) {
+				return static_cast<uint16_t>(i);
+			}
+		}
+
+		// Add new handler
+		m_handlers.push_back(handler);
+		return static_cast<uint16_t>(m_handlers.size() - 1);
 	}
 
 	void DecodedExecuteSegment::set(address_t entry_addr, const DecoderData& data)

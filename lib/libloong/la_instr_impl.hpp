@@ -1436,6 +1436,30 @@ struct InstrImpl {
 		vr_d.f[0] = std::fmin(vr_j.f[0], vr_k.f[0]);
 	}
 
+	static void FMAX_D(cpu_t& cpu, la_instruction instr) {
+		// Floating-point maximum (double precision)
+		uint32_t fd = instr.r3.rd;
+		uint32_t fj = instr.r3.rj;
+		uint32_t fk = instr.r3.rk;
+
+		const auto& vr_j = cpu.registers().getvr(fj);
+		const auto& vr_k = cpu.registers().getvr(fk);
+		auto& vr_d = cpu.registers().getvr(fd);
+		vr_d.d[0] = std::fmax(vr_j.d[0], vr_k.d[0]);
+	}
+
+	static void FMIN_D(cpu_t& cpu, la_instruction instr) {
+		// Floating-point minimum (double precision)
+		uint32_t fd = instr.r3.rd;
+		uint32_t fj = instr.r3.rj;
+		uint32_t fk = instr.r3.rk;
+
+		const auto& vr_j = cpu.registers().getvr(fj);
+		const auto& vr_k = cpu.registers().getvr(fk);
+		auto& vr_d = cpu.registers().getvr(fd);
+		vr_d.d[0] = std::fmin(vr_j.d[0], vr_k.d[0]);
+	}
+
 	static void FABS_S(cpu_t& cpu, la_instruction instr) {
 		// Floating-point absolute value (single precision)
 		uint32_t fd = instr.whole & 0x1F;

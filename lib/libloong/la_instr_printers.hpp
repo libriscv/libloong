@@ -1257,6 +1257,20 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		return snprintf(buf, len, "fmin.s $fa%u, $fa%u, $fa%u", fd, fj, fk);
 	}
 
+	static int FMAX_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t fd = instr.r3.rd;
+		uint32_t fj = instr.r3.rj;
+		uint32_t fk = instr.r3.rk;
+		return snprintf(buf, len, "fmax.d $fa%u, $fa%u, $fa%u", fd, fj, fk);
+	}
+
+	static int FMIN_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t fd = instr.r3.rd;
+		uint32_t fj = instr.r3.rj;
+		uint32_t fk = instr.r3.rk;
+		return snprintf(buf, len, "fmin.d $fa%u, $fa%u, $fa%u", fd, fj, fk);
+	}
+
 	static int FMSUB_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		uint32_t fd = instr.r4.rd;
 		uint32_t fj = instr.r4.rj;

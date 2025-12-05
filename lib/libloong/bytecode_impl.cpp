@@ -1106,8 +1106,13 @@ INSTRUCTION(LA64_BC_FUNCTION, execute_decoded_function)
 {
 	// Call the cached handler for this instruction
 	const auto handler = DECODER().get_handler();
-	//printf("Slow-path: instr %08x at PC 0x%lx\n",
-	//       DECODER().instr, pc);
+	handler(CPU(), la_instruction{DECODER().instr});
+	NEXT_INSTR();
+}
+INSTRUCTION(LA64_BC_FUNCTION2, execute_function_extended)
+{
+	// Call the cached handler for this instruction
+	const auto handler = DECODER().get_extended_handler();
 	handler(CPU(), la_instruction{DECODER().instr});
 	NEXT_INSTR();
 }

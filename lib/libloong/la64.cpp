@@ -420,6 +420,8 @@ namespace loongarch
 	INSTRUCTION(FDIV_S);
 	INSTRUCTION(FMAX_S);
 	INSTRUCTION(FMIN_S);
+	INSTRUCTION(FMAX_D);
+	INSTRUCTION(FMIN_D);
 	INSTRUCTION(FABS_S);
 	INSTRUCTION(FMADD_S);
 	INSTRUCTION(FMSUB_S);
@@ -504,6 +506,10 @@ namespace loongarch
 			if (op17 == 0x01088000) return DECODED_INSTR(FMAX_S);
 			// FMIN.S: op17 = 0x010A8000
 			if (op17 == 0x010A8000) return DECODED_INSTR(FMIN_S);
+			// FMAX.D: op17 = 0x01090000
+			if (op17 == 0x01090000) return DECODED_INSTR(FMAX_D);
+			// FMIN.D: op17 = 0x010B0000
+			if (op17 == 0x010B0000) return DECODED_INSTR(FMIN_D);
 
 			// Division/Modulo instructions
 			if (op17 == Opcode::DIV_W) return DECODED_INSTR(DIV_W);

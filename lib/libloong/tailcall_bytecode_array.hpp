@@ -120,6 +120,7 @@
 [LA64_BC_BGEU]      = la64_bgeu,
 
 [LA64_BC_FUNCTION]  = execute_decoded_function,
+[LA64_BC_FUNCTION2] = execute_function_extended,
 [LA64_BC_SYSCALL]   = la64_syscall,
 [LA64_BC_SYSCALLIMM]= la64_syscall_imm,
 [LA64_BC_NOP]       = la64_nop,

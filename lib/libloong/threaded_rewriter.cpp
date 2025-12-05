@@ -825,10 +825,8 @@ uint32_t DecodedExecuteSegment::optimize_bytecode(uint8_t& bytecode, address_t p
 				return original.whole;
 			}
 		} break;
-		default:
-			// No optimization
-			return instruction_bits;
 	}
+	return instruction_bits;
 }
 
 } // loongarch

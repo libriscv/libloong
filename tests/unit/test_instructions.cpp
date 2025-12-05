@@ -356,11 +356,13 @@ TEST_CASE("Step-by-step instruction verification", "[instructions][step]") {
 		printf("%s\n",
 			tester.dump_registers().c_str());
 		REQUIRE(tester.get_reg(REG_A0) == 8);
+		REQUIRE(tester.get_reg(REG_A1) == 0);
 
 		// Execute second instruction (need to setup execution area again)
 		auto r2 = tester.execute_one(instructions[1], 0x10004);
 		REQUIRE(r2.success);
 		REQUIRE(r2.instructions_executed == 1);
+		REQUIRE(tester.get_reg(REG_A0) == 8);
 		REQUIRE(tester.get_reg(REG_A1) == 16);
 
 		// Execute third instruction
@@ -368,5 +370,6 @@ TEST_CASE("Step-by-step instruction verification", "[instructions][step]") {
 		REQUIRE(r3.success);
 		REQUIRE(r3.instructions_executed == 1);
 		REQUIRE(tester.get_reg(REG_A0) == 24); // 8 + 16 = 24
+		REQUIRE(tester.get_reg(REG_A1) == 16);
 	}
 }

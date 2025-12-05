@@ -96,11 +96,11 @@ namespace loongarch
 		inline auto sysargs() const;
 
 		// Function calls (implemented in machine_vmcall.hpp)
-		template <uint64_t MAX_INSTRUCTIONS = UINT64_MAX, typename... Args>
-		address_t vmcall(address_t func_addr, Args&&... args);
+		template <typename Ret = address_t, uint64_t MAX_INSTRUCTIONS = UINT64_MAX, typename... Args>
+		Ret vmcall(address_t func_addr, Args&&... args);
 
-		template <uint64_t MAX_INSTRUCTIONS = UINT64_MAX, typename... Args>
-		address_t vmcall(const std::string& func_name, Args&&... args);
+		template <typename Ret = address_t, uint64_t MAX_INSTRUCTIONS = UINT64_MAX, typename... Args>
+		Ret vmcall(const std::string& func_name, Args&&... args);
 
 		// Preemptible function calls with instruction limit
 		template <bool Throw = true, bool StoreRegs = false, typename... Args>

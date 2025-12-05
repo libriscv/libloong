@@ -98,8 +98,8 @@ namespace loongarch
 	}
 
 	// vmcall: Call a guest function at a specific address
-	template <uint64_t MAX_INSTRUCTIONS, typename... Args>
-	inline address_t Machine::vmcall(address_t func_addr, Args&&... args)
+	template <typename Ret, uint64_t MAX_INSTRUCTIONS, typename... Args>
+	inline Ret Machine::vmcall(address_t func_addr, Args&&... args)
 	{
 		// Use the exit address set via memory.set_exit_address()
 		const address_t exit_addr = memory.exit_address();
@@ -124,13 +124,25 @@ namespace loongarch
 		}
 
 		// If we're here, execution completed normally (via exit syscall)
-		// Return value is in A0
-		return cpu.reg(REG_A0);
+		// Handle return value based on type
+		if constexpr (std::is_same_v<Ret, float>) {
+			// Single-precision float is returned in FA0
+			return cpu.registers().getfl32(REG_FA0);
+		} else if constexpr (std::is_same_v<Ret, double>) {
+			// Double-precision float is returned in FA0
+			return cpu.registers().getfl64(REG_FA0);
+		} else if constexpr (std::is_integral_v<Ret> || std::is_same_v<Ret, address_t>) {
+			// Integer types are returned in A0
+			return static_cast<Ret>(cpu.reg(REG_A0));
+		} else {
+			// Default: return value from A0
+			return static_cast<Ret>(cpu.reg(REG_A0));
+		}
 	}
 
 	// vmcall: Call a guest function by symbol name
-	template <uint64_t MAX_INSTRUCTIONS, typename... Args>
-	inline address_t Machine::vmcall(const std::string& func_name, Args&&... args)
+	template <typename Ret, uint64_t MAX_INSTRUCTIONS, typename... Args>
+	inline Ret Machine::vmcall(const std::string& func_name, Args&&... args)
 	{
 		// Resolve the function address
 		const address_t func_addr = this->address_of(func_name);
@@ -141,7 +153,7 @@ namespace loongarch
 		}
 
 		// Call the function at the resolved address
-		return vmcall<MAX_INSTRUCTIONS>(func_addr, std::forward<Args>(args)...);
+		return vmcall<Ret, MAX_INSTRUCTIONS>(func_addr, std::forward<Args>(args)...);
 	}
 
 	// preempt: Call a guest function with instruction limit and optional register save

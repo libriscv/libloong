@@ -112,23 +112,23 @@ public:
 		return result;
 	}
 
-	// Call a function in the guest (returns full 64-bit result)
-	template <typename... Args>
-	address_t vmcall(const std::string& func_name, Args&&... args) {
+	// Call a function in the guest (returns typed result)
+	template <typename Ret = address_t, typename... Args>
+	Ret vmcall(const std::string& func_name, Args&&... args) {
 		auto func_addr = m_machine->address_of(func_name);
 		if (func_addr == 0) {
 			throw std::runtime_error("Function not found: " + func_name);
 		}
-		return vmcall(func_addr, std::forward<Args>(args)...);
+		return vmcall<Ret>(func_addr, std::forward<Args>(args)...);
 	}
 
-	template <typename... Args>
-	address_t vmcall(address_t func_addr, Args&&... args) {
+	template <typename Ret = address_t, typename... Args>
+	Ret vmcall(address_t func_addr, Args&&... args) {
 		// Ensure IFUNCs are resolved before first vmcall
 		// This runs program initialization which resolves IFUNC symbols
 		// like strcmp that select optimized implementations at runtime
 		ensure_initialized();
-		return m_machine->vmcall(func_addr, std::forward<Args>(args)...);
+		return m_machine->vmcall<Ret>(func_addr, std::forward<Args>(args)...);
 	}
 
 	// Direct access to machine

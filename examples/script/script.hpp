@@ -66,15 +66,8 @@ public:
     template<typename Ret = int, typename... Args>
     Ret call(address_t addr, Args&&... args) {
         try {
-			if constexpr (std::is_void_v<Ret>) {
-				m_machine->template vmcall<UINT64_MAX>(
-					addr, std::forward<Args>(args)...
-				);
-			} else {
-				m_machine->template vmcall<UINT64_MAX>(
-					addr, std::forward<Args>(args)...);
-				return m_machine->return_value<Ret>();
-			}
+			return m_machine->template vmcall<Ret, UINT64_MAX>(
+				addr, std::forward<Args>(args)...);
         } catch (const MachineException& e) {
 			handle_exception(e);
         }

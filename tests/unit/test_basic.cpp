@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "codebuilder.hpp"
 #include "test_utils.hpp"
 
@@ -291,6 +292,77 @@ TEST_CASE("Floating-point operations", "[basic][float]") {
 		auto result = run_binary(binary, 42);
 		REQUIRE(result.success);
 		REQUIRE(result.exit_code == 42);
+	}
+
+	SECTION("fcvt.x.x - conversion from float to gpr") {
+		auto binary = builder.build(R"(
+			int main() {}
+
+			float convert_i32_float(int value) {
+				return (float)value;
+			}
+			int convert_float_i32(float value) {
+				return (int)value;
+			}
+			double convert_i32_double(int value) {
+				return (double)value;
+			}
+			int convert_double_i32(double value) {
+				return (int)value;
+			}
+			float convert_i64_float(long long value) {
+				return (float)value;
+			}
+			long long convert_float_i64(float value) {
+				return (long long)value;
+			}
+			double convert_i64_double(long long value) {
+				return (double)value;
+			}
+			long long convert_double_i64(double value) {
+				return (long long)value;
+			}
+		)", "fcvt_x_x_test");
+
+		auto result = run_binary(binary, 0);
+		REQUIRE(result.success);
+
+		TestMachine machine(binary);
+		machine.setup_linux();
+
+		// Test int32 <-> float
+		float fval = machine.vmcall<float>("convert_i32_float", 42);
+		REQUIRE_THAT(fval, Catch::Matchers::WithinAbs(42.0f, 0.0001f));
+		fval = machine.vmcall<float>("convert_i32_float", -42);
+		REQUIRE_THAT(fval, Catch::Matchers::WithinAbs(-42.0f, 0.0001f));
+		int ival = machine.vmcall<int>("convert_float_i32", 42.0f);
+		REQUIRE(ival == 42);
+		ival = machine.vmcall<int>("convert_float_i32", -42.0f);
+		REQUIRE(ival == -42);
+		// Test int32 <-> double
+		double dval = machine.vmcall<double>("convert_i32_double", 42);
+		REQUIRE_THAT(dval, Catch::Matchers::WithinAbs(42.0, 0.0001));
+		dval = machine.vmcall<double>("convert_i32_double", -42);
+		REQUIRE_THAT(dval, Catch::Matchers::WithinAbs(-42.0, 0.0001));
+		ival = machine.vmcall<int>("convert_double_i32", 42.0);
+		REQUIRE(ival == 42);
+		ival = machine.vmcall<int>("convert_double_i32", -42.0);
+		REQUIRE(ival == -42);
+		// Test int64 <-> float
+		fval = machine.vmcall<float>("convert_i64_float", 4200000000LL);
+		REQUIRE_THAT(fval, Catch::Matchers::WithinAbs(4200000000.0f, 1e5f));
+		fval = machine.vmcall<float>("convert_i64_float", -4200000000LL);
+		REQUIRE_THAT(fval, Catch::Matchers::WithinAbs(-4200000000.0f, 1e5f));
+		long long lval = machine.vmcall<long long>("convert_float_i64", 4200000000.0f);
+		REQUIRE(lval == 4200000000LL);
+		lval = machine.vmcall<long long>("convert_float_i64", -4200000000.0f);
+		REQUIRE(lval == -4200000000LL);
+		// Test int64 <-> double
+		dval = machine.vmcall<double>("convert_i64_double", 4200000000LL);
+		REQUIRE_THAT(dval, Catch::Matchers::WithinAbs(4200000000.0, 1e5));
+		dval = machine.vmcall<double>("convert_i64_double", -4200000000LL);
+		REQUIRE_THAT(dval, Catch::Matchers::WithinAbs(-4200000000.0, 1e5));
+		lval = machine.vmcall<long long>("convert_double_i64", 4200000000.0);
 	}
 
 	SECTION("LASX vectorized initialization") {

@@ -30,8 +30,8 @@ namespace loongarch
 		auto& getfl32(uint32_t idx) noexcept { return m_vr[idx].f[0]; }
 		const auto& getfl32(uint32_t idx) const noexcept { return m_vr[idx].f[0]; }
 
-		auto& getfl64(uint32_t idx) noexcept { return m_vr[idx].d[0]; }
-		const auto& getfl64(uint32_t idx) const noexcept { return m_vr[idx].d[0]; }
+		auto& getfl64(uint32_t idx) noexcept { return m_vr[idx].df[0]; }
+		const auto& getfl64(uint32_t idx) const noexcept { return m_vr[idx].df[0]; }
 
 		auto& getvr(uint32_t idx) noexcept { return m_vr[idx]; }
 		const auto& getvr(uint32_t idx) const noexcept { return m_vr[idx]; }

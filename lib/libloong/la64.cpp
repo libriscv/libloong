@@ -395,6 +395,8 @@ namespace loongarch
 	INSTRUCTION(FFINT_D_W);
 	INSTRUCTION(FFINT_S_W);
 	INSTRUCTION(FFINT_S_L);
+	INSTRUCTION(FCVT_S_D);
+	INSTRUCTION(FCVT_D_S);
 	INSTRUCTION(FTINTRZ_W_S);
 	INSTRUCTION(FTINTRZ_W_D);
 	INSTRUCTION(FTINTRZ_L_S);
@@ -616,6 +618,10 @@ namespace loongarch
 				if (op22_val == 0x4744) return DECODED_INSTR(FFINT_S_W);
 				// FFINT.S.L: bits[31:10] = 0x4746 (convert 64-bit int to single)
 				if (op22_val == 0x4746) return DECODED_INSTR(FFINT_S_L);
+				// FCVT.S.D: bits[31:10] = 0x4646 (convert double to single)
+				if (op22_val == 0x4646) return DECODED_INSTR(FCVT_S_D);
+				// FCVT.D.S: bits[31:10] = 0x4649 (convert single to double)
+				if (op22_val == 0x4649) return DECODED_INSTR(FCVT_D_S);
 				// FTINTRZ.W.S: bits[31:10] = 0x46A1 (truncate single to int32)
 				if (op22_val == 0x46A1) return DECODED_INSTR(FTINTRZ_W_S);
 				// FTINTRZ.W.D: bits[31:10] = 0x46A2 (truncate double to int32)

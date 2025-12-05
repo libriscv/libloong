@@ -1256,6 +1256,28 @@ struct InstrImpl {
 		vr_d.f[0] = static_cast<float>(int_val);
 	}
 
+	static void FCVT_S_D(cpu_t& cpu, la_instruction instr) {
+		// Convert double-precision to single-precision float
+		uint32_t fd = instr.whole & 0x1F;
+		uint32_t fj = (instr.whole >> 5) & 0x1F;
+
+		const auto& vr_j = cpu.registers().getvr(fj);
+		auto& vr_d = cpu.registers().getvr(fd);
+		// Convert double to float
+		vr_d.f[0] = static_cast<float>(vr_j.df[0]);
+	}
+
+	static void FCVT_D_S(cpu_t& cpu, la_instruction instr) {
+		// Convert single-precision to double-precision float
+		uint32_t fd = instr.whole & 0x1F;
+		uint32_t fj = (instr.whole >> 5) & 0x1F;
+
+		const auto& vr_j = cpu.registers().getvr(fj);
+		auto& vr_d = cpu.registers().getvr(fd);
+		// Convert float to double
+		vr_d.df[0] = static_cast<double>(vr_j.f[0]);
+	}
+
 	static void FTINTRZ_W_S(cpu_t& cpu, la_instruction instr) {
 		// Convert single to 32-bit integer with truncation (round towards zero)
 		uint32_t fd = instr.whole & 0x1F;

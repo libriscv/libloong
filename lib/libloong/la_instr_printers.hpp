@@ -1151,6 +1151,18 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		return snprintf(buf, len, "ffint.s.l $fa%u, $fa%u", fd, fj);
 	}
 
+	static int FCVT_S_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t fd = instr.whole & 0x1F;
+		uint32_t fj = (instr.whole >> 5) & 0x1F;
+		return snprintf(buf, len, "fcvt.s.d $fa%u, $fa%u", fd, fj);
+	}
+
+	static int FCVT_D_S(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		uint32_t fd = instr.whole & 0x1F;
+		uint32_t fj = (instr.whole >> 5) & 0x1F;
+		return snprintf(buf, len, "fcvt.d.s $fa%u, $fa%u", fd, fj);
+	}
+
 	static int FTINTRZ_W_S(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		uint32_t fd = instr.whole & 0x1F;
 		uint32_t fj = (instr.whole >> 5) & 0x1F;

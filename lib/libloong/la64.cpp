@@ -152,9 +152,9 @@ namespace loongarch
 	// System
 	INSTRUCTION(SYSCALL);
 
-	// Memory barriers
-	INSTRUCTION(DBAR);
-	INSTRUCTION(IBAR);
+	// Memory barriers (no-ops)
+	static constexpr CPU::instruction_t instr64_DBAR { Impl::NOP, Printers::DBAR };
+	static constexpr CPU::instruction_t instr64_IBAR { Impl::NOP, Printers::IBAR };
 
 	// LL/SC atomics
 	INSTRUCTION(LL_W);

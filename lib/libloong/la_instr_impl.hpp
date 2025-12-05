@@ -666,18 +666,6 @@ struct InstrImpl {
 		cpu.reg(instr.r2.rd) = CPUCFG_BASIC;
 	}
 
-	// === Memory Barrier Instructions ===
-
-	static void DBAR(cpu_t& cpu, la_instruction instr) {
-		// Memory barrier - no-op in single-threaded userspace emulator
-		(void)cpu; (void)instr;
-	}
-
-	static void IBAR(cpu_t& cpu, la_instruction instr) {
-		// Instruction barrier - no-op in interpreter mode
-		(void)cpu; (void)instr;
-	}
-
 	// === Load-Linked / Store-Conditional ===
 
 	static void LL_W(cpu_t& cpu, la_instruction instr) {
@@ -1135,7 +1123,7 @@ struct InstrImpl {
 
 		// Select based on condition flag
 		bool cond = (cpu.registers().cf(ca) != 0);
-		vr_d.df[0] = cond ? vr_k.df[0] : vr_j.df[0];
+		vr_d.du[0] = cond ? vr_k.du[0] : vr_j.du[0];
 	}
 
 	static void FABS_D(cpu_t& cpu, la_instruction instr) {

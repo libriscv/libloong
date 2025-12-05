@@ -325,6 +325,10 @@ namespace loongarch
 	INSTRUCTION(VFTINTRZ_W_S);
 	INSTRUCTION(VFTINTRZ_L_D);
 	INSTRUCTION(VBITREVI_D);
+	INSTRUCTION_P(VPCNT_B, VPCNT);
+	INSTRUCTION_P(VPCNT_H, VPCNT);
+	INSTRUCTION_P(VPCNT_W, VPCNT);
+	INSTRUCTION_P(VPCNT_D, VPCNT);
 	INSTRUCTION(VORI_B);
 	INSTRUCTION(VLDX);
 	INSTRUCTION(VSTX);
@@ -943,9 +947,17 @@ namespace loongarch
 				if ((instr.whole >> 18) == 0x1CF5) return DECODED_INSTR(VORI_B);
 				// VBITREVI.D: Vector Bit Reverse Immediate (double) - op10 = 0x1CC
 				if (op10 == 0x1CC) return DECODED_INSTR(VBITREVI_D);
+				// VPCNT: Vector Population Count - bits[31:15] = 0xE538, bits[14:10] select size
+				uint32_t bits15 = instr.whole >> 15;
+				if (bits15 == 0xE538) {
+					uint32_t size = (instr.whole >> 10) & 0x3;
+					if (size == 0) return DECODED_INSTR(VPCNT_B);
+					if (size == 1) return DECODED_INSTR(VPCNT_H);
+					if (size == 2) return DECODED_INSTR(VPCNT_W);
+					if (size == 3) return DECODED_INSTR(VPCNT_D);
+				}
 				// VMAX/VMIN instructions - bits[31:15] identify variants
 				// Signed: 0xE0E0-E0E3 (b/h/w/d), Unsigned: 0xE0E8-E0EB (bu/hu/wu/du)
-				uint32_t bits15 = instr.whole >> 15;
 				if (bits15 == 0xE0E0) return DECODED_INSTR(VMAX_B);
 				if (bits15 == 0xE0E1) return DECODED_INSTR(VMAX_H);
 				if (bits15 == 0xE0E2) return DECODED_INSTR(VMAX_W);

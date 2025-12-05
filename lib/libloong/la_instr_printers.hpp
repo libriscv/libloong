@@ -1497,6 +1497,15 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		return snprintf(buf, len, "vbitrevi.d $vr%u, $vr%u, 0x%x", vd, vj, imm);
 	}
 
+	static int VPCNT(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		static constexpr char sizes[] = {'b', 'h', 'w', 'd'};
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t vj = (instr.whole >> 5) & 0x1F;
+		// Extract size from opcode: bits[11:10] encode the size (0=b, 1=h, 2=w, 3=d)
+		uint32_t size_idx = (instr.whole >> 10) & 0x3;
+		return snprintf(buf, len, "vpcnt.%c $vr%u, $vr%u", sizes[size_idx], vd, vj);
+	}
+
 	static int VLDI(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		uint32_t vd = instr.whole & 0x1F;
 		uint32_t imm13 = (instr.whole >> 5) & 0x1FFF;

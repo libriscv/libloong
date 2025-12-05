@@ -2751,6 +2751,73 @@ struct InstrImpl {
 		dst.du[3] = 0;
 	}
 
+	static void VPCNT_B(cpu_t& cpu, la_instruction instr) {
+		// VPCNT.B: Vector Population Count (byte)
+		// Counts the number of 1 bits in each byte element
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t vj = (instr.whole >> 5) & 0x1F;
+
+		const auto& src = cpu.registers().getvr(vj);
+		auto& dst = cpu.registers().getvr(vd);
+
+		for (int i = 0; i < 16; i++) {
+			dst.bu[i] = __builtin_popcount(src.bu[i]);
+		}
+		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+		dst.du[2] = 0;
+		dst.du[3] = 0;
+	}
+
+	static void VPCNT_H(cpu_t& cpu, la_instruction instr) {
+		// VPCNT.H: Vector Population Count (halfword)
+		// Counts the number of 1 bits in each 16-bit element
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t vj = (instr.whole >> 5) & 0x1F;
+
+		const auto& src = cpu.registers().getvr(vj);
+		auto& dst = cpu.registers().getvr(vd);
+
+		for (int i = 0; i < 8; i++) {
+			dst.hu[i] = __builtin_popcount(src.hu[i]);
+		}
+		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+		dst.du[2] = 0;
+		dst.du[3] = 0;
+	}
+
+	static void VPCNT_W(cpu_t& cpu, la_instruction instr) {
+		// VPCNT.W: Vector Population Count (word)
+		// Counts the number of 1 bits in each 32-bit element
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t vj = (instr.whole >> 5) & 0x1F;
+
+		const auto& src = cpu.registers().getvr(vj);
+		auto& dst = cpu.registers().getvr(vd);
+
+		for (int i = 0; i < 4; i++) {
+			dst.wu[i] = __builtin_popcount(src.wu[i]);
+		}
+		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+		dst.du[2] = 0;
+		dst.du[3] = 0;
+	}
+
+	static void VPCNT_D(cpu_t& cpu, la_instruction instr) {
+		// VPCNT.D: Vector Population Count (doubleword)
+		// Counts the number of 1 bits in each 64-bit element
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t vj = (instr.whole >> 5) & 0x1F;
+
+		const auto& src = cpu.registers().getvr(vj);
+		auto& dst = cpu.registers().getvr(vd);
+
+		dst.du[0] = __builtin_popcountll(src.du[0]);
+		dst.du[1] = __builtin_popcountll(src.du[1]);
+		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+		dst.du[2] = 0;
+		dst.du[3] = 0;
+	}
+
 	static void VLDI(cpu_t& cpu, la_instruction instr) {
 		// VLDI vd, imm13
 		// LSX load immediate - loads immediate pattern into 128-bit vector

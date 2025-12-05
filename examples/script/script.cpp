@@ -291,12 +291,7 @@ void Script::handle_exception(const MachineException& e) const
 
 bool Script::has_function(const std::string& function_name) const
 {
-	try {
-		m_machine->address_of(function_name);
-		return true;
-	} catch (...) {
-		return false;
-	}
+	return m_machine->address_of(function_name) != 0x0;
 }
 
 // Get address of a symbol

@@ -325,6 +325,10 @@ namespace loongarch
 	INSTRUCTION(VFTINTRZ_W_S);
 	INSTRUCTION(VFTINTRZ_L_D);
 	INSTRUCTION(VBITREVI_D);
+	INSTRUCTION_P(VSLLI_B, VSLLI);
+	INSTRUCTION_P(VSLLI_H, VSLLI);
+	INSTRUCTION_P(VSLLI_W, VSLLI);
+	INSTRUCTION_P(VSLLI_D, VSLLI);
 	INSTRUCTION_P(VPCNT_B, VPCNT);
 	INSTRUCTION_P(VPCNT_H, VPCNT);
 	INSTRUCTION_P(VPCNT_W, VPCNT);
@@ -939,16 +943,24 @@ namespace loongarch
 		case 0x1C: // LSX vector compare/test/extract instructions
 			{
 				uint32_t top16 = (instr.whole >> 16) & 0xFFFF;
-				uint32_t op10  = (instr.whole >> 22) & 0x3FF;
 
 				// VLDI: Vector load immediate - bits[31:18] = 0x1CF8
 				if ((instr.whole >> 18) == 0x1CF8) return DECODED_INSTR(VLDI);
 				// VORI.B: Vector OR immediate (byte) - bits[31:18] = 0x1CF5
 				if ((instr.whole >> 18) == 0x1CF5) return DECODED_INSTR(VORI_B);
-				// VBITREVI.D: Vector Bit Reverse Immediate (double) - op10 = 0x1CC
-				if (op10 == 0x1CC) return DECODED_INSTR(VBITREVI_D);
+				// VSLLI: Vector Shift Left Logical Immediate - bits[31:15] identify size
+				// VBITREVI.D: Vector Bit Reverse Immediate (double) - bits[31:15] = 0xE660
 				// VPCNT: Vector Population Count - bits[31:15] = 0xE538, bits[14:10] select size
 				uint32_t bits15 = instr.whole >> 15;
+				if (bits15 == 0xE658) {
+					// vslli.b and vslli.h both have bits[31:15] = 0xe658, differentiate by bit 14
+					uint32_t bit14 = (instr.whole >> 14) & 1;
+					if (bit14 == 0) return DECODED_INSTR(VSLLI_B);
+					else return DECODED_INSTR(VSLLI_H);
+				}
+				if (bits15 == 0xE659) return DECODED_INSTR(VSLLI_W);
+				if (bits15 == 0xE65A) return DECODED_INSTR(VSLLI_D);
+				if (bits15 == 0xE660) return DECODED_INSTR(VBITREVI_D);
 				if (bits15 == 0xE538) {
 					uint32_t size = (instr.whole >> 10) & 0x3;
 					if (size == 0) return DECODED_INSTR(VPCNT_B);

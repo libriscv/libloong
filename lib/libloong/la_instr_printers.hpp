@@ -540,15 +540,15 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		addr_t target = pc + offset;
 		if (instr.ri16.rd == 0) {
 			// BLT rd, $zero, target is equivalent to BLTZ rd, target
-			return snprintf(buf, len, "bltz %s, 0x%lx",
-				reg_name(instr.ri16.rj), (unsigned long)target);
+			return snprintf(buf, len, "bltz %s, %d # 0x%lx",
+				reg_name(instr.ri16.rj), offset, (unsigned long)target);
 		} else if (instr.ri16.rj == 0) {
 			// BLT $zero, rd, target is equivalent to BGTZ rd, target
-			return snprintf(buf, len, "bgtz %s, 0x%lx",
-				reg_name(instr.ri16.rd), (unsigned long)target);
+			return snprintf(buf, len, "bgtz %s, %d # 0x%lx",
+				reg_name(instr.ri16.rd), offset, (unsigned long)target);
 		}
-		return snprintf(buf, len, "blt %s, %s, 0x%lx",
-			reg_name(instr.ri16.rj), reg_name(instr.ri16.rd), (unsigned long)target);
+		return snprintf(buf, len, "blt %s, %s, %d # 0x%lx",
+			reg_name(instr.ri16.rj), reg_name(instr.ri16.rd), offset, (unsigned long)target);
 	}
 
 	static int BGE(char* buf, size_t len, const cpu_t& cpu, la_instruction instr, addr_t pc) {
@@ -577,8 +577,8 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 	static int BGEU(char* buf, size_t len, const cpu_t& cpu, la_instruction instr, addr_t pc) {
 		int32_t offset = InstructionHelpers::sign_extend_16(instr.ri16.imm) << 2;
 		addr_t target = pc + offset;
-		return snprintf(buf, len, "bgeu %s, %s, 0x%lx",
-			reg_name(instr.ri16.rj), reg_name(instr.ri16.rd), (unsigned long)target);
+		return snprintf(buf, len, "bgeu %s, %s, %d # 0x%lx",
+			reg_name(instr.ri16.rj), reg_name(instr.ri16.rd), offset, (unsigned long)target);
 	}
 
 	static int B(char* buf, size_t len, const cpu_t& cpu, la_instruction instr, addr_t pc) {
@@ -610,13 +610,15 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 	// === Upper Immediate Instructions ===
 
 	static int LU12I_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		return snprintf(buf, len, "lu12i.w %s, 0x%x",
-			reg_name(instr.ri20.rd), instr.ri20.imm);
+		const int32_t signed_imm = InstructionHelpers::sign_extend_20(instr.ri20.imm);
+		return snprintf(buf, len, "lu12i.w %s, %d",
+			reg_name(instr.ri20.rd), signed_imm);
 	}
 
 	static int LU32I_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		return snprintf(buf, len, "lu32i.d %s, 0x%x",
-			reg_name(instr.ri20.rd), instr.ri20.imm);
+		const int64_t signed_imm = InstructionHelpers::sign_extend_20(instr.ri20.imm);
+		return snprintf(buf, len, "lu32i.d %s, %ld",
+			reg_name(instr.ri20.rd), signed_imm);
 	}
 
 	static int PCADDI(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t pc) {
@@ -662,7 +664,7 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 	static int BSTRINS_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		uint32_t msbd = (instr.whole >> 16) & 0x3F;
 		uint32_t lsbd = (instr.whole >> 10) & 0x3F;
-		return snprintf(buf, len, "bstrins.d %s, %s, %u, %u",
+		return snprintf(buf, len, "bstrins.d %s, %s, 0x%x, 0x%x",
 			reg_name(instr.ri16.rd), reg_name(instr.ri16.rj), msbd, lsbd);
 	}
 
@@ -676,7 +678,7 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 	static int BSTRINS_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		uint32_t msbw = (instr.whole >> 16) & 0x1F;
 		uint32_t lsbw = (instr.whole >> 10) & 0x1F;
-		return snprintf(buf, len, "bstrins.w %s, %s, %u, %u",
+		return snprintf(buf, len, "bstrins.w %s, %s, 0x%x, 0x%x",
 			reg_name(instr.ri16.rd), reg_name(instr.ri16.rj), msbw, lsbw);
 	}
 
@@ -1496,6 +1498,29 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		uint32_t vj = (instr.whole >> 5) & 0x1F;
 		uint32_t imm = (instr.whole >> 10) & 0x3F;
 		return snprintf(buf, len, "vbitrevi.d $vr%u, $vr%u, 0x%x", vd, vj, imm);
+	}
+
+	static int VSLLI(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		static constexpr char sizes[] = {'b', 'h', 'w', 'd'};
+		static constexpr uint32_t imm_masks[] = {0x7, 0xF, 0x1F, 0x3F};  // 3, 4, 5, 6 bits
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t vj = (instr.whole >> 5) & 0x1F;
+
+		// Determine size based on bits[31:15]
+		uint32_t bits15 = instr.whole >> 15;
+		uint32_t size_idx;
+		if (bits15 == 0xE658) {
+			// vslli.b and vslli.h both have bits[31:15] = 0xe658, differentiate by bit 14
+			uint32_t bit14 = (instr.whole >> 14) & 1;
+			size_idx = bit14 ? 1 : 0;  // 0=b, 1=h
+		} else if (bits15 == 0xE659) {
+			size_idx = 2;  // w
+		} else {  // 0xE65A
+			size_idx = 3;  // d
+		}
+
+		uint32_t imm = (instr.whole >> 10) & imm_masks[size_idx];
+		return snprintf(buf, len, "vslli.%c $vr%u, $vr%u, 0x%x", sizes[size_idx], vd, vj, imm);
 	}
 
 	static int VPCNT(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {

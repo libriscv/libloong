@@ -2751,6 +2751,77 @@ struct InstrImpl {
 		dst.du[3] = 0;
 	}
 
+	static void VSLLI_B(cpu_t& cpu, la_instruction instr) {
+		// VSLLI.B: Vector Shift Left Logical Immediate (byte)
+		// Shifts each byte element left by immediate amount
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t vj = (instr.whole >> 5) & 0x1F;
+		uint32_t imm = (instr.whole >> 10) & 0x7;  // 3-bit immediate (0-7)
+
+		const auto& src = cpu.registers().getvr(vj);
+		auto& dst = cpu.registers().getvr(vd);
+
+		for (int i = 0; i < 16; i++) {
+			dst.bu[i] = src.bu[i] << imm;
+		}
+		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+		dst.du[2] = 0;
+		dst.du[3] = 0;
+	}
+
+	static void VSLLI_H(cpu_t& cpu, la_instruction instr) {
+		// VSLLI.H: Vector Shift Left Logical Immediate (halfword)
+		// Shifts each 16-bit element left by immediate amount
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t vj = (instr.whole >> 5) & 0x1F;
+		uint32_t imm = (instr.whole >> 10) & 0xF;  // 4-bit immediate (0-15)
+
+		const auto& src = cpu.registers().getvr(vj);
+		auto& dst = cpu.registers().getvr(vd);
+
+		for (int i = 0; i < 8; i++) {
+			dst.hu[i] = src.hu[i] << imm;
+		}
+		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+		dst.du[2] = 0;
+		dst.du[3] = 0;
+	}
+
+	static void VSLLI_W(cpu_t& cpu, la_instruction instr) {
+		// VSLLI.W: Vector Shift Left Logical Immediate (word)
+		// Shifts each 32-bit element left by immediate amount
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t vj = (instr.whole >> 5) & 0x1F;
+		uint32_t imm = (instr.whole >> 10) & 0x1F;  // 5-bit immediate (0-31)
+
+		const auto& src = cpu.registers().getvr(vj);
+		auto& dst = cpu.registers().getvr(vd);
+
+		for (int i = 0; i < 4; i++) {
+			dst.wu[i] = src.wu[i] << imm;
+		}
+		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+		dst.du[2] = 0;
+		dst.du[3] = 0;
+	}
+
+	static void VSLLI_D(cpu_t& cpu, la_instruction instr) {
+		// VSLLI.D: Vector Shift Left Logical Immediate (double)
+		// Shifts each 64-bit element left by immediate amount
+		uint32_t vd = instr.whole & 0x1F;
+		uint32_t vj = (instr.whole >> 5) & 0x1F;
+		uint32_t imm = (instr.whole >> 10) & 0x3F;  // 6-bit immediate (0-63)
+
+		const auto& src = cpu.registers().getvr(vj);
+		auto& dst = cpu.registers().getvr(vd);
+
+		dst.du[0] = src.du[0] << imm;
+		dst.du[1] = src.du[1] << imm;
+		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+		dst.du[2] = 0;
+		dst.du[3] = 0;
+	}
+
 	static void VPCNT_B(cpu_t& cpu, la_instruction instr) {
 		// VPCNT.B: Vector Population Count (byte)
 		// Counts the number of 1 bits in each byte element

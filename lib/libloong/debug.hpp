@@ -22,6 +22,8 @@ namespace loongarch
 		long vmcall(address_t func_addr,
 			uint64_t max_instructions = 1'000'000ull,
 			const std::vector<std::string>& arguments = {});
+		// Decode-only mode: decode all instructions and compare with objdump without execution
+		void decode_and_compare();
 		void print_registers();
 		void print_instruction();
 		std::string demangle(const char* mangled);

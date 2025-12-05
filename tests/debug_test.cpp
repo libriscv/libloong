@@ -22,6 +22,7 @@ struct DebugOptions {
 	bool verbose_registers = false;
 	bool compare_objdump = false;
 	bool short_output = false;
+	bool decode_only = false;
 	std::string call_function;
 	std::vector<std::string> arguments;
 	bool value_is_expected = false;
@@ -40,6 +41,7 @@ static void print_help(const char* progname)
 		<< "  -r, --registers         Show register state after each instruction\n"
 		<< "  -o, --compare-objdump   Compare with objdump and stop on mnemonic mismatch\n"
 		<< "  -s, --short             Use short output format\n"
+		<< "  -d, --decode-only       Decode all instructions and compare with objdump (no execution)\n"
 		<< "  -c, --call <function>   Call a function after init (and debug that)\n"
 		<< "      --arg <value>       Appends argument to pass to function call\n"
 		<< "      --expect <value>    Optional expected return value from call\n\n"
@@ -47,7 +49,8 @@ static void print_help(const char* progname)
 		<< "  " << progname << " program.elf\n"
 		<< "  " << progname << " --max-instructions 1000000 --short program.elf\n"
 		<< "  " << progname << " -q -r program.elf\n"
-		<< "  " << progname << " -o program.elf  # Stop if instruction mismatch detected\n\n"
+		<< "  " << progname << " -o program.elf  # Stop if instruction mismatch detected\n"
+		<< "  " << progname << " -d program.elf  # Decode all instructions without execution\n\n"
 		<< "  " << progname << " --call test42 --expect 42 program.elf\n";
 }
 
@@ -82,6 +85,7 @@ static DebugOptions parse_arguments(int argc, char* argv[])
 		{"registers",        no_argument,       0, 'r'},
 		{"compare-objdump",  no_argument,       0, 'o'},
 		{"short",            no_argument,       0, 's'},
+		{"decode-only",      no_argument,       0, 'd'},
 		{"call",             required_argument, 0, 'c'},
 		{"arg",              required_argument, 0, '\x02'},
 		{"expect",           required_argument, 0, '\x01'},
@@ -89,7 +93,7 @@ static DebugOptions parse_arguments(int argc, char* argv[])
 	};
 
 	int opt;
-	while ((opt = getopt_long(argc, argv, "hi:m:qrosc:", long_options, nullptr)) != -1) {
+	while ((opt = getopt_long(argc, argv, "hi:m:qrosdc:", long_options, nullptr)) != -1) {
 		switch (opt) {
 		case 'h':
 			print_help(argv[0]);
@@ -115,6 +119,9 @@ static DebugOptions parse_arguments(int argc, char* argv[])
 			break;
 		case 's':
 			opts.short_output = true;
+			break;
+		case 'd':
+			opts.decode_only = true;
 			break;
 		case 'c':
 			opts.call_function = optarg;
@@ -208,6 +215,19 @@ int main(int argc, char* argv[])
 		debug_machine.stop_on_objdump_mismatch = opts.compare_objdump; // Automatically stop on mismatch when comparing
 		debug_machine.verbose_registers = opts.verbose_registers;
 		debug_machine.short_output = opts.short_output;
+
+		// Handle decode-only mode
+		if (opts.decode_only) {
+			if (opts.verbose_loader) {
+				std::cout << "* Decode-only mode: Comparing all instructions with objdump\n";
+				std::cout << "* Binary: " << opts.binary_path << "\n\n";
+			}
+
+			// In decode-only mode, only show verbose output if loader is verbose
+			debug_machine.verbose_instructions = opts.verbose_loader;
+			debug_machine.decode_and_compare();
+			return 0;
+		}
 
 		if (opts.call_function.empty()) {
 			std::cout << "* Starting execution at PC=0x" << std::hex

@@ -22,6 +22,142 @@ namespace loongarch
 		}
 	}
 
+	void DebugMachine::decode_and_compare()
+	{
+		// Get full objdump disassembly
+		char buffer[512];
+		snprintf(buffer, sizeof(buffer), "%s -d %s",
+			this->objdump_path.c_str(),
+			this->filename.c_str());
+
+		std::string objdump_output;
+		FILE* pipe = popen(buffer, "r");
+		if (!pipe) {
+			throw std::runtime_error("Failed to run objdump");
+		}
+
+		// Read entire objdump output
+		while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
+			objdump_output += buffer;
+		}
+		pclose(pipe);
+
+		// Parse objdump output line by line
+		size_t pos = 0;
+		size_t mismatches = 0;
+		size_t total_instructions = 0;
+
+		while (pos < objdump_output.length()) {
+			size_t line_end = objdump_output.find('\n', pos);
+			if (line_end == std::string::npos) {
+				line_end = objdump_output.length();
+			}
+
+			std::string line = objdump_output.substr(pos, line_end - pos);
+			pos = line_end + 1;
+
+			// Skip empty lines and section headers
+			if (line.empty() || line.find("Disassembly") != std::string::npos ||
+			    line.find("file format") != std::string::npos) {
+				continue;
+			}
+
+			// Parse instruction line format: "  address:\tbytes\tinstruction"
+			// Look for lines that start with whitespace followed by hex address and colon
+			size_t addr_start = line.find_first_not_of(" \t");
+			if (addr_start == std::string::npos) {
+				continue;
+			}
+
+			size_t colon_pos = line.find(':', addr_start);
+			if (colon_pos == std::string::npos) {
+				continue; // Not an instruction line
+			}
+
+			// Extract address
+			std::string addr_str = line.substr(addr_start, colon_pos - addr_start);
+			char* endptr;
+			address_t pc = strtoull(addr_str.c_str(), &endptr, 16);
+			if (*endptr != '\0') {
+				continue; // Invalid address
+			}
+
+			// Extract instruction part (after second tab)
+			size_t first_tab = line.find('\t', colon_pos);
+			if (first_tab == std::string::npos) continue;
+			size_t second_tab = line.find('\t', first_tab + 1);
+			if (second_tab == std::string::npos) continue;
+
+			std::string objdump_instr = line.substr(second_tab + 1);
+			// Remove trailing whitespace
+			size_t end = objdump_instr.find_last_not_of(" \t\r\n");
+			if (end != std::string::npos) {
+				objdump_instr = objdump_instr.substr(0, end + 1);
+			}
+
+			// Try to decode the instruction at this PC
+			try {
+				// Temporarily set PC to the instruction address
+				address_t saved_pc = this->machine.cpu.pc();
+				this->machine.cpu.jump(pc);
+
+				// Get our decoded instruction
+				std::string our_instr = this->machine.cpu.current_instruction_to_string();
+
+				// Restore PC
+				this->machine.cpu.jump(saved_pc);
+
+				total_instructions++;
+
+				// Compare instructions
+				if (!compare_instructions(our_instr, objdump_instr)) {
+					mismatches++;
+					const auto* symbol = machine.lookup_symbol(pc);
+
+					printf("\n*** INSTRUCTION MISMATCH at PC=0x%lx ***\n", (unsigned long)pc);
+					printf("Our output:  %s\n", our_instr.c_str());
+					printf("Objdump:     %s\n", objdump_instr.c_str());
+
+					if (symbol) {
+						auto demangled = demangle(symbol->name.c_str());
+						auto offset = pc - symbol->address;
+						printf("In function: %s+0x%lx\n", demangled.c_str(), (unsigned long)offset);
+					}
+					printf("\n");
+				} else if (this->verbose_instructions) {
+					// Print successful match
+					const auto* symbol = machine.lookup_symbol(pc);
+					if (symbol) {
+						auto demangled = demangle(symbol->name.c_str());
+						auto offset = pc - symbol->address;
+						printf("PC: 0x%lx  [%s+0x%lx]  %s  ;; MATCH: %s\n",
+							(unsigned long)pc,
+							demangled.c_str(),
+							(unsigned long)offset,
+							our_instr.c_str(),
+							objdump_instr.c_str());
+					} else {
+						printf("PC: 0x%lx  %s  ;; MATCH: %s\n",
+							(unsigned long)pc,
+							our_instr.c_str(),
+							objdump_instr.c_str());
+					}
+				}
+			} catch (const std::exception& e) {
+				printf("ERROR at PC=0x%lx: %s\n", (unsigned long)pc, e.what());
+			}
+		}
+
+		printf("\n=== Decode Summary ===\n");
+		printf("Total instructions decoded: %zu\n", total_instructions);
+		printf("Mismatches found: %zu\n", mismatches);
+		if (mismatches == 0 && total_instructions > 0) {
+			printf("SUCCESS: All instructions match objdump!\n");
+		} else if (mismatches > 0) {
+			printf("FAILED: %zu instruction(s) do not match objdump\n", mismatches);
+		}
+	}
+
 	long DebugMachine::vmcall(
 		address_t func_addr,
 		uint64_t max_instructions,
@@ -238,6 +374,36 @@ namespace loongarch
 			return false;
 		}
 
+		// Helper to check if two operands are semantically the same
+		// (ignoring comment suffix like "# 0x12345" or "# symbol+0x10")
+		auto operands_match = [](const std::string& ours, const std::string& objdump_op) -> bool {
+			// If they're exactly the same, they match
+			if (ours == objdump_op) return true;
+
+			// Helper to extract the value before any comment
+			auto extract_value = [](const std::string& s) -> std::string {
+				// Find the first '#' which indicates a comment
+				size_t comment_pos = s.find('#');
+				if (comment_pos != std::string::npos) {
+					// Extract everything before the comment
+					std::string value = s.substr(0, comment_pos);
+					// Trim trailing whitespace
+					size_t end = value.find_last_not_of(" \t");
+					if (end != std::string::npos) {
+						return value.substr(0, end + 1);
+					}
+					return value;
+				}
+				return s;
+			};
+
+			// Compare the values without comments
+			std::string our_value = extract_value(ours);
+			std::string objdump_value = extract_value(objdump_op);
+
+			return our_value == objdump_value;
+		};
+
 		// Compare operands count
 		if (our_operands.size() != objdump_operands.size()) {
 			// Different number of operands - warn but don't error
@@ -248,7 +414,7 @@ namespace loongarch
 			// Check each operand for differences
 			bool has_operand_diff = false;
 			for (size_t i = 0; i < our_operands.size(); i++) {
-				if (our_operands[i] != objdump_operands[i]) {
+				if (!operands_match(our_operands[i], objdump_operands[i])) {
 					if (!has_operand_diff) {
 						printf("*** WARNING: Operand formatting differences detected ***\n");
 						has_operand_diff = true;

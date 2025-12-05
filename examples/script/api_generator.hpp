@@ -338,13 +338,21 @@ private:
 		// Basic type mappings
 		if (type == "void") return "()";
 		if (type == "int") return "i32";
+		if (type == "int32_t") return "i32";
 		if (type == "unsigned int" || type == "unsigned") return "u32";
+		if (type == "uint32_t") return "u32";
 		if (type == "long") return "i64";
+		if (type == "int64_t") return "i64";
 		if (type == "unsigned long") return "u64";
+		if (type == "uint64_t") return "u64";
 		if (type == "short") return "i16";
+		if (type == "int16_t") return "i16";
 		if (type == "unsigned short") return "u16";
+		if (type == "uint16_t") return "u16";
 		if (type == "char") return "i8";
+		if (type == "int8_t") return "i8";
 		if (type == "unsigned char") return "u8";
+		if (type == "uint8_t") return "u8";
 		if (type == "float") return "f32";
 		if (type == "double") return "f64";
 		if (type == "bool") return "bool";

@@ -238,6 +238,64 @@ TEST_CASE("fcmp.cond.d - double precision floating point comparison", "[instruct
 	}
 }
 
+TEST_CASE("fcmp.cond.s - single precision floating point comparison", "[instructions][fcmp]") {
+	InstructionTester tester;
+
+	SECTION("fcmp.cle.s - less than or equal (for >= via swapped operands)") {
+		// Test case: y >= 23.0
+		// Compiled as: 23.0 <= y, which is fcmp.cle.s $fcc0, $fa1, $fa0
+		// where fa1 = 23.0, fa0 = y
+
+		// Case 1: y = 24.0, should be true (24.0 >= 23.0)
+		tester.set_freg32(REG_FA0, 24.0f);  // y
+		tester.set_freg32(REG_FA1, 23.0f);  // constant 23.0
+
+		// fcmp.cle.s $fcc0, $fa1, $fa0  (checks: 23.0 <= 24.0)
+		const uint32_t instr = 0x0c130020;
+		auto result = tester.execute_one(instr);
+
+		REQUIRE(result.success);
+		REQUIRE(result.error.empty());
+
+		// Should be true: 23.0 <= 24.0
+		REQUIRE(tester.get_fcc(0) == 1);
+
+		// Case 2: y = 23.0, should be true (23.0 >= 23.0)
+		tester.set_freg32(REG_FA0, 23.0f);  // y
+		tester.set_freg32(REG_FA1, 23.0f);  // constant 23.0
+
+		result = tester.execute_one(instr);
+		REQUIRE(result.success);
+
+		// Should be true: 23.0 <= 23.0
+		REQUIRE(tester.get_fcc(0) == 1);
+
+		// Case 3: y = 22.0, should be false (22.0 < 23.0, not >=)
+		tester.set_freg32(REG_FA0, 22.0f);  // y
+		tester.set_freg32(REG_FA1, 23.0f);  // constant 23.0
+
+		result = tester.execute_one(instr);
+		REQUIRE(result.success);
+
+		// Should be false: 23.0 <= 22.0 is false
+		REQUIRE(tester.get_fcc(0) == 0);
+	}
+
+	SECTION("fcmp.clt.s - less than comparison") {
+		tester.set_freg32(REG_FA0, 2.0f);
+		tester.set_freg32(REG_FA1, 5.0f);
+
+		// fcmp.clt.s $fcc0, $fa0, $fa1
+		auto result = tester.execute_one(0x0c110400);
+
+		REQUIRE(result.success);
+		REQUIRE(result.error.empty());
+
+		// 2.0 < 5.0 should be true
+		REQUIRE(tester.get_fcc(0) == 1);
+	}
+}
+
 TEST_CASE("vfcmp and xvfcmp - vector FP comparisons", "[instructions][vector][fcmp]") {
 	InstructionTester tester;
 

@@ -961,6 +961,10 @@ struct InstrImpl {
 			case 0x07: // SLE - Signaling Less or Equal (ordered)
 				result = !is_unordered && (fj_val <= fk_val);
 				break;
+			case 0x8:  // CUN  - (Quiet) Incomparable
+			case 0x9:  // SUN  - Signaling Incomparable
+				result = is_unordered;
+				break;
 			case 0x0E: // CULE - (Quiet) Unordered or Less or Equal
 			case 0x0F: // SULE - Signaling Unordered or Less or Equal
 				result = is_unordered || (fj_val <= fk_val);
@@ -972,10 +976,14 @@ struct InstrImpl {
 			case 0x19: // SUNE - Signaling Unordered or Not Equal
 				result = is_unordered || (fj_val != fk_val);
 				break;
+			case 0xA: // CULT - Less than or incomparable
+			case 0xB: // SULT - Signaling Less than or incomparable
+				result = (fj_val < fk_val) || is_unordered;
+				break;
 			default:
 				// Unknown condition code - this should not happen in normal execution
-				result = false;
-				break;
+				throw MachineException(ILLEGAL_OPCODE,
+					"FCMP.COND.S: Unknown condition code", instr.whole);
 		}
 
 		cpu.registers().set_cf(cd, result ? 1 : 0);
@@ -1010,6 +1018,10 @@ struct InstrImpl {
 			case 0x07: // SLE - Signaling Less or Equal (ordered)
 				result = !is_unordered && (fj_val <= fk_val);
 				break;
+			case 0x8:  // CUN  - (Quiet) Incomparable
+			case 0x9:  // SUN  - Signaling Incomparable
+				result = is_unordered;
+				break;
 			case 0x0E: // CULE - (Quiet) Unordered or Less or Equal
 			case 0x0F: // SULE - Signaling Unordered or Less or Equal
 				result = is_unordered || (fj_val <= fk_val);
@@ -1021,10 +1033,14 @@ struct InstrImpl {
 			case 0x19: // SUNE - Signaling Unordered or Not Equal
 				result = is_unordered || (fj_val != fk_val);
 				break;
+			case 0xA: // CULT - Less than or incomparable
+			case 0xB: // SULT - Signaling Less than or incomparable
+				result = (fj_val < fk_val) || is_unordered;
+				break;
 			default:
 				// Unknown condition code - this should not happen in normal execution
-				result = false;
-				break;
+				throw MachineException(ILLEGAL_OPCODE,
+					"FCMP.COND.D: Unknown condition code", instr.whole);
 		}
 
 		cpu.registers().set_cf(cd, result ? 1 : 0);

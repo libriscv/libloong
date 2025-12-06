@@ -455,4 +455,72 @@ TEST_CASE("Floating-point operations", "[basic][float]") {
 		REQUIRE(result.success);
 		REQUIRE(result.exit_code == 0);
 	}
+
+	SECTION("arithmetic") {
+		auto binary = builder.build(R"(
+			int main() {}
+
+			static float val = 0.0f;
+			float get_value() {
+				return val;
+			}
+			void set_value(float v) {
+				val = v;
+			}
+			void fadd_value() {
+				val += 1.0f;
+			}
+			void fsub_value() {
+				val -= 1.0f;
+			}
+			void fmadd_value(float a, float b, float c) {
+				val = a * b + c;
+			}
+			void fmadd_dv(double a, double b, double c) {
+				val = (float)a * (float)b + (float)c;
+			}
+			int compare_lequal(float v) {
+				return (val <= v) ? 1 : 0;
+			}
+			int compare_lequal_i(unsigned v) {
+				return (val <= (float)v) ? 1 : 0;
+			}
+
+		)", "float_arithmetic_test");
+
+		auto result = run_binary(binary, 0);
+		REQUIRE(result.success);
+
+		TestMachine machine(binary);
+		machine.setup_linux();
+
+		machine.vmcall("set_value", 10.0f);
+		float val = machine.vmcall<float>("get_value");
+		REQUIRE_THAT(val, Catch::Matchers::WithinAbs(10.0f, 1e-5f));
+		machine.vmcall("fmadd_value", 2.0f, 3.0f, 4.0f);  // val = 2*3 +4 =10
+		val = machine.vmcall<float>("get_value");
+		REQUIRE_THAT(val, Catch::Matchers::WithinAbs(10.0f, 1e-5f));
+
+		machine.vmcall("fmadd_dv", 1.0, 20.0, 22.0);  // val = 1*20 +22 =42
+		val = machine.vmcall<float>("get_value");
+		REQUIRE_THAT(val, Catch::Matchers::WithinAbs(42.0f, 1e-5f));
+
+		machine.vmcall("set_value", 1.0f);
+		machine.vmcall("fadd_value");  // val = 1 +1 =2
+		val = machine.vmcall<float>("get_value");
+		REQUIRE_THAT(val, Catch::Matchers::WithinAbs(2.0f, 1e-5f));
+		machine.vmcall("fsub_value");  // val = 2 -1 =1
+		val = machine.vmcall<float>("get_value");
+		REQUIRE_THAT(val, Catch::Matchers::WithinAbs(1.0f, 1e-5f));
+
+		machine.vmcall("set_value", 10.0f);
+		int cmp = machine.vmcall<int>("compare_lequal", 10.0f);
+		REQUIRE(cmp == 1);
+		cmp = machine.vmcall<int>("compare_lequal", 9.0f);
+		REQUIRE(cmp == 0);
+		cmp = machine.vmcall<int>("compare_lequal_i", 10u);
+		REQUIRE(cmp == 1);
+		cmp = machine.vmcall<int>("compare_lequal_i", 9u);
+		REQUIRE(cmp == 0);
+	}
 }

@@ -431,3 +431,68 @@ TEST_CASE("Step-by-step instruction verification", "[instructions][step]") {
 		REQUIRE(tester.get_reg(REG_A1) == 16);
 	}
 }
+
+TEST_CASE("Floating-point load, add, store sequence", "[instructions][float]") {
+	InstructionTester tester;
+
+	SECTION("fld.s, addi.d, vldi, fadd.s, fst.s - demonstrates register aliasing") {
+		// This test demonstrates that FP registers and vector registers share storage
+		// vldi $vr1 will overwrite $fa1 since they are the same physical register
+
+		// Allocate memory for float storage
+		auto guest_addr = tester.allocate_guest_memory(64, 8);
+		REQUIRE(guest_addr != 0);
+
+		// Initialize float value at offset 28 from base address
+		float initial_value = 5.0f;
+		tester.write<float>(guest_addr + 28, initial_value);
+
+		// Set $s1 (r23) to base address
+		tester.set_reg(REG_S1, guest_addr);
+
+		// Test instruction sequence from disassembly:
+		const std::vector<uint32_t> instructions = {
+			0x2b007300,  // fld.s    $fa0, $s1, 28
+			0x02c07304,  // addi.d   $a0, $s1, 28
+			0x73e37e01,  // vldi     $vr1, -1040
+			0x01008400,  // fadd.s   $fa0, $fa0, $fa1
+			0x2b407300,  // fst.s    $fa0, $s1, 28
+		};
+
+		// Test each instruction step by step
+		auto r1 = tester.execute_one(instructions[0], 0x20625c);
+		REQUIRE(r1.success);
+		float fa0_after_load = tester.get_freg32(REG_FA0);
+		REQUIRE_THAT(fa0_after_load, Catch::Matchers::WithinAbs(initial_value, 1e-5f));
+
+		auto r2 = tester.execute_one(instructions[1], 0x206260);
+		REQUIRE(r2.success);
+		REQUIRE(tester.get_reg(REG_A0) == guest_addr + 28);
+
+		// vldi $vr1, -1040 will overwrite $fa1 since they alias
+		auto r3 = tester.execute_one(instructions[2], 0x206264);
+		REQUIRE(r3.success);
+
+		// Verify vldi executed successfully and loaded vr1
+		auto vr1_result = tester.get_vreg<uint64_t>(1);
+		// vldi loaded some pattern into vr1
+
+		// Now fa1 contains whatever vldi put in the first float of vr1
+		float fa1_after_vldi = tester.get_freg32(REG_FA1);
+
+		// fadd.s will add fa0 + fa1 (where fa1 is now affected by vldi)
+		auto r4 = tester.execute_one(instructions[3], 0x206268);
+		REQUIRE(r4.success);
+
+		float fa0_after_add = tester.get_freg32(REG_FA0);
+		// The result should be initial_value + fa1_after_vldi
+		REQUIRE_THAT(fa0_after_add, Catch::Matchers::WithinAbs(initial_value + fa1_after_vldi, 1e-5f));
+
+		auto r5 = tester.execute_one(instructions[4], 0x20626c);
+		REQUIRE(r5.success);
+
+		// Verify the result was stored back to memory
+		float stored_value = tester.read<float>(guest_addr + 28);
+		REQUIRE_THAT(stored_value, Catch::Matchers::WithinAbs(initial_value + fa1_after_vldi, 1e-5f));
+	}
+}

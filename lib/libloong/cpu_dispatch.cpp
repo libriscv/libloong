@@ -129,8 +129,4 @@ namespace loongarch
 		m_regs.pc = local_pc;
 	}
 
-// Removed: 	template bool CPU::simulate(address_t, uint64_t, uint64_t);
-// Removed: 	template void CPU::simulate_inaccurate(address_t);
-#endif
-
 } // loongarch

@@ -427,5 +427,5 @@ namespace loongarch
 		// Return true if mnemonic matches (operand differences are just warnings)
 		return true;
 	}
-// Removed template instantiation
+
 } // loongarch

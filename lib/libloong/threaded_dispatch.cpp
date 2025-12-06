@@ -165,6 +165,4 @@ check_jump:
 		goto continue_segment;
 	}
 
-	// Removed template instantiation
-
-} // namespace loongarch
+} // loongarch

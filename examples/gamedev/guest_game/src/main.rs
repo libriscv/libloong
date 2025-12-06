@@ -56,13 +56,11 @@ impl Player {
     fn move_left(&mut self) {
         //self.velocity = -1.0;
 		self.pos.x -= 1.0;
-		log(&format!("Player moved left to x={:.2}", self.pos.x));
     }
 
     fn move_right(&mut self) {
         //self.velocity = 1.0;
 		self.pos.x += 1.0;
-		log(&format!("Player moved right to x={:.2}", self.pos.x));
     }
 
     fn draw(&self) {
@@ -117,8 +115,6 @@ impl Asteroid {
 
         self.pos.x += self.velocity.x * delta_time * 10.0;
         self.pos.y += self.velocity.y * delta_time * 10.0;
-		log(&format!("Asteroid pos: ({:.2}, {:.2}) vel ({:.2}, {:.2}) Delta time: {:.2}",
-			self.pos.x, self.pos.y, self.velocity.x, self.velocity.y, delta_time));
 
         // Animate rotation
         self.rotation_time += delta_time * 4.0;
@@ -127,8 +123,6 @@ impl Asteroid {
 		// XXX: f32 fails here
         if self.pos.y >= (SCREEN_HEIGHT - 1) as f32 {
             self.active = false;
-			log(&format!("Asteroid at ({:.2}, {:.2} / {}) deactivated",
-				self.pos.x, self.pos.y, SCREEN_HEIGHT - 1));
             // Player dodged successfully
             add_score(10);
         }
@@ -296,7 +290,6 @@ impl Game {
                 D_LOWER | D_UPPER | L => self.player.move_right(),
                 _ => {}
             }
-			log(&format!("Input received: {}", input));
         }
 
         // Update player
@@ -375,7 +368,7 @@ pub extern "C" fn game_init() {
     unsafe {
         GAME = Some(Game::new());
     }
-    log(&String::from("Game initialized"));
+    //log(&String::from("Game initialized"));
 }
 
 #[no_mangle]

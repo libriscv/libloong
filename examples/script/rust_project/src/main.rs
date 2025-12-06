@@ -20,6 +20,11 @@ pub extern "C" fn compute(a: c_int, b: c_int) -> c_int {
 }
 
 #[no_mangle]
+pub extern "C" fn fadd(v: f32) -> f32 {
+    v + 1.0
+}
+
+#[no_mangle]
 pub extern "C" fn calculate_area(radius: f32) -> f32 {
     let r2 = radius * radius;
     3.14159 * r2

@@ -32,52 +32,47 @@ namespace {
 	void init_host_functions()
 	{
 		// Register host functions globally at load time
-		HostBindings::register_function(
-			"int host_add(int a, int b)",
+		#define HFN HostBindings::register_function
+
+		HFN("int host_add(int a, int b)",
 			[](loongarch::Machine&, int a, int b) -> int {
 				fmt::print("  [HOST] add({}, {}) called\n", a, b);
 				return a + b;
 			});
 
-		HostBindings::register_function(
-			"void host_print(int value)",
+		HFN("void host_print(int value)",
 			[](loongarch::Machine&, int value) {
 				fmt::print("  [HOST] print({}) called\n", value);
 			});
 
-		HostBindings::register_function(
-			"float host_sqrt(float x)",
+		HFN("float host_sqrt(float x)",
 			[](loongarch::Machine&, float x) -> float {
 				fmt::print("  [HOST] sqrt({:.2f}) called\n", x);
 				return std::sqrt(x);
 			});
 
-		HostBindings::register_function(
-			"int get_counter()",
+		HFN("int get_counter()",
 			[](loongarch::Machine& m) -> int {
 				UserState& state = *m.get_userdata<Script>()->get_userdata<UserState>();
 				fmt::print("  [HOST] get_counter() = {}\n", state.counter);
 				return state.counter;
 			});
 
-		HostBindings::register_function(
-			"void increment_counter()",
+		HFN("void increment_counter()",
 			[](loongarch::Machine& m) {
 				UserState& state = *m.get_userdata<Script>()->get_userdata<UserState>();
 				state.counter++;
 				fmt::print("  [HOST] increment_counter(), now = {}\n", state.counter);
 			});
 
-		HostBindings::register_function(
-			"void reset_counter()",
+		HFN("void reset_counter()",
 			[](loongarch::Machine& m) {
 				UserState& state = *m.get_userdata<Script>()->get_userdata<UserState>();
 				state.counter = 0;
 				fmt::print("  [HOST] reset_counter()\n");
 			});
 
-		HostBindings::register_function(
-			"int get_random()",
+		HFN("int get_random()",
 			[](loongarch::Machine& m) -> int {
 				UserState& state = *m.get_userdata<Script>()->get_userdata<UserState>();
 				fmt::print("  [HOST] get_random() = {}\n", state.random_value);
@@ -93,21 +88,18 @@ namespace {
 		using StringType = typename Lang::StringType;
 		using IntVectorType = typename Lang::template VectorType<int>;
 
-		HostBindings::register_function(
-			"void log_message(const std::string& msg)",
+		HFN("void log_message(const std::string& msg)",
 			[](loongarch::Machine& machine, const StringType* msg) {
 				fmt::print("  [LOG] {}\n", msg->to_view(machine));
 			});
 
-		HostBindings::register_function(
-			"int string_length(const std::string& str)",
+		HFN("int string_length(const std::string& str)",
 			[](loongarch::Machine& machine, const StringType* str) -> int {
 				fmt::print("  [HOST] string_length() = {}\n", str->size());
 				return str->size();
 			});
 
-		HostBindings::register_function(
-			"void print_vector_sum(const std::vector<int>& vec)",
+		HFN("void print_vector_sum(const std::vector<int>& vec)",
 			[](loongarch::Machine& machine, const IntVectorType* vec) {
 				int sum = 0;
 				const int* arr = vec->as_array(machine);
@@ -130,6 +122,13 @@ void run_example_1(Script& script) {
 	const int result = script.call<int>("compute", 10, 32);
 	fmt::print("  Result: {}\n", result);
 	assert(result == 42);
+
+	const float v = script.call<float>("fadd", 3.5f);
+	fmt::print("  fadd(3.5) = {:.2f}\n", v);
+	if (v < 4.5f || v > 4.5001f) {
+		fmt::print("  Error: fadd() returned incorrect result: {:.6f}\n", v);
+		throw std::runtime_error("fadd() returned incorrect result");
+	}
 
 	fmt::print("  Calling calculate_area(5.0):\n");
 	const float area = script.call<float>("calculate_area", 5.0f);

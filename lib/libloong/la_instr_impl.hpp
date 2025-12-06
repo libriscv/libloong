@@ -2906,36 +2906,104 @@ struct InstrImpl {
 		// VLDI vd, imm13
 		// LSX load immediate - loads immediate pattern into 128-bit vector
 		// Format: bits[4:0] = vd, bits[17:5] = imm13
-		// imm13 = [mode:3][value:10] where mode determines the pattern
 		uint32_t vd = instr.whole & 0x1F;
 		uint32_t imm13 = (instr.whole >> 5) & 0x1FFF;
 
-		// Extract mode (top 3 bits) and value (bottom 10 bits)
-		uint32_t mode = (imm13 >> 10) & 0x7;
-		uint32_t value = imm13 & 0x3FF;
-
 		auto& dst = cpu.registers().getvr(vd);
 
-		// Sign-extend value from 10 bits
-		int64_t sext_value = (int64_t)(int16_t)(value << 6) >> 6;
+		// Extract top bits to determine mode
+		uint32_t top3 = (imm13 >> 10) & 0x7;  // imm[12:10]
+		uint32_t top5 = (imm13 >> 8) & 0x1F;  // imm[12:8]
+		uint32_t imm8 = imm13 & 0xFF;         // imm[7:0]
+		uint32_t imm10 = imm13 & 0x3FF;       // imm[9:0]
+		
+		// Sign-extend imm10 from 10 bits to 64 bits
+		int64_t sext_imm10 = (int64_t)(int16_t)(imm10 << 6) >> 6;
 
-		// Apply pattern based on mode
-		switch (mode) {
-			case 0: // Replicate 8-bit immediate to all bytes
-				for (int i = 0; i < 16; i++) dst.bu[i] = (uint8_t)sext_value;
-				break;
-			case 1: // Replicate 16-bit immediate to all halfwords
-				for (int i = 0; i < 8; i++) dst.hu[i] = (uint16_t)sext_value;
-				break;
-			case 2: // Replicate 32-bit immediate to all words
-				for (int i = 0; i < 4; i++) dst.wu[i] = (uint32_t)sext_value;
-				break;
-			case 3: // Replicate 64-bit immediate to all doublewords
-				for (int i = 0; i < 2; i++) dst.du[i] = (uint64_t)sext_value;
-				break;
-			default: // Other modes - set to zero for now
-				for (int i = 0; i < 2; i++) dst.du[i] = 0;
-				break;
+		// Pattern based on specification
+		if (top3 == 0b000) {
+			// imm[12:10]=0b000: broadcast imm[7:0] as 8-bit elements
+			for (int i = 0; i < 16; i++) dst.bu[i] = (uint8_t)imm8;
+		} else if (top3 == 0b001) {
+			// imm[12:10]=0b001: broadcast sign-extended imm[9:0] as 16-bit elements
+			for (int i = 0; i < 8; i++) dst.hu[i] = (uint16_t)sext_imm10;
+		} else if (top3 == 0b010) {
+			// imm[12:10]=0b010: broadcast sign-extended imm[9:0] as 32-bit elements
+			for (int i = 0; i < 4; i++) dst.wu[i] = (uint32_t)sext_imm10;
+		} else if (top3 == 0b011) {
+			// imm[12:10]=0b011: broadcast sign-extended imm[9:0] as 64-bit elements
+			for (int i = 0; i < 2; i++) dst.du[i] = (uint64_t)sext_imm10;
+		} else if (top5 == 0b10000) {
+			// imm[12:8]=0b10000: broadcast imm[7:0] as 32-bit elements
+			uint32_t val = imm8;
+			for (int i = 0; i < 4; i++) dst.wu[i] = val;
+		} else if (top5 == 0b10001) {
+			// imm[12:8]=0b10001: broadcast imm[7:0] << 8 as 32-bit elements
+			uint32_t val = imm8 << 8;
+			for (int i = 0; i < 4; i++) dst.wu[i] = val;
+		} else if (top5 == 0b10010) {
+			// imm[12:8]=0b10010: broadcast imm[7:0] << 16 as 32-bit elements
+			uint32_t val = imm8 << 16;
+			for (int i = 0; i < 4; i++) dst.wu[i] = val;
+		} else if (top5 == 0b10011) {
+			// imm[12:8]=0b10011: broadcast imm[7:0] << 24 as 32-bit elements
+			uint32_t val = imm8 << 24;
+			for (int i = 0; i < 4; i++) dst.wu[i] = val;
+		} else if (top5 == 0b10100) {
+			// imm[12:8]=0b10100: broadcast imm[7:0] as 16-bit elements
+			uint16_t val = (uint16_t)imm8;
+			for (int i = 0; i < 8; i++) dst.hu[i] = val;
+		} else if (top5 == 0b10101) {
+			// imm[12:8]=0b10101: broadcast imm[7:0] << 8 as 16-bit elements
+			uint16_t val = (uint16_t)(imm8 << 8);
+			for (int i = 0; i < 8; i++) dst.hu[i] = val;
+		} else if (top5 == 0b10110) {
+			// imm[12:8]=0b10110: broadcast (imm[7:0] << 8) | 0xFF as 32-bit elements
+			uint32_t val = (imm8 << 8) | 0xFF;
+			for (int i = 0; i < 4; i++) dst.wu[i] = val;
+		} else if (top5 == 0b10111) {
+			// imm[12:8]=0b10111: broadcast (imm[7:0] << 16) | 0xFFFF as 32-bit elements
+			uint32_t val = (imm8 << 16) | 0xFFFF;
+			for (int i = 0; i < 4; i++) dst.wu[i] = val;
+		} else if (top5 == 0b11000) {
+			// imm[12:8]=0b11000: broadcast imm[7:0] as 8-bit elements (duplicate of 0b000 case)
+			for (int i = 0; i < 16; i++) dst.bu[i] = (uint8_t)imm8;
+		} else if (top5 == 0b11001) {
+			// imm[12:8]=0b11001: repeat each bit of imm[7:0] eight times, broadcast as 64-bit elements
+			uint64_t val = 0;
+			for (int bit = 0; bit < 8; bit++) {
+				if (imm8 & (1 << bit)) {
+					val |= (0xFFULL << (bit * 8));
+				}
+			}
+			for (int i = 0; i < 2; i++) dst.du[i] = val;
+		} else if (top5 == 0b11010) {
+			// imm[12:8]=0b11010: broadcast specific pattern as 32-bit elements
+			// (imm[7] << 31) | ((1-imm[6]) << 30) | ((imm[6] * 0x1F) << 25) | (imm[5:0] << 19)
+			uint32_t bit7 = (imm8 >> 7) & 1;
+			uint32_t bit6 = (imm8 >> 6) & 1;
+			uint32_t bits5_0 = imm8 & 0x3F;
+			uint32_t val = (bit7 << 31) | ((1 - bit6) << 30) | ((bit6 * 0x1F) << 25) | (bits5_0 << 19);
+			for (int i = 0; i < 4; i++) dst.wu[i] = val;
+		} else if (top5 == 0b11011) {
+			// imm[12:8]=0b11011: broadcast specific pattern as 64-bit elements
+			// (imm[7] << 31) | ((1-imm[6]) << 30) | ((imm[6] * 0x1F) << 25) | (imm[5:0] << 19)
+			uint32_t bit7 = (imm8 >> 7) & 1;
+			uint32_t bit6 = (imm8 >> 6) & 1;
+			uint32_t bits5_0 = imm8 & 0x3F;
+			uint64_t val = (uint64_t)((bit7 << 31) | ((1 - bit6) << 30) | ((bit6 * 0x1F) << 25) | (bits5_0 << 19));
+			for (int i = 0; i < 2; i++) dst.du[i] = val;
+		} else if (top5 == 0b11100) {
+			// imm[12:8]=0b11100: broadcast specific pattern as 64-bit elements
+			// (imm[7] << 63) | ((1-imm[6]) << 62) | ((imm[6] * 0xFF) << 54) | (imm[5:0] << 48)
+			uint64_t bit7 = (imm8 >> 7) & 1;
+			uint64_t bit6 = (imm8 >> 6) & 1;
+			uint64_t bits5_0 = imm8 & 0x3F;
+			uint64_t val = (bit7 << 63) | ((1 - bit6) << 62) | ((bit6 * 0xFF) << 54) | (bits5_0 << 48);
+			for (int i = 0; i < 2; i++) dst.du[i] = val;
+		} else {
+			throw MachineException(ILLEGAL_OPCODE,
+				"VLDI: Unknown mode", top5);
 		}
 	}
 
@@ -4457,45 +4525,104 @@ struct InstrImpl {
 		// XVLDI xd, imm13
 		// LASX load immediate - loads immediate pattern into 256-bit vector
 		// Format: bits[4:0] = xd, bits[17:5] = imm13
-		// imm13 = [mode:3][value:10] where mode determines the pattern
 		uint32_t xd = instr.whole & 0x1F;
 		uint32_t imm13 = (instr.whole >> 5) & 0x1FFF;
 
-		// Extract mode (top 3 bits) and value (bottom 10 bits)
-		uint32_t mode = (imm13 >> 10) & 0x7;
-		int32_t value = imm13 & 0x3FF;
-		// Sign extend 10-bit value
-		if (value & 0x200) value |= 0xFFFFFC00;
-
 		auto& dst = cpu.registers().getvr(xd);
 
-		// Mode 0-3: replicate byte/half-word/word/double-word
-		if (mode == 0) {
-			// Mode 0: replicate byte (8-bit)
-			uint8_t byte_val = value & 0xFF;
-			uint64_t pattern = 0;
-			for (int i = 0; i < 8; i++) {
-				pattern |= (uint64_t)byte_val << (i * 8);
+		// Extract top bits to determine mode
+		uint32_t top3 = (imm13 >> 10) & 0x7;  // imm[12:10]
+		uint32_t top5 = (imm13 >> 8) & 0x1F;  // imm[12:8]
+		uint32_t imm8 = imm13 & 0xFF;         // imm[7:0]
+		uint32_t imm10 = imm13 & 0x3FF;       // imm[9:0]
+		
+		// Sign-extend imm10 from 10 bits to 64 bits
+		int64_t sext_imm10 = (int64_t)(int16_t)(imm10 << 6) >> 6;
+
+		// Pattern based on specification (same as VLDI but for 256-bit vectors)
+		if (top3 == 0b000) {
+			// imm[12:10]=0b000: broadcast imm[7:0] as 8-bit elements
+			for (int i = 0; i < 32; i++) dst.bu[i] = (uint8_t)imm8;
+		} else if (top3 == 0b001) {
+			// imm[12:10]=0b001: broadcast sign-extended imm[9:0] as 16-bit elements
+			for (int i = 0; i < 16; i++) dst.hu[i] = (uint16_t)sext_imm10;
+		} else if (top3 == 0b010) {
+			// imm[12:10]=0b010: broadcast sign-extended imm[9:0] as 32-bit elements
+			for (int i = 0; i < 8; i++) dst.wu[i] = (uint32_t)sext_imm10;
+		} else if (top3 == 0b011) {
+			// imm[12:10]=0b011: broadcast sign-extended imm[9:0] as 64-bit elements
+			for (int i = 0; i < 4; i++) dst.du[i] = (uint64_t)sext_imm10;
+		} else if (top5 == 0b10000) {
+			// imm[12:8]=0b10000: broadcast imm[7:0] as 32-bit elements
+			uint32_t val = imm8;
+			for (int i = 0; i < 8; i++) dst.wu[i] = val;
+		} else if (top5 == 0b10001) {
+			// imm[12:8]=0b10001: broadcast imm[7:0] << 8 as 32-bit elements
+			uint32_t val = imm8 << 8;
+			for (int i = 0; i < 8; i++) dst.wu[i] = val;
+		} else if (top5 == 0b10010) {
+			// imm[12:8]=0b10010: broadcast imm[7:0] << 16 as 32-bit elements
+			uint32_t val = imm8 << 16;
+			for (int i = 0; i < 8; i++) dst.wu[i] = val;
+		} else if (top5 == 0b10011) {
+			// imm[12:8]=0b10011: broadcast imm[7:0] << 24 as 32-bit elements
+			uint32_t val = imm8 << 24;
+			for (int i = 0; i < 8; i++) dst.wu[i] = val;
+		} else if (top5 == 0b10100) {
+			// imm[12:8]=0b10100: broadcast imm[7:0] as 16-bit elements
+			uint16_t val = (uint16_t)imm8;
+			for (int i = 0; i < 16; i++) dst.hu[i] = val;
+		} else if (top5 == 0b10101) {
+			// imm[12:8]=0b10101: broadcast imm[7:0] << 8 as 16-bit elements
+			uint16_t val = (uint16_t)(imm8 << 8);
+			for (int i = 0; i < 16; i++) dst.hu[i] = val;
+		} else if (top5 == 0b10110) {
+			// imm[12:8]=0b10110: broadcast (imm[7:0] << 8) | 0xFF as 32-bit elements
+			uint32_t val = (imm8 << 8) | 0xFF;
+			for (int i = 0; i < 8; i++) dst.wu[i] = val;
+		} else if (top5 == 0b10111) {
+			// imm[12:8]=0b10111: broadcast (imm[7:0] << 16) | 0xFFFF as 32-bit elements
+			uint32_t val = (imm8 << 16) | 0xFFFF;
+			for (int i = 0; i < 8; i++) dst.wu[i] = val;
+		} else if (top5 == 0b11000) {
+			// imm[12:8]=0b11000: broadcast imm[7:0] as 8-bit elements (duplicate of 0b000 case)
+			for (int i = 0; i < 32; i++) dst.bu[i] = (uint8_t)imm8;
+		} else if (top5 == 0b11001) {
+			// imm[12:8]=0b11001: repeat each bit of imm[7:0] eight times, broadcast as 64-bit elements
+			uint64_t val = 0;
+			for (int bit = 0; bit < 8; bit++) {
+				if (imm8 & (1 << bit)) {
+					val |= (0xFFULL << (bit * 8));
+				}
 			}
-			dst.du[0] = dst.du[1] = dst.du[2] = dst.du[3] = pattern;
-		} else if (mode == 1) {
-			// Mode 1: replicate half-word (16-bit)
-			uint16_t hword_val = value & 0xFFFF;
-			uint64_t pattern = ((uint64_t)hword_val) | ((uint64_t)hword_val << 16) |
-			                   ((uint64_t)hword_val << 32) | ((uint64_t)hword_val << 48);
-			dst.du[0] = dst.du[1] = dst.du[2] = dst.du[3] = pattern;
-		} else if (mode == 2) {
-			// Mode 2: replicate word (32-bit)
-			uint32_t word_val = value;
-			uint64_t pattern = ((uint64_t)word_val) | ((uint64_t)word_val << 32);
-			dst.du[0] = dst.du[1] = dst.du[2] = dst.du[3] = pattern;
-		} else if (mode == 3) {
-			// Mode 3: replicate double-word (64-bit)
-			uint64_t dword_val = value;
-			dst.du[0] = dst.du[1] = dst.du[2] = dst.du[3] = dword_val;
+			for (int i = 0; i < 4; i++) dst.du[i] = val;
+		} else if (top5 == 0b11010) {
+			// imm[12:8]=0b11010: broadcast specific pattern as 32-bit elements
+			// (imm[7] << 31) | ((1-imm[6]) << 30) | ((imm[6] * 0x1F) << 25) | (imm[5:0] << 19)
+			uint32_t bit7 = (imm8 >> 7) & 1;
+			uint32_t bit6 = (imm8 >> 6) & 1;
+			uint32_t bits5_0 = imm8 & 0x3F;
+			uint32_t val = (bit7 << 31) | ((1 - bit6) << 30) | ((bit6 * 0x1F) << 25) | (bits5_0 << 19);
+			for (int i = 0; i < 8; i++) dst.wu[i] = val;
+		} else if (top5 == 0b11011) {
+			// imm[12:8]=0b11011: broadcast specific pattern as 64-bit elements
+			// (imm[7] << 31) | ((1-imm[6]) << 30) | ((imm[6] * 0x1F) << 25) | (imm[5:0] << 19)
+			uint32_t bit7 = (imm8 >> 7) & 1;
+			uint32_t bit6 = (imm8 >> 6) & 1;
+			uint32_t bits5_0 = imm8 & 0x3F;
+			uint64_t val = (uint64_t)((bit7 << 31) | ((1 - bit6) << 30) | ((bit6 * 0x1F) << 25) | (bits5_0 << 19));
+			for (int i = 0; i < 4; i++) dst.du[i] = val;
+		} else if (top5 == 0b11100) {
+			// imm[12:8]=0b11100: broadcast specific pattern as 64-bit elements
+			// (imm[7] << 63) | ((1-imm[6]) << 62) | ((imm[6] * 0xFF) << 54) | (imm[5:0] << 48)
+			uint64_t bit7 = (imm8 >> 7) & 1;
+			uint64_t bit6 = (imm8 >> 6) & 1;
+			uint64_t bits5_0 = imm8 & 0x3F;
+			uint64_t val = (bit7 << 63) | ((1 - bit6) << 62) | ((bit6 * 0xFF) << 54) | (bits5_0 << 48);
+			for (int i = 0; i < 4; i++) dst.du[i] = val;
 		} else {
-			// Modes 4-7: reserved or special patterns, default to zero
-			dst.du[0] = dst.du[1] = dst.du[2] = dst.du[3] = 0;
+			throw MachineException(ILLEGAL_OPCODE,
+				"XVLDI: Unknown mode", top5);
 		}
 	}
 

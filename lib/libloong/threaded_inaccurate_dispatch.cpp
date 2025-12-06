@@ -65,6 +65,7 @@ namespace loongarch
 
 		// Inaccurate mode doesn't track counter/max_counter but needs them for compatibility
 		uint64_t max_counter = UINT64_MAX;
+		//machine().set_max_instructions(max_counter);
 
 		if constexpr (TRACE_DISPATCH) {
 			printf("[inaccurate_dispatch] Starting at PC=0x%lx, segment [0x%lx, 0x%lx)\n",
@@ -122,9 +123,22 @@ INSTRUCTION(LA64_BC_SYSCALLIMM, la64_syscall_imm)
 	goto check_jump;
 }
 
+INSTRUCTION(LA64_BC_TRANSLATOR, execute_translated_block)
+{
+	// The instr field contains the index into the translator mappings array
+	const auto mapping_idx = DECODER().instr;
+	const auto handler = exec->mapping_at(mapping_idx);
+
+	// Call the binary translated function
+	const bintr_block_returns result = handler(CPU(), 0, ~0ull, pc);
+	pc = REGISTERS().pc;
+	max_counter = result.max_ic;
+	goto check_jump;
+}
+
 INSTRUCTION(LA64_BC_STOP, la64_stop)
 {
-	REGISTERS().pc = pc;
+	REGISTERS().pc = pc + 4;
 	return;
 }
 

@@ -125,3 +125,4 @@
 [LA64_BC_SYSCALLIMM]= la64_syscall_imm,
 [LA64_BC_NOP]       = la64_nop,
 [LA64_BC_STOP]      = la64_stop,
+[LA64_BC_TRANSLATOR]= execute_translated_block,

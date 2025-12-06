@@ -69,6 +69,8 @@ namespace loongarch
 		// System call interface
 		static void install_syscall_handler(unsigned sysnum, syscall_t* handler);
 		static void set_unknown_syscall_handler(unknown_syscall_t* handler);
+		static syscall_t** get_syscall_handlers();
+		static unknown_syscall_t* get_unknown_syscall_handler();
 		void system_call(unsigned sysnum);
 		void unchecked_system_call(unsigned sysnum);
 		template <typename T = address_t>
@@ -158,6 +160,7 @@ namespace loongarch
 		MultiThreading& threads();
 		int gettid();
 		void setup_posix_threads();
+		intptr_t counter_offset() const noexcept;
 
 	private:
 		uint64_t      m_counter = 0;

@@ -1116,3 +1116,5 @@ INSTRUCTION(LA64_BC_FUNCTION2, execute_function_extended)
 	handler(CPU(), la_instruction{DECODER().instr});
 	NEXT_INSTR();
 }
+
+// LA64_BC_TRANSLATOR is implemented in each dispatch file separately

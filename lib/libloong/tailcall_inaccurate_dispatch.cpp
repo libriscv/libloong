@@ -155,6 +155,13 @@ namespace loongarch
 		EXECUTE_CURRENT();
 	}
 
+	INSTRUCTION(LA64_BC_TRANSLATOR, execute_translated_block)
+	{
+		// Binary translation placeholder - not yet implemented for tailcall dispatch
+		// Fall back to normal execution
+		cpu.trigger_exception(ILLEGAL_OPCODE);
+	}
+
 	// Bytecode function table for tailcall dispatch
 	namespace {
 		static const DecoderFunc computed_opcode[BYTECODES_MAX] = {

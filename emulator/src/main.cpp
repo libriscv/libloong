@@ -24,6 +24,8 @@ struct EmulatorOptions {
 	bool timing = false;
 	bool silent = false;
 	bool show_bytecode_stats = false;
+	bool trace_translation = false;
+	std::string translate_output_file; // Output file for generated C code
 };
 
 // ELF class constants
@@ -130,6 +132,11 @@ static int run_program(const std::vector<uint8_t>& binary, const EmulatorOptions
 			.memory_max = opts.memory_max,
 			.verbose_loader = opts.verbose,
 			.verbose_syscalls = opts.verbose,
+#ifdef LA_BINARY_TRANSLATION
+			.translate_trace = opts.trace_translation,
+			.translate_ignore_instruction_limit = opts.max_instructions == 0,
+			.translate_output_file = opts.translate_output_file,
+#endif
 		});
 		machine = std::make_unique<Machine>(binary, *options);
 		machine->set_options(options);
@@ -233,7 +240,9 @@ static void print_help(const char* progname)
 	printf("      --stats             Show bytecode usage statistics after execution\n");
 	printf("  -f, --fuel <num>        Maximum instructions to execute (default: 2000000000)\n");
 	printf("                          Use 0 for unlimited execution\n");
-	printf("  -m, --memory <size>     Maximum memory in MiB (default: 512)\n\n");
+	printf("  -m, --memory <size>     Maximum memory in MiB (default: 512)\n");
+	printf("  -T, --trace             Trace binary translation execution\n");
+	printf("  -O, --output <file>     Write generated translation code to file\n\n");
 	printf("The emulator automatically detects LA32/LA64 architecture from the ELF binary.\n\n");
 	printf("Examples:\n");
 	printf("  %s program.elf\n", progname);
@@ -258,11 +267,13 @@ static EmulatorOptions parse_arguments(int argc, char* argv[])
 		{"stats",   no_argument,       0, '\x02'},
 		{"fuel",    required_argument, 0, 'f'},
 		{"memory",  required_argument, 0, 'm'},
+		{"trace",   no_argument,       0, 'T'},
+		{"output",  required_argument, 0, 'O'},
 		{0, 0, 0, 0}
 	};
 
 	int opt;
-	while ((opt = getopt_long(argc, argv, "hvstf:m:", long_options, nullptr)) != -1) {
+	while ((opt = getopt_long(argc, argv, "hvstf:m:TO:", long_options, nullptr)) != -1) {
 		switch (opt) {
 		case 'h':
 			print_help(argv[0]);
@@ -285,6 +296,12 @@ static EmulatorOptions parse_arguments(int argc, char* argv[])
 			break;
 		case 'm':
 			opts.memory_max = strtoull(optarg, nullptr, 10) << 20; // Convert MiB to bytes
+			break;
+		case 'T':
+			opts.trace_translation = true;
+			break;
+		case 'O':
+			opts.translate_output_file = optarg;
 			break;
 		case '\x02':
 			opts.show_bytecode_stats = true;

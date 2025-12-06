@@ -44,8 +44,16 @@ while [[ $# -gt 0 ]]; do
 			LA_ARENA_BASE_REGISTER="-DLA_ENABLE_ARENA_BASE_REGISTER=ON"
 			shift
 			;;
+		--bintr)
+			LA_BINARY_TRANSLATION="-DLA_BINARY_TRANSLATION=ON"
+			shift
+			;;
 		--binary-translation)
 			LA_BINARY_TRANSLATION="-DLA_BINARY_TRANSLATION=ON"
+			shift
+			;;
+		--no-bintr)
+			LA_BINARY_TRANSLATION="-DLA_BINARY_TRANSLATION=OFF"
 			shift
 			;;
 		--no-threaded)

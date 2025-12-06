@@ -6,6 +6,72 @@
 
 namespace loongarch {
 
+struct TextSegmentBounds {
+	address_t start = 0;
+	address_t size = 0;
+	bool found = false;
+};
+
+static TextSegmentBounds find_text_section(std::string_view binary, const Elf::Header* ehdr)
+{
+	TextSegmentBounds bounds;
+
+	// Need section headers to find .text
+	if (ehdr->shoff == 0 || ehdr->shnum == 0 || ehdr->shstrndx >= ehdr->shnum) {
+		return bounds;
+	}
+
+	// Validate section header table
+	const address_t sh_table_end = ehdr->shoff + ehdr->shnum * sizeof(Elf::SectionHeader);
+	if (sh_table_end > binary.size() || sh_table_end < ehdr->shoff) {
+		return bounds;
+	}
+
+	// Get section string table
+	const auto* shstrtab = reinterpret_cast<const Elf::SectionHeader*>(
+		binary.data() + ehdr->shoff + ehdr->shstrndx * sizeof(Elf::SectionHeader));
+
+	if (shstrtab->offset + shstrtab->size > binary.size()) {
+		return bounds;
+	}
+
+	const char* section_strings = reinterpret_cast<const char*>(binary.data() + shstrtab->offset);
+
+	// Find .text and .iplt sections
+	for (size_t i = 0; i < ehdr->shnum; i++) {
+		const auto* shdr = reinterpret_cast<const Elf::SectionHeader*>(
+			binary.data() + ehdr->shoff + i * sizeof(Elf::SectionHeader));
+
+		if (shdr->name < shstrtab->size) {
+			const char* name = section_strings + shdr->name;
+			// XXX: Insecure string comparison
+			if (strcmp(name, ".text") == 0 && shdr->size > 0) {
+				bounds.start = shdr->addr;
+				bounds.size = shdr->size;
+				bounds.found = true;
+				return bounds;
+			} else if (strcmp(name, ".iplt") == 0 && shdr->size > 0) {
+				// .iplt section comes before .text, check if next section is .text
+				if (i + 1 < ehdr->shnum) {
+					const auto* next_shdr = reinterpret_cast<const Elf::SectionHeader*>(
+						binary.data() + ehdr->shoff + (i + 1) * sizeof(Elf::SectionHeader));
+					if (next_shdr->name < shstrtab->size) {
+						const char* next_name = section_strings + next_shdr->name;
+						if (strcmp(next_name, ".text") == 0 && next_shdr->size > 0) {
+							bounds.start = shdr->addr;
+							bounds.size = next_shdr->size + (next_shdr->addr - shdr->addr);
+							bounds.found = true;
+							return bounds;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return bounds;
+}
+
 void Memory::binary_loader(const MachineOptions& options)
 {
 	if (this->m_binary.size() < sizeof(Elf::Header)) {
@@ -110,6 +176,9 @@ void Memory::binary_loader(const MachineOptions& options)
 			(unsigned long)arena_size / (1024 * 1024));
 	}
 
+	// Find .text section bounds to limit execute segment creation
+	const TextSegmentBounds text_bounds = find_text_section(m_binary, ehdr);
+
 	// Load segments into memory
 	for (size_t i = 0; i < ehdr->phnum; i++) {
 		const auto* phdr = reinterpret_cast<const Elf::ProgramHeader*>(
@@ -132,13 +201,32 @@ void Memory::binary_loader(const MachineOptions& options)
 			std::memcpy(m_arena + offset, m_binary.data() + phdr->offset, phdr->filesz);
 			// Execute segment creation
 			if (phdr->flags & Elf::PF_X) {
-				// .text and .rodata is typically merged into one segment
-				// leaving the segment sometimes unaligned. However, we can
-				// assume that under-aligning it to instruction-boundary is sufficient.
-				const size_t aligned_size = phdr->filesz & ~size_t(3);
+				address_t exec_vaddr = phdr->vaddr;
+				size_t exec_size = phdr->filesz & ~size_t(3);
+				size_t file_offset = phdr->offset;
+
+				// Use .text section bounds if available to avoid translating data
+				if (text_bounds.found) {
+					// Check if .text section is within this segment
+					const address_t seg_start = phdr->vaddr;
+					const address_t seg_end = phdr->vaddr + phdr->filesz;
+					const address_t text_end = text_bounds.start + text_bounds.size;
+
+					if (text_bounds.start >= seg_start && text_end <= seg_end) {
+						exec_vaddr = text_bounds.start;
+						exec_size  = text_bounds.size & ~size_t(3); // Align to instruction boundary
+						file_offset = phdr->offset + (text_bounds.start - seg_start);
+
+						if (options.verbose_loader) {
+							fprintf(stderr, "Creating execute segment for .text section: vaddr=0x%lx size=0x%lx\n",
+								(unsigned long)exec_vaddr, (unsigned long)exec_size);
+						}
+					}
+				}
+
 				create_execute_segment(options,
-					(const void*)(m_binary.data() + phdr->offset),
-					phdr->vaddr, aligned_size, true, false);
+					(const void*)(m_binary.data() + file_offset),
+					exec_vaddr, exec_size, true, false);
 			}
 		}
 	}

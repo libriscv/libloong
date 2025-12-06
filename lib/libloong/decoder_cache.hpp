@@ -30,6 +30,9 @@ namespace loongarch
 			return m_handlers[256u + handler_idx];
 		}
 		static uint16_t compute_handler_for(handler_t handler);
+		static handler_t* get_handlers_array() noexcept {
+			return m_handlers.data();
+		}
 
 	private:
 		static inline std::vector<handler_t> m_handlers;

@@ -135,6 +135,9 @@ namespace loongarch
 		LA64_BC_SYSCALLIMM,        // System call with immediate number (most likely patched in)
 		LA64_BC_NOP,               // No operation (DBAR, etc)
 		LA64_BC_STOP,              // Stop execution marker
+
+		// Binary translation
+		LA64_BC_TRANSLATOR,        // Binary translated block entry point
 		BYTECODES_MAX
 	};
 	static_assert(BYTECODES_MAX <= 256, "A bytecode must fit in a byte");
@@ -260,6 +263,7 @@ namespace loongarch
 		case LA64_BC_SYSCALLIMM: return "SYSCALL+IMM";
 		case LA64_BC_NOP: return "NOP";
 		case LA64_BC_STOP: return "STOP";
+		case LA64_BC_TRANSLATOR: return "TRANSLATOR";
 		default: return "UNKNOWN";
 		}
 	}

@@ -1,0 +1,9 @@
+build/
+asteroid_game
+guest_game/game.elf
+guest_game/target/
+guest_game/libloong_api.rs
+guest_game/Cargo.lock
+guest_game/.cargo/
+*.o
+*.a

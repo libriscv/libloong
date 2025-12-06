@@ -17,9 +17,18 @@ static const char* reg_names[] = {
 	"$t4", "$t5", "$t6", "$t7", "$t8", "$r21", "$fp", "$s0",
 	"$s1", "$s2", "$s3", "$s4", "$s5", "$s6", "$s7", "$s8"
 };
-
 static inline const char* reg_name(uint32_t r) {
 	return r < 32 ? reg_names[r] : "?";
+}
+
+static const char* flreg_names[] = {
+	"$fa0", "$fa1", "$fa2", "$fa3", "$fa4", "$fa5", "$fa6", "$fa7",
+	"$ft0", "$ft1", "$ft2", "$ft3", "$ft4", "$ft5", "$ft6", "$ft7",
+	"$ft8", "$ft9", "$ft10", "$ft11", "$ft12", "$ft13", "$ft14", "$ft15",
+	"$fs0", "$fs1", "$fs2", "$fs3", "$fs4", "$fs5", "$fs6", "$fs7"
+};
+static inline const char* flreg_name(uint32_t r) {
+	return r < 32 ? flreg_names[r] : "?";
 }
 
 static inline const char* cond_names(uint32_t cond) {
@@ -247,8 +256,8 @@ struct InstrPrinters {
 	// === Byte Manipulation ===
 
 	static int BYTEPICK_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t sa2 = (instr.whole >> 15) & 0x3;
-		return snprintf(buf, len, "bytepick.d %s, %s, %s, %u",
+		uint32_t sa2 = (instr.whole >> 15) & 0x7;
+		return snprintf(buf, len, "bytepick.d %s, %s, %s, 0x%x",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk), sa2);
 	}
 
@@ -435,26 +444,26 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 
 	static int FLD_S(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		int32_t imm = InstructionHelpers::sign_extend_12(instr.ri12.imm);
-		return snprintf(buf, len, "fld.s $f%d, %s, %d",
-			instr.ri12.rd, reg_name(instr.ri12.rj), imm);
+		return snprintf(buf, len, "fld.s %s, %s, %d",
+			flreg_name(instr.ri12.rd), reg_name(instr.ri12.rj), imm);
 	}
 
 	static int FST_S(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		int32_t imm = InstructionHelpers::sign_extend_12(instr.ri12.imm);
-		return snprintf(buf, len, "fst.s $f%d, %s, %d",
-			instr.ri12.rd, reg_name(instr.ri12.rj), imm);
+		return snprintf(buf, len, "fst.s %s, %s, %d",
+			flreg_name(instr.ri12.rd), reg_name(instr.ri12.rj), imm);
 	}
 
 	static int FLD_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		int32_t imm = InstructionHelpers::sign_extend_12(instr.ri12.imm);
-		return snprintf(buf, len, "fld.d $f%d, %s, %d",
-			instr.ri12.rd, reg_name(instr.ri12.rj), imm);
+		return snprintf(buf, len, "fld.d %s, %s, %d",
+			flreg_name(instr.ri12.rd), reg_name(instr.ri12.rj), imm);
 	}
 
 	static int FST_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		int32_t imm = InstructionHelpers::sign_extend_12(instr.ri12.imm);
-		return snprintf(buf, len, "fst.d $f%d, %s, %d",
-			instr.ri12.rd, reg_name(instr.ri12.rj), imm);
+		return snprintf(buf, len, "fst.d %s, %s, %d",
+			flreg_name(instr.ri12.rd), reg_name(instr.ri12.rj), imm);
 	}
 
 	// === Indexed Load/Store Instructions ===
@@ -639,24 +648,25 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		int32_t si20 = InstructionHelpers::sign_extend_20(instr.ri20.imm);
 		int64_t offset = (int64_t)(si20 << 12);
 		addr_t target = pc + offset;
-		return snprintf(buf, len, "pcaddu12i %s, 0x%x  # 0x%lx",
-			reg_name(instr.ri20.rd), si20 & 0xFFFFF, (unsigned long)target);
+		return snprintf(buf, len, "pcaddu12i %s, %d # 0x%lx",
+			reg_name(instr.ri20.rd), si20, (unsigned long)target);
 	}
 
 	static int PCALAU12I(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t pc) {
 		addr_t pc_aligned = pc & ~((addr_t)0xFFF);
+		int32_t signed_imm = InstructionHelpers::sign_extend_20(instr.ri20.imm);
 		int64_t offset = (int64_t)(int32_t)(instr.ri20.imm << 12);
 		addr_t target = pc_aligned + offset;
-		return snprintf(buf, len, "pcalau12i %s, 0x%x  # 0x%lx",
-			reg_name(instr.ri20.rd), instr.ri20.imm, (unsigned long)target);
+		return snprintf(buf, len, "pcalau12i %s, %d # 0x%lx",
+			reg_name(instr.ri20.rd), signed_imm, (unsigned long)target);
 	}
 
 	static int PCADDU18I(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t pc) {
 		int32_t si20 = InstructionHelpers::sign_extend_20(instr.ri20.imm);
 		int64_t offset = (int64_t)(si20 << 18);
 		addr_t target = pc + offset;
-		return snprintf(buf, len, "pcaddu18i %s, 0x%x  # 0x%lx",
-			reg_name(instr.ri20.rd), si20 & 0xFFFFF, (unsigned long)target);
+		return snprintf(buf, len, "pcaddu18i %s, %d # 0x%lx",
+			reg_name(instr.ri20.rd), si20, (unsigned long)target);
 	}
 
 	static int LU52I_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
@@ -952,9 +962,9 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 	// === ALSL.W ===
 
 	static int ALSL_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		return snprintf(buf, len, "alsl.w %s, %s, %s, %u",
+		return snprintf(buf, len, "alsl.w %s, %s, %s, 0x%x",
 			reg_name(instr.r3sa2.rd), reg_name(instr.r3sa2.rj),
-			reg_name(instr.r3sa2.rk), instr.r3sa2.sa2);
+			reg_name(instr.r3sa2.rk), instr.r3sa2.sa2 + 1);
 	}
 
 	// === LSX Vector Load/Store ===
@@ -1365,7 +1375,7 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		if (offs & 0x100000) offs |= 0xFFE00000;  // Sign extend 21-bit
 		offs <<= 2;
 		addr_t target = pc + offs;
-		return snprintf(buf, len, "bcnez $fcc%u, 0x%lx", cj, (unsigned long)target);
+		return snprintf(buf, len, "bcnez $fcc%u, %d # 0x%lx", cj, offs, (unsigned long)target);
 	}
 
 	static int BCEQZ(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t pc) {
@@ -1374,7 +1384,7 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		if (offs & 0x100000) offs |= 0xFFE00000;  // Sign extend 21-bit
 		offs <<= 2;
 		addr_t target = pc + offs;
-		return snprintf(buf, len, "bceqz $fcc%u, 0x%lx", cj, (unsigned long)target);
+		return snprintf(buf, len, "bceqz $fcc%u, %d # 0x%lx", cj, offs, (unsigned long)target);
 	}
 
 	// === LSX Vector Element Extraction ===
@@ -1440,7 +1450,7 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		uint32_t uk5 = (instr.whole >> 10) & 0x1F; // Unsigned 5-bit immediate
 		// Extract size from opcode: bits[16:15] encode the size (0=bu, 1=hu, 2=wu, 3=du)
 		uint32_t size_idx = (instr.whole >> 15) & 0x3;
-		return snprintf(buf, len, "vaddi.%s $vr%u, $vr%u, %u", sizes[size_idx], vd, vj, uk5);
+		return snprintf(buf, len, "vaddi.%s $vr%u, $vr%u, 0x%x", sizes[size_idx], vd, vj, uk5);
 	}
 
 	static int VSEQ_B(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
@@ -1707,13 +1717,6 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		else size_idx = 3;                         // .d: 11110
 		uint32_t idx = (instr.whole >> 10) & idx_masks[size_idx];
 		return snprintf(buf, len, "vinsgr2vr.%c $vr%u, %s, 0x%x", sizes[size_idx], vd, reg_name(rj), idx);
-	}
-
-	static int VADDI_BU(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t imm = (instr.whole >> 10) & 0x1F;
-		return snprintf(buf, len, "vaddi.bu $vr%u, $vr%u, 0x%x", vd, vj, imm);
 	}
 
 	static int VADD(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {

@@ -405,14 +405,14 @@ namespace loongarch
 		};
 
 		// Compare operands count
+		bool has_operand_diff = false;
 		if (our_operands.size() != objdump_operands.size()) {
-			// Different number of operands - warn but don't error
+			// Different number of operands
 			printf("*** WARNING: Operand count mismatch (ours: %zu, objdump: %zu) ***\n",
 				our_operands.size(), objdump_operands.size());
-			// Still return true to continue - this might be formatting difference
+			has_operand_diff = true;
 		} else {
 			// Check each operand for differences
-			bool has_operand_diff = false;
 			for (size_t i = 0; i < our_operands.size(); i++) {
 				if (!operands_match(our_operands[i], objdump_operands[i])) {
 					if (!has_operand_diff) {
@@ -424,8 +424,7 @@ namespace loongarch
 			}
 		}
 
-		// Return true if mnemonic matches (operand differences are just warnings)
-		return true;
+		return !has_operand_diff;
 	}
 
 } // loongarch

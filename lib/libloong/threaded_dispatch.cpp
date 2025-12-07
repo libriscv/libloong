@@ -117,7 +117,7 @@ INSTRUCTION(LA64_BC_TRANSLATOR, execute_translated_block)
 
 	// Call the binary translated function
 	// It returns updated instruction counter values
-	const auto result = handler(CPU(), counter, max_counter, pc);
+	const auto result = handler(CPU(), counter, max_counter, RECONSTRUCT_PC());
 
 	// Update instruction counter and max counter
 	counter = result.ic;

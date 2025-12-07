@@ -50,7 +50,6 @@ typedef int64_t saddr_t;
 
 // LoongArch instructions are always 4-byte aligned
 #define LA_ALIGN_MASK 0x3
-#define LA_MAX_SYSCALLS LA_SYSCALLS_MAX
 
 #ifdef __TINYC__
 #define UNREACHABLE() /**/
@@ -100,20 +99,26 @@ static inline uint32_t do_bswap32(uint32_t x) {
 
 // Floating-point register union
 typedef union {
-	int32_t i32[2];
-	float   f32[2];
-	int64_t i64;
-	double  f64;
-} fp64reg;
+	int8_t   b[32];
+	int16_t  h[16];
+	int32_t  w[8];
+	int64_t  d[4];
+	uint8_t  bu[32];
+	uint16_t hu[16];
+	uint32_t wu[8];
+	uint64_t du[4];
+	float    f[8];
+	double   df[4];
+} lasx_reg;
 
 // CPU structure - simplified version for binary translation
 __attribute__((aligned(LA_MACHINE_ALIGNMENT)))
 typedef struct {
 	addr_t  pc;        // Program counter
 	addr_t  r[32];     // General-purpose registers
+	lasx_reg vr[32];   // Vector/FP registers
 	uint32_t fcsr;     // Floating-point control/status register
-	fp64reg fr[32];    // Floating-point registers
-	// LSX/LASX registers would go here if needed
+	uint8_t  fcc;      // Floating-point condition codes
 } CPU;
 
 typedef void (*syscall_t) (CPU*);
@@ -172,7 +177,7 @@ static inline int do_syscall(CPU* cpu, uint64_t counter, uint64_t max_counter, a
 	INS_COUNTER(cpu) = counter; // Reveal instruction counters
 	MAX_COUNTER(cpu) = max_counter;
 	addr_t old_pc = cpu->pc;
-	if (LIKELY(sysno < LA_MAX_SYSCALLS)) {
+	if (LIKELY(sysno < LA_SYSCALLS_MAX)) {
 		api.syscalls[SPECSAFE(sysno)](cpu);
 	} else {
 		api.unknown_syscall(cpu, sysno);

@@ -130,7 +130,7 @@ INSTRUCTION(LA64_BC_TRANSLATOR, execute_translated_block)
 	const auto handler = exec->mapping_at(mapping_idx);
 
 	// Call the binary translated function
-	const bintr_block_returns result = handler(CPU(), 0, ~0ull, pc);
+	const bintr_block_returns result = handler(CPU(), 0, ~0ull, RECONSTRUCT_PC());
 	pc = REGISTERS().pc;
 	max_counter = result.max_ic;
 	goto check_jump;

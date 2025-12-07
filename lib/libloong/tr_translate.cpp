@@ -255,13 +255,6 @@ namespace loongarch
 			}
 		}
 
-		// If verbose mode is enabled, dump the generated code for debugging
-		if (verbose_blocks() && !code.empty()) {
-			printf("\n=== Generated Binary Translation Code ===\n");
-			printf("%s\n", code.c_str());
-			printf("=== End of Generated Code ===\n\n");
-		}
-
 		// Write generated code to output file if specified
 		if (!options.translate_output_file.empty() && !code.empty()) {
 			std::ofstream ofs(options.translate_output_file, std::ios::out | std::ios::trunc);

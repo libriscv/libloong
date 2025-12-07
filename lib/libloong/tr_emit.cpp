@@ -22,7 +22,7 @@ struct Emitter
 	const TransInfo& tinfo;
 	address_t current_pc;
 	std::string func_name;
-	unsigned m_instr_counter = 0; // Counter for instructions not yet emitted
+	unsigned m_instr_counter = 0;
 
 	Emitter(const TransInfo& info)
 	  : tinfo(info), current_pc(info.basepc)
@@ -85,16 +85,14 @@ struct Emitter
 	}
 
 	// Fallback to slow-path handler
-	void emit_fallback(uint32_t instr_bits) {
+	void emit_fallback(const Instruction& instr, uint32_t instr_bits) {
 		// For unimplemented instructions, call the slow-path handler
-		Instruction instr = CPU::decode(la_instruction(instr_bits));
 		const uintptr_t handler_func = reinterpret_cast<uintptr_t>(instr.handler);
 		add_code("  ((handler_t)" + hex_address(handler_func) + ")(cpu, " + hex_address(instr_bits) + ");");
 	}
 
 	// Emit a conditional branch (1-register format: BEQZ, BNEZ)
 	void emit_branch_1r(const std::string& cond, unsigned rj, address_t target) {
-		increment_counter();
 		flush_instruction_counter();
 
 		std::string cond_str = reg(rj) + " " + cond;
@@ -119,7 +117,6 @@ struct Emitter
 
 	// Emit a conditional branch (2-register format: BEQ, BNE, BLT, BGE, BLTU, BGEU)
 	void emit_branch_2r(const std::string& cond, bool is_signed, unsigned rd, unsigned rj, address_t target) {
-		increment_counter();
 		flush_instruction_counter();
 
 		std::string cond_str;
@@ -150,7 +147,6 @@ struct Emitter
 
 	// Emit unconditional jump (B)
 	void emit_jump(address_t target) {
-		increment_counter();
 		flush_instruction_counter();
 
 		// Check if target is within current block
@@ -171,7 +167,6 @@ struct Emitter
 
 	// Emit call (BL - branch and link)
 	void emit_call(unsigned rd, address_t target, address_t return_addr) {
-		increment_counter();
 		flush_instruction_counter();
 
 		// Store return address
@@ -189,7 +184,6 @@ struct Emitter
 
 	// Emit indirect jump (JIRL)
 	void emit_jirl(unsigned rd, unsigned rj, int64_t offset, address_t return_addr) {
-		increment_counter();
 		flush_instruction_counter();
 
 		// Store return address
@@ -226,12 +220,25 @@ struct Emitter
 			func_name.c_str(), (unsigned long)current_pc, instr_bits);
 		add_code(buf);
 	}
+	void emit_custom_trace(const std::string& value) {
+		if (!tinfo.trace_instructions)
+			return;
+
+		char buf[256];
+		snprintf(buf, sizeof(buf),
+			"  api.trace(cpu, \"%s\", 0x%lx, %s);",
+			func_name.c_str(), (unsigned long)current_pc, value.c_str());
+		add_code(buf);
+	}
 };
 
 // Generate C code for a block of instructions and return mappings
 std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 {
 	Emitter emit(tinfo);
+
+	// Create a mapping for the block entry point
+	std::vector<TransMapping<>> mappings;
 
 	// Generate function prologue
 	emit.add_code("static ReturnValues " + emit.func_name + "(CPU* cpu, uint64_t ic, uint64_t max_ic, addr_t pc) {");
@@ -241,33 +248,54 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 		emit.add_code("jump_table:");
 		emit.add_code("  switch (pc) {");
 		for (address_t jump_target : tinfo.jump_locations) {
+			if (jump_target < tinfo.basepc || jump_target >= tinfo.endpc)
+				throw MachineException(ILLEGAL_OPERATION,
+					"emit: jump target outside block", jump_target);
 			char label[64];
 			snprintf(label, sizeof(label), "  case 0x%lx: goto label_%lx;",
 				(unsigned long)jump_target, (unsigned long)jump_target);
 			emit.add_code(label);
+			mappings.push_back({jump_target, emit.func_name, 0});
 		}
-		emit.add_code("  default: break;");
+		for (address_t jump_target : tinfo.global_jump_locations) {
+			if (jump_target < tinfo.basepc || jump_target >= tinfo.endpc)
+				continue;
+			if (tinfo.jump_locations.count(jump_target) != 0)
+				continue; // Already added
+			char label[64];
+			snprintf(label, sizeof(label), "  case 0x%lx: goto label_%lx;",
+				(unsigned long)jump_target, (unsigned long)jump_target);
+			emit.add_code(label);
+			mappings.push_back({jump_target, emit.func_name, 0});
+		}
+		// Unknown PC: Return to caller
+		emit.add_code("  default:");
+		emit.emit_custom_trace("cpu->pc"); // Trace unknown jump
+		emit.add_code("    cpu->pc = pc; return (ReturnValues){ic, max_ic};");
 		emit.add_code("  }");
 		emit.add_code("");
 	}
 
 	// Process each instruction
 	for (size_t i = 0; i < tinfo.instr.size(); i++) {
-		uint32_t instr_bits = tinfo.instr[i];
-		la_instruction instr{instr_bits};
+		const uint32_t instr_bits = tinfo.instr[i];
+		const la_instruction instr{instr_bits};
 
 		// Add label if this is a jump target
-		if (tinfo.jump_locations.count(emit.pc())) {
-			char label[64];
-			snprintf(label, sizeof(label), "label_%lx:", (unsigned long)emit.pc());
-			emit.add_code(label);
+		if (tinfo.jump_locations.count(emit.pc()) || 
+		    tinfo.global_jump_locations.count(emit.pc()))
+		{
 			// Flush instruction counter at jump targets
 			if (emit.pc() != tinfo.basepc)
 				emit.flush_instruction_counter();
+			char label[64];
+			snprintf(label, sizeof(label), "label_%lx:", (unsigned long)emit.pc());
+			emit.add_code(label);
 		}
 
 		// Emit trace call if tracing is enabled
 		emit.emit_trace(instr_bits);
+		emit.increment_counter();
 
 		const Instruction decoded = CPU::decode(instr);
 		const InstrId instr_id = decoded.id;
@@ -335,6 +363,13 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			emit.emit_branch_2r(">=", false, instr.ri16.rd, instr.ri16.rj, target);
 			break;
 		}
+		case InstrId::BCEQZ:
+		case InstrId::BCNEZ: {
+			// XXX: Unimplemented condition codes
+			emit.add_code("  cpu->pc = " + hex_address(emit.pc()) + "LL;");
+			emit.add_code("  return (ReturnValues){ic, max_ic};");
+			break;
+		}
 		case InstrId::JIRL: {
 			int64_t offs = InstructionHelpers::sign_extend_16(instr.ri16.imm);
 			address_t return_addr = emit.pc() + 4;
@@ -345,12 +380,11 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 		// PC-relative instructions
 		case InstrId::PCADDI: {
 			if (instr.ri20.rd != 0) {
-				int64_t si20 = InstructionHelpers::sign_extend_20(instr.ri20.imm);
-				int64_t offset = si20 << 2;
+				int32_t si20 = InstructionHelpers::sign_extend_20(instr.ri20.imm);
+				int64_t offset = (int64_t)(si20 << 2);
 				emit.add_code("  " + emit.reg(instr.ri20.rd) + " = " +
 					hex_address(emit.pc() + offset) + "ULL;");
 			}
-			emit.increment_counter();
 			break;
 		}
 		case InstrId::PCADDU12I: {
@@ -360,7 +394,6 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 				emit.add_code("  " + emit.reg(instr.ri20.rd) + " = " +
 					hex_address(emit.pc() + offset) + "ULL;");
 			}
-			emit.increment_counter();
 			break;
 		}
 		case InstrId::PCALAU12I: {
@@ -370,27 +403,26 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 				emit.add_code("  " + emit.reg(instr.ri20.rd) + " = " +
 					hex_address(pc_aligned + offset) + "ULL;");
 			}
-			emit.increment_counter();
 			break;
 		}
 		case InstrId::PCADDU18I: {
 			if (instr.ri20.rd != 0) {
-				int64_t si20 = InstructionHelpers::sign_extend_20(instr.ri20.imm);
-				int64_t offset = si20 << 18;
+				int32_t si20 = InstructionHelpers::sign_extend_20(instr.ri20.imm);
+				int64_t offset = (int64_t)(si20 << 18);
 				emit.add_code("  " + emit.reg(instr.ri20.rd) + " = " +
 					hex_address(emit.pc() + offset) + "ULL;");
 			}
-			emit.increment_counter();
 			break;
 		}
 
 		// System instructions
 		case InstrId::SYSCALL:
-			emit.add_code("cpu->pc = pc;");
-			emit.add_code("if (do_syscall(cpu, ic, max_ic, " + emit.reg(REG_A7) + ")) {");
-			emit.add_code("  cpu->pc += 4; return (ReturnValues){ic, MAX_COUNTER(cpu)}; }");
+			emit.flush_instruction_counter();
+			emit.add_code("  cpu->pc = pc;");
+			emit.add_code("  if (do_syscall(cpu, ic, max_ic, " + emit.reg(REG_A7) + ")) {");
+			emit.add_code("    cpu->pc += 4; return (ReturnValues){ic, MAX_COUNTER(cpu)}; }");
 			if (!tinfo.ignore_instruction_limit)
-				emit.add_code("max_ic = MAX_COUNTER(cpu);");
+				emit.add_code("  max_ic = MAX_COUNTER(cpu);");
 			break;
 
 		// Load upper immediate
@@ -398,46 +430,39 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			if (instr.ri20.rd != 0) {
 				int32_t result = (int32_t)(instr.ri20.imm << 12);
 				emit.add_code("  " + emit.reg(instr.ri20.rd) + " = " +
-					std::to_string((int64_t)result) + "LL;");
+					std::to_string((saddress_t)result) + "LL;");
 			}
-			emit.increment_counter();
 			break;
 
 		// Arithmetic immediate
 		case InstrId::ADDI_D: {
 			if (instr.ri12.rd != 0) {
-				int32_t si12 = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 				emit.add_code("  " + emit.reg(instr.ri12.rd) + " = " +
-					emit.reg(instr.ri12.rj) + " + " + std::to_string((int64_t)si12) + "LL;");
+					emit.reg(instr.ri12.rj) + " + " + std::to_string(InstructionHelpers::sign_extend_12(instr.ri12.imm)) + ";");
 			}
-			emit.increment_counter();
 			break;
 		}
 		case InstrId::ADDI_W: {
-			int32_t si12 = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 			if (instr.ri12.rd != 0) {
-				emit.add_code("  " + emit.reg(instr.ri12.rd) + " = (int64_t)((int32_t)" +
-					emit.reg(instr.ri12.rj) + " + " + std::to_string(si12) + ");");
+				emit.add_code("  " + emit.reg(instr.ri12.rd) + " = (int32_t)" +
+					emit.reg(instr.ri12.rj) + " + " + std::to_string(InstructionHelpers::sign_extend_12(instr.ri12.imm)) + ";");
 			}
-			emit.increment_counter();
 			break;
 		}
 
 		// Load/Store
 		case InstrId::LD_D: {
-			int32_t si12 = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 			if (instr.ri12.rd != 0) {
-				std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string((int64_t)si12) + "LL";
+				const int32_t si12 = InstructionHelpers::sign_extend_12(instr.ri12.imm);
+				std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string(si12);
 				emit.add_code("  " + emit.reg(instr.ri12.rd) + " = rd64(cpu, " + addr + ");");
 			}
-			emit.increment_counter();
 			break;
 		}
 		case InstrId::ST_D: {
-			int32_t si12 = InstructionHelpers::sign_extend_12(instr.ri12.imm);
-			std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string((int64_t)si12) + "LL";
+			const int32_t si12 = InstructionHelpers::sign_extend_12(instr.ri12.imm);
+			std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string(si12);
 			emit.add_code("  wr64(cpu, " + addr + ", " + emit.reg(instr.ri12.rd) + ");");
-			emit.increment_counter();
 			break;
 		}
 
@@ -447,7 +472,6 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 				emit.add_code("  " + emit.reg(instr.r3.rd) + " = " +
 					emit.reg(instr.r3.rj) + " + " + emit.reg(instr.r3.rk) + ";");
 			}
-			emit.increment_counter();
 			break;
 
 		// Logical operations
@@ -463,37 +487,30 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 						emit.reg(instr.r3.rj) + " | " + emit.reg(instr.r3.rk) + ";");
 				}
 			}
-			emit.increment_counter();
 			break;
 
 		case InstrId::ORI:
 			if (instr.ri12.rd != 0) {
 				const uint32_t imm12 = instr.ri12.imm;
 				emit.add_code("  " + emit.reg(instr.ri12.rd) + " = " +
-					emit.reg(instr.ri12.rj) + " | " + std::to_string(imm12) + "ULL;");
+					emit.reg(instr.ri12.rj) + " | " + std::to_string(imm12) + ";");
 			}
-			emit.increment_counter();
 			break;
 
 		default:
 			// Instruction not handled in binary translator
-			emit.increment_counter();
-			emit.emit_fallback(instr_bits);
+			emit.emit_fallback(decoded, instr_bits);
 		}
 
 		emit.advance_pc();
 	}
 
-	emit.add_code("  cpu->pc = pc;");
+	emit.add_code("  cpu->pc = " + hex_address(tinfo.endpc) + ";");
 	emit.add_code("  return (ReturnValues){ic, max_ic};");
 	emit.add_code("}");
 
 	// Append the generated code
 	code += emit.code;
-
-	// Create a mapping for the block entry point
-	std::vector<TransMapping<>> mappings;
-	mappings.push_back({tinfo.basepc, emit.func_name, 0});
 
 	return mappings;
 }

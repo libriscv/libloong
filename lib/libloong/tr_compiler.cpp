@@ -263,16 +263,14 @@ namespace loongarch
 		{
 			const unsigned mapping_index = mappings[i].mapping_index;
 			const auto addr = mappings[i].addr;
+			//printf("  Mapping[%u] addr=0x%lx to index=%u\n",
+			//	i, (unsigned long)addr, mapping_index);
 
 			if (exec.is_within(addr)) {
-				auto* handler = handlers[mapping_index];
-				if (handler != nullptr)
-				{
-					auto& entry = *exec.pc_relative_decoder_cache(addr);
-					entry.set_bytecode(LA64_BC_TRANSLATOR);
-					entry.instr = mapping_index;
-					entry.handler_idx = 0xFF; // Invalid handler index
-				}
+				auto& entry = *exec.pc_relative_decoder_cache(addr);
+				entry.set_bytecode(LA64_BC_TRANSLATOR);
+				entry.instr = mapping_index;
+				entry.handler_idx = 0xFF; // Invalid handler index
 			} else if (true || options.verbose_loader) {
 				fprintf(stderr, "libloong: Mapping address 0x%lx outside execute area\n",
 					(unsigned long)addr);

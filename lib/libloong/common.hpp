@@ -26,7 +26,7 @@ namespace loongarch
 		bool translate_use_register_caching = true;
 		bool unsafe_remove_checks = false;
 		size_t translate_blocks_max = 10000;
-		size_t translate_instr_max = 1000000;
+		size_t translate_instr_max = 50'000'000ull;
 		std::string translate_output_file; // Optional: output file path for generated C code
 #endif
 	};

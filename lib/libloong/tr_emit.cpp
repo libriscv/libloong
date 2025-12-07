@@ -269,202 +269,189 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 		// Emit trace call if tracing is enabled
 		emit.emit_trace(instr_bits);
 
-		// Decode and emit based on opcode
-		const uint32_t opcode = (instr_bits >> 26) & 0x3F;
-		bool handled = false;
+		const Instruction decoded = CPU::decode(instr);
+		const InstrId instr_id = decoded.id;
 
-		// BEQZ (opcode 0x10): 1RI21 format
-		if (opcode == 0x10) {
+		switch (instr_id) {
+		// Branch instructions
+		case InstrId::BEQZ: {
 			int64_t offs = InstructionHelpers::sign_extend_21(instr.ri21.offs_lo, instr.ri21.offs_hi);
 			address_t target = emit.pc() + (offs << 2);
 			emit.emit_branch_1r("== 0", instr.ri21.rj, target);
-			handled = true;
+			break;
 		}
-		// BNEZ (opcode 0x11): 1RI21 format
-		else if (opcode == 0x11) {
+		case InstrId::BNEZ: {
 			int64_t offs = InstructionHelpers::sign_extend_21(instr.ri21.offs_lo, instr.ri21.offs_hi);
 			address_t target = emit.pc() + (offs << 2);
 			emit.emit_branch_1r("!= 0", instr.ri21.rj, target);
-			handled = true;
+			break;
 		}
-		// B (opcode 0x14): I26 format - unconditional jump
-		else if (opcode == 0x14) {
+		case InstrId::B: {
 			int64_t offs = InstructionHelpers::sign_extend_26(instr.i26.offs());
 			address_t target = emit.pc() + (offs << 2);
 			emit.emit_jump(target);
-			handled = true;
+			break;
 		}
-		// BL (opcode 0x15): I26 format - call
-		else if (opcode == 0x15) {
+		case InstrId::BL: {
 			int64_t offs = InstructionHelpers::sign_extend_26(instr.i26.offs());
 			address_t target = emit.pc() + (offs << 2);
 			address_t return_addr = emit.pc() + 4;
 			emit.emit_call(1, target, return_addr); // rd=1 (ra) for BL
-			handled = true;
+			break;
 		}
-		// BEQ (opcode 0x16): 2RI16 format
-		else if (opcode == 0x16) {
+		case InstrId::BEQ: {
 			int64_t offs = InstructionHelpers::sign_extend_16(instr.ri16.imm);
 			address_t target = emit.pc() + (offs << 2);
 			emit.emit_branch_2r("==", false, instr.ri16.rd, instr.ri16.rj, target);
-			handled = true;
+			break;
 		}
-		// BNE (opcode 0x17): 2RI16 format
-		else if (opcode == 0x17) {
+		case InstrId::BNE: {
 			int64_t offs = InstructionHelpers::sign_extend_16(instr.ri16.imm);
 			address_t target = emit.pc() + (offs << 2);
 			emit.emit_branch_2r("!=", false, instr.ri16.rd, instr.ri16.rj, target);
-			handled = true;
+			break;
 		}
-		// BLT (opcode 0x18): 2RI16 format
-		else if (opcode == 0x18) {
+		case InstrId::BLT: {
 			int64_t offs = InstructionHelpers::sign_extend_16(instr.ri16.imm);
 			address_t target = emit.pc() + (offs << 2);
 			emit.emit_branch_2r("<", true, instr.ri16.rd, instr.ri16.rj, target);
-			handled = true;
+			break;
 		}
-		// BGE (opcode 0x19): 2RI16 format
-		else if (opcode == 0x19) {
+		case InstrId::BGE: {
 			int64_t offs = InstructionHelpers::sign_extend_16(instr.ri16.imm);
 			address_t target = emit.pc() + (offs << 2);
 			emit.emit_branch_2r(">=", true, instr.ri16.rd, instr.ri16.rj, target);
-			handled = true;
+			break;
 		}
-		// BLTU (opcode 0x1a): 2RI16 format
-		else if (opcode == 0x1a) {
+		case InstrId::BLTU: {
 			int64_t offs = InstructionHelpers::sign_extend_16(instr.ri16.imm);
-			const address_t target = emit.pc() + (offs << 2);
+			address_t target = emit.pc() + (offs << 2);
 			emit.emit_branch_2r("<", false, instr.ri16.rd, instr.ri16.rj, target);
-			handled = true;
+			break;
 		}
-		// BGEU (opcode 0x1b): 2RI16 format
-		else if (opcode == 0x1b) {
+		case InstrId::BGEU: {
 			int64_t offs = InstructionHelpers::sign_extend_16(instr.ri16.imm);
-			const address_t target = emit.pc() + (offs << 2);
+			address_t target = emit.pc() + (offs << 2);
 			emit.emit_branch_2r(">=", false, instr.ri16.rd, instr.ri16.rj, target);
-			handled = true;
+			break;
 		}
-		// JIRL (opcode 0x13): 2RI16 format - indirect jump
-		else if (opcode == 0x13) {
+		case InstrId::JIRL: {
 			int64_t offs = InstructionHelpers::sign_extend_16(instr.ri16.imm);
-			const address_t return_addr = emit.pc() + 4;
+			address_t return_addr = emit.pc() + 4;
 			emit.emit_jirl(instr.ri16.rd, instr.ri16.rj, offs << 2, return_addr);
-			handled = true;
+			break;
 		}
-		// PCADDI (opcode 0x18): rd = PC + sign_ext(imm20 << 2)
-		else if ((instr_bits & 0xFE000000) == 0x18000000) {
-			int64_t si20 = InstructionHelpers::sign_extend_20(instr.ri20.imm);
-			const int64_t offset = si20 << 2;
+
+		// PC-relative instructions
+		case InstrId::PCADDI: {
 			if (instr.ri20.rd != 0) {
+				int64_t si20 = InstructionHelpers::sign_extend_20(instr.ri20.imm);
+				int64_t offset = si20 << 2;
 				emit.add_code("  " + emit.reg(instr.ri20.rd) + " = " +
 					hex_address(emit.pc() + offset) + "ULL;");
 			}
 			emit.increment_counter();
-			handled = true;
+			break;
 		}
-		// PCADDU12I (opcode 0x1C): rd = PC + sign_ext(imm20 << 12)
-		else if ((instr_bits & 0xFE000000) == 0x1C000000) {
-			int64_t si20 = InstructionHelpers::sign_extend_20(instr.ri20.imm);
-			const int64_t offset = si20 << 12;
+		case InstrId::PCADDU12I: {
 			if (instr.ri20.rd != 0) {
+				int64_t si20 = InstructionHelpers::sign_extend_20(instr.ri20.imm);
+				int64_t offset = si20 << 12;
 				emit.add_code("  " + emit.reg(instr.ri20.rd) + " = " +
 					hex_address(emit.pc() + offset) + "ULL;");
 			}
 			emit.increment_counter();
-			handled = true;
+			break;
 		}
-		// PCALAU12I (opcode 0x1A): rd = (PC & ~0xFFF) + sign_ext(imm20 << 12)
-		else if ((instr_bits & 0xFE000000) == 0x1A000000) {
-			address_t pc_aligned = emit.pc() & ~((address_t)0xFFF);
-			int64_t offset = (int64_t)(int32_t)(instr.ri20.imm << 12);
+		case InstrId::PCALAU12I: {
 			if (instr.ri20.rd != 0) {
+				address_t pc_aligned = emit.pc() & ~((address_t)0xFFF);
+				int64_t offset = (int64_t)(int32_t)(instr.ri20.imm << 12);
 				emit.add_code("  " + emit.reg(instr.ri20.rd) + " = " +
 					hex_address(pc_aligned + offset) + "ULL;");
 			}
 			emit.increment_counter();
-			handled = true;
+			break;
 		}
-		// PCADDU18I (opcode 0x1E): rd = PC + sign_ext(imm20 << 18)
-		else if ((instr_bits & 0xFE000000) == 0x1E000000) {
-			int64_t si20 = InstructionHelpers::sign_extend_20(instr.ri20.imm);
-			const int64_t offset = si20 << 18;
+		case InstrId::PCADDU18I: {
 			if (instr.ri20.rd != 0) {
+				int64_t si20 = InstructionHelpers::sign_extend_20(instr.ri20.imm);
+				int64_t offset = si20 << 18;
 				emit.add_code("  " + emit.reg(instr.ri20.rd) + " = " +
 					hex_address(emit.pc() + offset) + "ULL;");
 			}
 			emit.increment_counter();
-			handled = true;
+			break;
 		}
-		// SYSCALL 0
-		else if (instr_bits == Opcode::SYSCALL) {
-			// Emit syscall handling code
+
+		// System instructions
+		case InstrId::SYSCALL:
 			emit.add_code("cpu->pc = pc;");
 			emit.add_code("if (do_syscall(cpu, ic, max_ic, " + emit.reg(REG_A7) + ")) {");
 			emit.add_code("  cpu->pc += 4; return (ReturnValues){ic, MAX_COUNTER(cpu)}; }");
 			if (!tinfo.ignore_instruction_limit)
 				emit.add_code("max_ic = MAX_COUNTER(cpu);");
-			handled = true;
-		}
-		// LU12I.W (opcode 0x14): Load upper 12 bits immediate word
-		else if ((instr_bits & 0xFE000000) == 0x14000000) {
-			// rd = SignExtend({si20, 12'b0}, GRLEN)
+			break;
+
+		// Load upper immediate
+		case InstrId::LU12I_W:
 			if (instr.ri20.rd != 0) {
-				const int32_t result = (int32_t)(instr.ri20.imm << 12);
+				int32_t result = (int32_t)(instr.ri20.imm << 12);
 				emit.add_code("  " + emit.reg(instr.ri20.rd) + " = " +
 					std::to_string((int64_t)result) + "LL;");
 			}
 			emit.increment_counter();
-			handled = true;
-		}
-		// ADDI.D (opcode 0x2c): Add immediate doubleword
-		else if ((instr_bits & 0xFFC00000) == 0x02C00000) {
-			int32_t si12 = InstructionHelpers::sign_extend_12(instr.ri12.imm);
+			break;
+
+		// Arithmetic immediate
+		case InstrId::ADDI_D: {
 			if (instr.ri12.rd != 0) {
+				int32_t si12 = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 				emit.add_code("  " + emit.reg(instr.ri12.rd) + " = " +
 					emit.reg(instr.ri12.rj) + " + " + std::to_string((int64_t)si12) + "LL;");
 			}
 			emit.increment_counter();
-			handled = true;
+			break;
 		}
-		// ADDI.W (opcode 0x28): Add immediate word
-		else if ((instr_bits & 0xFFC00000) == 0x02800000) {
+		case InstrId::ADDI_W: {
 			int32_t si12 = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 			if (instr.ri12.rd != 0) {
 				emit.add_code("  " + emit.reg(instr.ri12.rd) + " = (int64_t)((int32_t)" +
 					emit.reg(instr.ri12.rj) + " + " + std::to_string(si12) + ");");
 			}
 			emit.increment_counter();
-			handled = true;
+			break;
 		}
-		// LD.D (opcode 0x28c): Load doubleword
-		else if ((instr_bits & 0xFFC00000) == 0x28C00000) {
+
+		// Load/Store
+		case InstrId::LD_D: {
 			int32_t si12 = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 			if (instr.ri12.rd != 0) {
 				std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string((int64_t)si12) + "LL";
 				emit.add_code("  " + emit.reg(instr.ri12.rd) + " = rd64(cpu, " + addr + ");");
 			}
 			emit.increment_counter();
-			handled = true;
+			break;
 		}
-		// ST.D (opcode 0x29c): Store doubleword
-		else if ((instr_bits & 0xFFC00000) == 0x29C00000) {
+		case InstrId::ST_D: {
 			int32_t si12 = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 			std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string((int64_t)si12) + "LL";
 			emit.add_code("  wr64(cpu, " + addr + ", " + emit.reg(instr.ri12.rd) + ");");
 			emit.increment_counter();
-			handled = true;
+			break;
 		}
-		// ADD.D (opcode 0x00108): Add doubleword registers
-		else if ((instr_bits & 0xFFFF8000) == 0x00108000) {
+
+		// Arithmetic register
+		case InstrId::ADD_D:
 			if (instr.r3.rd != 0) {
 				emit.add_code("  " + emit.reg(instr.r3.rd) + " = " +
 					emit.reg(instr.r3.rj) + " + " + emit.reg(instr.r3.rk) + ";");
 			}
 			emit.increment_counter();
-			handled = true;
-		}
-		// OR (opcode 0x00150): Logical OR - also handles MOVE pseudo-instruction
-		else if ((instr_bits & 0xFFFF8000) == 0x00150000) {
+			break;
+
+		// Logical operations
+		case InstrId::OR:
 			if (instr.r3.rd != 0) {
 				// Check if this is a MOVE (OR rd, rj, zero)
 				if (instr.r3.rk == 0) {
@@ -477,24 +464,21 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 				}
 			}
 			emit.increment_counter();
-			handled = true;
-		}
-		// ORI (opcode 0x38): Logical OR immediate - also handles LI.W pseudo-instruction
-		else if ((instr_bits & 0xFFC00000) == 0x03800000) {
+			break;
+
+		case InstrId::ORI:
 			if (instr.ri12.rd != 0) {
-				uint32_t imm12 = instr.ri12.imm;
+				const uint32_t imm12 = instr.ri12.imm;
 				emit.add_code("  " + emit.reg(instr.ri12.rd) + " = " +
 					emit.reg(instr.ri12.rj) + " | " + std::to_string(imm12) + "ULL;");
 			}
 			emit.increment_counter();
-			handled = true;
-		}
+			break;
 
-		if (!handled) {
-			// For unimplemented instructions, use fallback
-			emit.emit_fallback(instr_bits);
-			// Still count the instruction
+		default:
+			// Instruction not handled in binary translator
 			emit.increment_counter();
+			emit.emit_fallback(instr_bits);
 		}
 
 		emit.advance_pc();

@@ -12,7 +12,7 @@ cd build
 
 # Configure
 echo "Configuring with CMake..."
-cmake .. -DCMAKE_BUILD_TYPE=Release
+cmake .. -DCMAKE_BUILD_TYPE=Release -DLA_BINARY_TRANSLATION=ON
 
 # Build
 echo "Building..."

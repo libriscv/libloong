@@ -26,6 +26,7 @@ struct EmulatorOptions {
 	bool show_bytecode_stats = false;
 	bool enable_translation = true;
 	bool trace_translation = false;
+	bool enable_register_caching = true;
 	std::string translate_output_file; // Output file for generated C code
 };
 
@@ -137,6 +138,7 @@ static int run_program(const std::vector<uint8_t>& binary, const EmulatorOptions
 			.translate_enabled = opts.enable_translation,
 			.translate_trace = opts.trace_translation,
 			.translate_ignore_instruction_limit = opts.max_instructions == 0,
+			.translate_use_register_caching = opts.enable_register_caching,
 			.translate_output_file = opts.translate_output_file,
 #endif
 		});
@@ -259,6 +261,7 @@ static void print_help(const char* progname)
 	printf("                          Use 0 for unlimited execution\n");
 	printf("  -m, --memory <size>     Maximum memory in MiB (default: 512)\n");
 	printf("  -n, --no-translate      Disable binary translation (interpret only)\n");
+	printf("      --no-regcache       Disable register caching in translated code\n");
 	printf("  -T, --trace             Trace binary translation execution\n");
 	printf("  -O, --output <file>     Write generated translation code to file\n\n");
 	printf("The emulator automatically detects LA32/LA64 architecture from the ELF binary.\n\n");
@@ -286,6 +289,7 @@ static EmulatorOptions parse_arguments(int argc, char* argv[])
 		{"fuel",    required_argument, 0, 'f'},
 		{"memory",  required_argument, 0, 'm'},
 		{"no-translate", no_argument, 0,  'n'},
+		{"no-regcache",  no_argument, 0,  '\x04'},
 		{"trace",   no_argument,       0, 'T'},
 		{"output",  required_argument, 0, 'O'},
 		{0, 0, 0, 0}
@@ -330,6 +334,9 @@ static EmulatorOptions parse_arguments(int argc, char* argv[])
 			break;
 		case '\x03':
 			opts.precise = true;
+			break;
+		case '\x04':
+			opts.enable_register_caching = false;
 			break;
 		default:
 			print_help(argv[0]);

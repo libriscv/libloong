@@ -21,11 +21,16 @@ static std::string hex_address(uint64_t addr) {
 // This is a simplified version focusing on the most common instructions
 struct Emitter
 {
+	static constexpr int CACHE_START = 1; // Start at Rx
+	static constexpr int CACHE_END = 18; // End after Rx (exclusive)
+	static constexpr int CACHED_REGISTERS = CACHE_END - CACHE_START;
+
 	std::string code;
 	const TransInfo& tinfo;
 	address_t current_pc;
 	std::string func_name;
 	unsigned m_instr_counter = 0;
+	bool gpr_used[32] = {}; // Track which registers are actually used
 
 	Emitter(const TransInfo& info)
 	  : tinfo(info), current_pc(info.basepc)
@@ -37,6 +42,32 @@ struct Emitter
 
 	void add_code(const std::string& line) {
 		code += line + "\n";
+	}
+
+	// Register caching helpers
+	std::string cached_regname(unsigned idx) {
+		return "reg" + std::to_string(idx);
+	}
+
+	bool is_cached_register(unsigned idx) const {
+		return tinfo.options.translate_use_register_caching
+			&& idx >= CACHE_START && idx < CACHE_END;
+	}
+
+	void mark_register_used(unsigned idx) {
+		if (idx >= CACHE_START && idx < CACHE_END) {
+			gpr_used[idx] = true;
+		}
+	}
+
+	void store_all_registers() {
+		if (tinfo.options.translate_use_register_caching)
+			add_code("STORE_REGS_" + func_name + "();");
+	}
+
+	void reload_all_registers() {
+		if (tinfo.options.translate_use_register_caching)
+			add_code("LOAD_REGS_" + func_name + "();");
 	}
 
 	// Flush the instruction counter to generated code
@@ -55,6 +86,13 @@ struct Emitter
 	// Generate register access string
 	std::string reg(unsigned idx) {
 		if (idx == 0) return "0ULL";
+
+		// Use cached register if within cache range
+		if (is_cached_register(idx)) {
+			mark_register_used(idx);
+			return cached_regname(idx);
+		}
+
 		return "cpu->r[" + std::to_string(idx) + "]";
 	}
 
@@ -177,11 +215,16 @@ struct Emitter
 	// Fallback to slow-path handler
 	void emit_fallback(const Instruction& instr, uint32_t instr_bits) {
 		// For unimplemented instructions, call the slow-path handler
+		// Store cached registers before calling handler
+		store_all_registers();
 		const uintptr_t handler_func = reinterpret_cast<uintptr_t>(instr.handler);
 		add_code("  ((handler_t)" + hex_address(handler_func) + ")(cpu, " + hex_address(instr_bits) + ");");
+		// Reload cached registers after handler returns
+		reload_all_registers();
 	}
 
 	void emit_return() {
+		store_all_registers();
 		if (!tinfo.options.translate_ignore_instruction_limit)
 			add_code("  return (ReturnValues){ic, max_ic};");
 		else
@@ -280,7 +323,9 @@ struct Emitter
 			add_code(reg(rd) + " = " + hex_address(return_addr) + "ULL;");
 		}
 
-		this->emit_return();
+		//this->emit_return();
+		add_code("  pc = cpu->pc;");
+		add_code("  goto jump_table;"); // Jump table will handle indirect jump
 	}
 
 	address_t pc() const { return current_pc; }
@@ -319,9 +364,6 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 	// Create a mapping for the block entry point
 	std::vector<TransMapping<>> mappings;
 
-	// Generate function prologue
-	emit.add_code("static ReturnValues " + emit.func_name + "(CPU* cpu, uint64_t ic, uint64_t max_ic, addr_t pc) {");
-
 	// Jump table for local jumps within the block
 	if (!tinfo.jump_locations.empty()) {
 		emit.add_code("jump_table:");
@@ -349,7 +391,8 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 		}
 		// Unknown PC: Return to caller
 		emit.add_code("  default:");
-		emit.emit_custom_trace("pc"); // Trace unknown jump
+		//emit.emit_custom_trace("pc"); // Trace unknown jump
+		emit.store_all_registers();
 		emit.add_code("    cpu->pc = pc; return (ReturnValues){ic, max_ic};");
 		emit.add_code("  }");
 		emit.add_code("");
@@ -496,6 +539,8 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 		// System instructions
 		case InstrId::SYSCALL:
 			emit.flush_instruction_counter();
+			// Store cached registers before syscall
+			emit.store_all_registers();
 			emit.add_code("  if (api.syscall(cpu, ic, max_ic, " + hex_address(emit.pc()) + ")) {");
 			if (!tinfo.options.translate_ignore_instruction_limit) {
 				emit.add_code("    cpu->pc += 4; return (ReturnValues){ic, MAX_COUNTER(cpu)}; }");
@@ -503,6 +548,8 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			} else {
 				emit.add_code("    cpu->pc += 4; return (ReturnValues){0, MAX_COUNTER(cpu)}; }");
 			}
+			// Reload cached registers after syscall
+			emit.reload_all_registers();
 			break;
 
 		// Load upper immediate
@@ -792,6 +839,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 				// Special STOP instruction: MOVE zero, zero
 				// STOP: PC += 4; return
 				emit.flush_instruction_counter();
+				emit.store_all_registers();
 				emit.add_code("  cpu->pc = " + hex_address(emit.pc() + 4) + "LL;");
 				if (!tinfo.options.translate_ignore_instruction_limit) {
 					emit.add_code("  return (ReturnValues){ic, 0};");
@@ -1412,6 +1460,35 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 	emit.add_code("  cpu->pc = " + hex_address(tinfo.endpc) + ";");
 	emit.emit_return();
 	emit.add_code("}");
+
+	// Generate function prologue
+	code += "\nstatic ReturnValues " + emit.func_name + "(CPU* cpu, uint64_t ic, uint64_t max_ic, addr_t pc) {\n";
+
+	if (tinfo.options.translate_use_register_caching) {
+		// Declare cached register variables
+		for (unsigned reg = Emitter::CACHE_START; reg < Emitter::CACHE_END; reg++) {
+			if (emit.gpr_used[reg]) {
+				code += "  uint64_t " + emit.cached_regname(reg) + " = cpu->r[" + std::to_string(reg) + "];\n";
+			}
+		}
+
+		// Generate register store/load macros
+		code += "#define STORE_REGS_" + emit.func_name + "() \\\n";
+		for (unsigned reg = Emitter::CACHE_START; reg < Emitter::CACHE_END; reg++) {
+			if (emit.gpr_used[reg]) {
+				code += "  cpu->r[" + std::to_string(reg) + "] = " + emit.cached_regname(reg) + "; \\\n";
+			}
+		}
+		code += "  ;\n";
+
+		code += "#define LOAD_REGS_" + emit.func_name + "() \\\n";
+		for (unsigned reg = Emitter::CACHE_START; reg < Emitter::CACHE_END; reg++) {
+			if (emit.gpr_used[reg]) {
+				code += "  " + emit.cached_regname(reg) + " = cpu->r[" + std::to_string(reg) + "]; \\\n";
+			}
+		}
+		code += "  ;\n";
+	}
 
 	// Append the generated code
 	code += emit.code;

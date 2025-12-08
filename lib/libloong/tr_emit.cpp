@@ -693,6 +693,24 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 					emit.reg(instr.r3.rj) + " * " + emit.reg(instr.r3.rk) + ";");
 			}
 			break;
+		case InstrId::MULH_W:
+			if (instr.r3.rd != 0) {
+				emit.add_code("  { int64_t a = (int32_t)" + emit.reg(instr.r3.rj) +
+					", b = (int32_t)" + emit.reg(instr.r3.rk) + ";");
+				emit.add_code("    " + emit.reg(instr.r3.rd) + " = (int64_t)(int32_t)((a * b) >> 32); }");
+			}
+			break;
+		case InstrId::MULH_WU:
+			if (instr.r3.rd != 0) {
+				emit.add_code("  { uint64_t a = (uint32_t)" + emit.reg(instr.r3.rj) +
+					", b = (uint32_t)" + emit.reg(instr.r3.rk) + ";");
+				emit.add_code("    " + emit.reg(instr.r3.rd) + " = (int64_t)(int32_t)((a * b) >> 32); }");
+			}
+			break;
+		case InstrId::MULH_D:
+		case InstrId::MULH_DU:
+			emit.emit_fallback(decoded, instr_bits);
+			break;
 
 		// Division and modulo instructions
 		case InstrId::DIV_W:
@@ -934,6 +952,21 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 				}
 			}
 			break;
+		case InstrId::ROTR_W:
+			if (instr.r3.rd != 0) {
+				emit.add_code("  { uint32_t val = (uint32_t)" + emit.reg(instr.r3.rj) +
+					", shift = " + emit.reg(instr.r3.rk) + " & 0x1F;");
+				emit.add_code("    uint32_t result = (shift == 0) ? val : ((val >> shift) | (val << (32 - shift)));");
+				emit.add_code("    " + emit.reg(instr.r3.rd) + " = (int64_t)(int32_t)result; }");
+			}
+			break;
+		case InstrId::ROTR_D:
+			if (instr.r3.rd != 0) {
+				emit.add_code("  { uint64_t val = " + emit.reg(instr.r3.rj) +
+					", shift = " + emit.reg(instr.r3.rk) + " & 0x3F;");
+				emit.add_code("    " + emit.reg(instr.r3.rd) + " = (shift == 0) ? val : ((val >> shift) | (val << (64 - shift))); }");
+			}
+			break;
 
 		// Upper immediate and address calculation
 		case InstrId::LU32I_D:
@@ -991,6 +1024,59 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 				}
 			}
 			break;
+
+		// Bit string instructions
+		case InstrId::BSTRINS_W:
+			if (instr.ri16.rd != 0) {
+				uint32_t msbw = (instr.whole >> 16) & 0x1F;
+				uint32_t lsbw = (instr.whole >> 10) & 0x1F;
+				if (msbw >= lsbw) {
+					uint32_t width = msbw - lsbw + 1;
+					emit.add_code("  { uint32_t src = (uint32_t)" + emit.reg(instr.ri16.rj) +
+						", dst = (uint32_t)" + emit.reg(instr.ri16.rd) + ";");
+					emit.add_code("    uint32_t mask = ((1U << " + std::to_string(width) + ") - 1) << " +
+						std::to_string(lsbw) + ";");
+					emit.add_code("    uint32_t bits = (src << " + std::to_string(lsbw) + ") & mask;");
+					emit.add_code("    " + emit.reg(instr.ri16.rd) + " = (int64_t)(int32_t)((dst & ~mask) | bits); }");
+				}
+			}
+			break;
+		case InstrId::BSTRINS_D:
+			if (instr.ri16.rd != 0) {
+				uint32_t msbd = (instr.whole >> 16) & 0x3F;
+				uint32_t lsbd = (instr.whole >> 10) & 0x3F;
+				if (msbd >= lsbd) {
+					uint32_t width = msbd - lsbd + 1;
+					emit.add_code("  { uint64_t src = " + emit.reg(instr.ri16.rj) +
+						", dst = " + emit.reg(instr.ri16.rd) + ";");
+					emit.add_code("    uint64_t mask = ((1ULL << " + std::to_string(width) + ") - 1) << " +
+						std::to_string(lsbd) + ";");
+					emit.add_code("    uint64_t bits = (src << " + std::to_string(lsbd) + ") & mask;");
+					emit.add_code("    " + emit.reg(instr.ri16.rd) + " = (dst & ~mask) | bits; }");
+				}
+			}
+			break;
+		case InstrId::BSTRPICK_W:
+			if (instr.ri16.rd != 0) {
+				uint32_t msbw = (instr.whole >> 16) & 0x1F;
+				uint32_t lsbw = (instr.whole >> 10) & 0x1F;
+				uint32_t width = msbw - lsbw + 1;
+				emit.add_code("  { uint32_t src = (uint32_t)" + emit.reg(instr.ri16.rj) + ";");
+				emit.add_code("    uint32_t mask = (1U << " + std::to_string(width) + ") - 1;");
+				emit.add_code("    " + emit.reg(instr.ri16.rd) + " = (src >> " + std::to_string(lsbw) + ") & mask; }");
+			}
+			break;
+		case InstrId::BSTRPICK_D:
+			if (instr.ri16.rd != 0) {
+				uint32_t msbd = (instr.whole >> 16) & 0x3F;
+				uint32_t lsbd = (instr.whole >> 10) & 0x3F;
+				uint32_t width = msbd - lsbd + 1;
+				emit.add_code("  { uint64_t src = " + emit.reg(instr.ri16.rj) + ";");
+				emit.add_code("    uint64_t mask = (1ULL << " + std::to_string(width) + ") - 1;");
+				emit.add_code("    " + emit.reg(instr.ri16.rd) + " = (src >> " + std::to_string(lsbd) + ") & mask; }");
+			}
+			break;
+
 		case InstrId::EXT_W_B:
 			if (instr.ri12.rd != 0) {
 				emit.add_code("  " + emit.reg(instr.ri12.rd) + " = (int64_t)(int8_t)" + emit.reg(instr.ri12.rj) + ";");

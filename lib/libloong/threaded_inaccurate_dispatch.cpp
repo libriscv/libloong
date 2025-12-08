@@ -189,6 +189,11 @@ stop_execution:
 			printf("  [stop_execution] Stopping at PC=0x%lx\n", (unsigned long)pc);
 		}
 		m_regs.pc = pc;
+		if (machine().has_current_exception()) {
+			const auto ex = machine().current_exception();
+			machine().clear_current_exception();
+			std::rethrow_exception(ex);
+		}
 		return;
 
 check_jump:

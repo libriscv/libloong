@@ -137,8 +137,6 @@ typedef void (*handler_t) (CPU*, uint32_t);
 static struct CallbackTable {
 	syscall_t* syscalls;
 	void (*unknown_syscall)(CPU*, addr_t);
-	unsigned (*execute)(CPU*, uint32_t);
-	unsigned (*execute_handler)(CPU*, uint32_t, uintptr_t);
 	handler_t* handlers;
 	int  (*syscall)(CPU*, uint64_t, uint64_t, addr_t);
 	void (*exception) (CPU*, addr_t, int);

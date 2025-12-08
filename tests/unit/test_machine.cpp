@@ -472,3 +472,57 @@ TEST_CASE("System call argument helpers", "[machine][syscall][sysargs]") {
 		REQUIRE(test_passed);
 	}
 }
+
+TEST_CASE("Exception handling", "[machine][exceptions]") {
+	CodeBuilder builder;
+
+	SECTION("Exception from system call") {
+		auto binary = builder.build(R"(
+			int trigger_exception() {
+				register int a7 __asm__("a7") = 500; // Syscall number
+				__asm__ volatile ("syscall 0" : : "r"(a7) : "memory");
+				return 1234; // Should not reach here
+			}
+
+			static int call = 0;
+			int main() {
+				if (call) {
+					return trigger_exception();
+				}
+				return 0;
+			}
+		)", "syscall_exception");
+
+		TestMachine machine(binary);
+		machine.setup_linux();
+
+		static bool was_called = false;
+		machine.machine().install_syscall_handler(500, [](Machine& m) {
+			was_called = true;
+			throw MachineException(GUEST_ABORT, "Test exception");
+		});
+
+		// In JIT-mode there is no unwinding, so we can use
+		// the std::exception_ptr stored in the machine
+		// otherwise, we expect a MachineException to be thrown
+		try {
+			machine.vmcall("trigger_exception");
+			FAIL("Expected exception was not thrown");
+		} catch (const MachineException& e) {
+			REQUIRE(std::string(e.what()).find("Test exception") != std::string::npos);
+			REQUIRE(machine.machine().has_current_exception() == false);
+		}
+		REQUIRE(was_called);
+		was_called = false;
+
+		try {
+			// With execution timeout
+			machine.machine().vmcall<int, 10000ull>("trigger_exception");
+			FAIL("Expected exception was not thrown");
+		} catch (const MachineException& e) {
+			REQUIRE(std::string(e.what()).find("Test exception") != std::string::npos);
+			REQUIRE(machine.machine().has_current_exception() == false);
+		}
+		REQUIRE(was_called);
+	}
+}

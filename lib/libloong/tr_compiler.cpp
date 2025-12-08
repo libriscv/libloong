@@ -144,8 +144,6 @@ namespace loongarch
 		static struct CallbackTable {
 			Machine::syscall_t** syscalls;
 			Machine::unknown_syscall_t* unknown_syscall;
-			unsigned (*execute)(CPU&, uint32_t);
-			unsigned (*execute_handler)(CPU&, uint32_t, uintptr_t);
 			DecoderData::handler_t* handlers;
 			int  (*syscall)(CPU&, uint64_t, uint64_t, address_t);
 			void (*exception) (CPU&, address_t, int);
@@ -163,21 +161,6 @@ namespace loongarch
 
 		callback_table.syscalls = machine.get_syscall_handlers();
 		callback_table.unknown_syscall = machine.get_unknown_syscall_handler();
-		callback_table.execute = nullptr;
-		// execute_handler: decodes and executes an instruction using the slow-path
-		callback_table.execute_handler = [](CPU& cpu, uint32_t instr, uintptr_t handler_ptr) -> unsigned {
-			if (handler_ptr != 0) {
-				// Direct handler pointer provided
-				auto* handler = reinterpret_cast<DecoderData::handler_t>(handler_ptr);
-				handler(cpu, la_instruction{instr});
-			} else {
-				// No handler provided - need to decode the instruction
-				// This is the slow path where we decode and execute
-				auto decoded = cpu.decode(la_instruction{instr});
-				decoded.handler(cpu, la_instruction{instr});
-			}
-			return 0; // Continue execution
-		};
 		callback_table.syscall = [](CPU& cpu, uint64_t ic, uint64_t max_ic, address_t pc) -> int {
 			try {
 				cpu.registers().pc = pc;
@@ -185,7 +168,8 @@ namespace loongarch
 				cpu.machine().system_call(cpu.reg(REG_A7));
 				return cpu.machine().stopped() || (cpu.pc() != pc);
 			} catch (...) {
-				// XXX: Set CPU exception state here
+				cpu.machine().set_current_exception(std::current_exception());
+				cpu.machine().stop();
 				return -1; // Indicate error
 			}
 		};

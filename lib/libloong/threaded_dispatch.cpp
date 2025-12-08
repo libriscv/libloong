@@ -169,6 +169,11 @@ new_execute_segment:
 stop_execution:
 		m_regs.pc = pc;
 		machine().set_instruction_counter(counter);
+		if (machine().has_current_exception()) {
+			const auto ex = machine().current_exception();
+			machine().clear_current_exception();
+			std::rethrow_exception(ex);
+		}
 		return max_counter == 0;
 
 check_jump:

@@ -163,6 +163,12 @@ namespace loongarch
 		void setup_posix_threads();
 		intptr_t counter_offset() const noexcept;
 
+		// Current machine exception (used to avoid unwinding)
+		void set_current_exception(std::exception_ptr&& ptr) noexcept { m_current_exception = std::move(ptr); }
+		void clear_current_exception() noexcept { m_current_exception = nullptr; }
+		bool has_current_exception() const noexcept { return m_current_exception != nullptr; }
+		auto& current_exception() const noexcept { return m_current_exception; }
+
 	private:
 		uint64_t      m_counter = 0;
 		uint64_t      m_max_instructions = 0;
@@ -171,6 +177,7 @@ namespace loongarch
 		std::unique_ptr<Arena> m_arena;
 		std::unique_ptr<Signals> m_signals;
 		std::unique_ptr<MultiThreading> m_mt;
+		std::exception_ptr m_current_exception = nullptr;
 		static inline std::array<syscall_t*, LA_SYSCALLS_MAX> m_syscall_handlers = {};
 		static inline unknown_syscall_t* m_unknown_syscall_handler = nullptr;
 		static inline rdtime_callback_t* m_rdtime_handler = nullptr;

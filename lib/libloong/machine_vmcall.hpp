@@ -115,11 +115,9 @@ namespace loongarch
 			cpu.simulate_inaccurate(func_addr);
 		} else {
 			this->simulate(MAX_INSTRUCTIONS, 0);
-			if constexpr (true) {
-				if (this->instruction_limit_reached()) {
-					throw MachineException(MACHINE_TIMEOUT,
-						"vmcall: Instruction limit reached during function call", func_addr);
-				}
+			if (this->instruction_limit_reached()) {
+				throw MachineException(MACHINE_TIMEOUT,
+					"vmcall: Instruction limit reached", func_addr);
 			}
 		}
 
@@ -190,7 +188,7 @@ namespace loongarch
 		if constexpr (Throw) {
 			if (this->instruction_limit_reached()) {
 				throw MachineException(MACHINE_TIMEOUT,
-					"preempt: Instruction limit reached during function call", func_addr);
+					"preempt: Instruction limit reached", func_addr);
 			}
 		}
 

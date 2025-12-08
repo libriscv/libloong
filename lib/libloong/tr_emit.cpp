@@ -1168,6 +1168,198 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			break;
 		}
 
+		// Floating-point arithmetic - double precision
+		case InstrId::FADD_D:
+			emit.add_code("  cpu->vr[" + std::to_string(instr.r3.rd) + "].df[0] = "
+				"cpu->vr[" + std::to_string(instr.r3.rj) + "].df[0] + "
+				"cpu->vr[" + std::to_string(instr.r3.rk) + "].df[0];");
+			break;
+		case InstrId::FSUB_D:
+			emit.add_code("  cpu->vr[" + std::to_string(instr.r3.rd) + "].df[0] = "
+				"cpu->vr[" + std::to_string(instr.r3.rj) + "].df[0] - "
+				"cpu->vr[" + std::to_string(instr.r3.rk) + "].df[0];");
+			break;
+		case InstrId::FMUL_D:
+			emit.add_code("  cpu->vr[" + std::to_string(instr.r3.rd) + "].df[0] = "
+				"cpu->vr[" + std::to_string(instr.r3.rj) + "].df[0] * "
+				"cpu->vr[" + std::to_string(instr.r3.rk) + "].df[0];");
+			break;
+		case InstrId::FDIV_D:
+			emit.add_code("  cpu->vr[" + std::to_string(instr.r3.rd) + "].df[0] = "
+				"cpu->vr[" + std::to_string(instr.r3.rj) + "].df[0] / "
+				"cpu->vr[" + std::to_string(instr.r3.rk) + "].df[0];");
+			break;
+
+		// Floating-point arithmetic - single precision
+		case InstrId::FADD_S:
+			emit.add_code("  cpu->vr[" + std::to_string(instr.r3.rd) + "].f[0] = "
+				"cpu->vr[" + std::to_string(instr.r3.rj) + "].f[0] + "
+				"cpu->vr[" + std::to_string(instr.r3.rk) + "].f[0];");
+			break;
+		case InstrId::FSUB_S:
+			emit.add_code("  cpu->vr[" + std::to_string(instr.r3.rd) + "].f[0] = "
+				"cpu->vr[" + std::to_string(instr.r3.rj) + "].f[0] - "
+				"cpu->vr[" + std::to_string(instr.r3.rk) + "].f[0];");
+			break;
+		case InstrId::FMUL_S:
+			emit.add_code("  cpu->vr[" + std::to_string(instr.r3.rd) + "].f[0] = "
+				"cpu->vr[" + std::to_string(instr.r3.rj) + "].f[0] * "
+				"cpu->vr[" + std::to_string(instr.r3.rk) + "].f[0];");
+			break;
+		case InstrId::FDIV_S:
+			emit.add_code("  cpu->vr[" + std::to_string(instr.r3.rd) + "].f[0] = "
+				"cpu->vr[" + std::to_string(instr.r3.rj) + "].f[0] / "
+				"cpu->vr[" + std::to_string(instr.r3.rk) + "].f[0];");
+			break;
+
+		// Floating-point min/max
+		case InstrId::FMAX_D:
+			emit.add_code("  cpu->vr[" + std::to_string(instr.r3.rd) + "].df[0] = "
+				"fmax(cpu->vr[" + std::to_string(instr.r3.rj) + "].df[0], "
+				"cpu->vr[" + std::to_string(instr.r3.rk) + "].df[0]);");
+			break;
+		case InstrId::FMIN_D:
+			emit.add_code("  cpu->vr[" + std::to_string(instr.r3.rd) + "].df[0] = "
+				"fmin(cpu->vr[" + std::to_string(instr.r3.rj) + "].df[0], "
+				"cpu->vr[" + std::to_string(instr.r3.rk) + "].df[0]);");
+			break;
+		case InstrId::FMAX_S:
+			emit.add_code("  cpu->vr[" + std::to_string(instr.r3.rd) + "].f[0] = "
+				"fmaxf(cpu->vr[" + std::to_string(instr.r3.rj) + "].f[0], "
+				"cpu->vr[" + std::to_string(instr.r3.rk) + "].f[0]);");
+			break;
+		case InstrId::FMIN_S:
+			emit.add_code("  cpu->vr[" + std::to_string(instr.r3.rd) + "].f[0] = "
+				"fminf(cpu->vr[" + std::to_string(instr.r3.rj) + "].f[0], "
+				"cpu->vr[" + std::to_string(instr.r3.rk) + "].f[0]);");
+			break;
+
+		// Floating-point unary operations
+		case InstrId::FABS_D:
+		case InstrId::FABS_S:
+			emit.emit_fallback(decoded, instr_bits);
+			break;
+
+		case InstrId::FNEG_D: {
+			uint32_t fd = instr.whole & 0x1F;
+			uint32_t fj = (instr.whole >> 5) & 0x1F;
+			emit.add_code("  cpu->vr[" + std::to_string(fd) + "].df[0] = "
+				"-cpu->vr[" + std::to_string(fj) + "].df[0];");
+			break;
+		}
+		case InstrId::FMOV_D: {
+			uint32_t fd = instr.whole & 0x1F;
+			uint32_t fj = (instr.whole >> 5) & 0x1F;
+			emit.add_code("  cpu->vr[" + std::to_string(fd) + "].du[0] = "
+				"cpu->vr[" + std::to_string(fj) + "].du[0];");
+			break;
+		}
+		case InstrId::FMOV_S: {
+			uint32_t fd = instr.whole & 0x1F;
+			uint32_t fj = (instr.whole >> 5) & 0x1F;
+			emit.add_code("  cpu->vr[" + std::to_string(fd) + "].f[0] = "
+				"cpu->vr[" + std::to_string(fj) + "].f[0];");
+			break;
+		}
+
+		// Fused multiply-add/sub (4R-type format)
+		case InstrId::FMADD_D: {
+			// fd = fa + fj * fk
+			uint32_t fd = instr.r4.rd;
+			uint32_t fj = instr.r4.rj;
+			uint32_t fk = instr.r4.rk;
+			uint32_t fa = instr.r4.ra;
+			emit.add_code("  cpu->vr[" + std::to_string(fd) + "].df[0] = "
+				"cpu->vr[" + std::to_string(fj) + "].df[0] * "
+				"cpu->vr[" + std::to_string(fk) + "].df[0] + "
+				"cpu->vr[" + std::to_string(fa) + "].df[0];");
+			break;
+		}
+		case InstrId::FMADD_S: {
+			// fd = fa + fj * fk
+			uint32_t fd = instr.r4.rd;
+			uint32_t fj = instr.r4.rj;
+			uint32_t fk = instr.r4.rk;
+			uint32_t fa = instr.r4.ra;
+			emit.add_code("  cpu->vr[" + std::to_string(fd) + "].f[0] = "
+				"cpu->vr[" + std::to_string(fj) + "].f[0] * "
+				"cpu->vr[" + std::to_string(fk) + "].f[0] + "
+				"cpu->vr[" + std::to_string(fa) + "].f[0];");
+			break;
+		}
+		case InstrId::FMSUB_D: {
+			// fd = fj * fk - fa
+			uint32_t fd = instr.r4.rd;
+			uint32_t fj = instr.r4.rj;
+			uint32_t fk = instr.r4.rk;
+			uint32_t fa = instr.r4.ra;
+			emit.add_code("  cpu->vr[" + std::to_string(fd) + "].df[0] = "
+				"cpu->vr[" + std::to_string(fj) + "].df[0] * "
+				"cpu->vr[" + std::to_string(fk) + "].df[0] - "
+				"cpu->vr[" + std::to_string(fa) + "].df[0];");
+			break;
+		}
+		case InstrId::FMSUB_S: {
+			// fd = fj * fk - fa
+			uint32_t fd = instr.r4.rd;
+			uint32_t fj = instr.r4.rj;
+			uint32_t fk = instr.r4.rk;
+			uint32_t fa = instr.r4.ra;
+			emit.add_code("  cpu->vr[" + std::to_string(fd) + "].f[0] = "
+				"cpu->vr[" + std::to_string(fj) + "].f[0] * "
+				"cpu->vr[" + std::to_string(fk) + "].f[0] - "
+				"cpu->vr[" + std::to_string(fa) + "].f[0];");
+			break;
+		}
+		case InstrId::FNMADD_D: {
+			// fd = -(fa + fj * fk)
+			uint32_t fd = instr.r4.rd;
+			uint32_t fj = instr.r4.rj;
+			uint32_t fk = instr.r4.rk;
+			uint32_t fa = instr.r4.ra;
+			emit.add_code("  cpu->vr[" + std::to_string(fd) + "].df[0] = "
+				"-(cpu->vr[" + std::to_string(fj) + "].df[0] * "
+				"cpu->vr[" + std::to_string(fk) + "].df[0] + "
+				"cpu->vr[" + std::to_string(fa) + "].df[0]);");
+			break;
+		}
+		case InstrId::FNMADD_S: {
+			// fd = -(fa + fj * fk)
+			uint32_t fd = instr.r4.rd;
+			uint32_t fj = instr.r4.rj;
+			uint32_t fk = instr.r4.rk;
+			uint32_t fa = instr.r4.ra;
+			emit.add_code("  cpu->vr[" + std::to_string(fd) + "].f[0] = "
+				"-(cpu->vr[" + std::to_string(fj) + "].f[0] * "
+				"cpu->vr[" + std::to_string(fk) + "].f[0] + "
+				"cpu->vr[" + std::to_string(fa) + "].f[0]);");
+			break;
+		}
+		case InstrId::FNMSUB_D: {
+			// fd = -(fj * fk - fa) = fa - fj * fk
+			uint32_t fd = instr.r4.rd;
+			uint32_t fj = instr.r4.rj;
+			uint32_t fk = instr.r4.rk;
+			uint32_t fa = instr.r4.ra;
+			emit.add_code("  cpu->vr[" + std::to_string(fd) + "].df[0] = "
+				"-cpu->vr[" + std::to_string(fj) + "].df[0] * "
+				"cpu->vr[" + std::to_string(fk) + "].df[0] + "
+				"cpu->vr[" + std::to_string(fa) + "].df[0];");
+			break;
+		}
+		case InstrId::FNMSUB_S: {
+			// fd = -(fj * fk - fa) = fa - fj * fk
+			uint32_t fd = instr.r4.rd;
+			uint32_t fj = instr.r4.rj;
+			uint32_t fk = instr.r4.rk;
+			uint32_t fa = instr.r4.ra;
+			emit.add_code("  cpu->vr[" + std::to_string(fd) + "].f[0] = "
+				"-cpu->vr[" + std::to_string(fj) + "].f[0] * "
+				"cpu->vr[" + std::to_string(fk) + "].f[0] + "
+				"cpu->vr[" + std::to_string(fa) + "].f[0];");
+			break;
+		}
+
 		// LSX vector loads and stores (128-bit)
 		// These are too slow, and probably need to be optimized harder
 		//case InstrId::VLD: {

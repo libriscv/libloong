@@ -116,6 +116,7 @@ __attribute__((aligned(LA_MACHINE_ALIGNMENT)))
 typedef struct {
 	addr_t  pc;        // Program counter
 	addr_t  r[32];     // General-purpose registers
+	addr_t padding[3]; // Padding to align vectors
 	lasx_reg vr[32];   // Vector/FP registers
 	uint32_t fcsr;     // Floating-point control/status register
 	uint8_t  fcc;      // Floating-point condition codes

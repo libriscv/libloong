@@ -1105,6 +1105,110 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 		case InstrId::PRELD: // Prefetch - no-op
 			break;
 
+		// Floating-point loads and stores
+		case InstrId::FLD_S: {
+			// Load single-precision float (32-bit) into FPR
+			int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
+			std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string(offset);
+			emit.add_code("  { uint32_t val = rd32(cpu, " + addr + ");");
+			emit.add_code("    cpu->vr[" + std::to_string(instr.ri12.rd) + "].wu[0] = val;");
+			emit.add_code("    cpu->vr[" + std::to_string(instr.ri12.rd) + "].wu[1] = 0;");
+			emit.add_code("    cpu->vr[" + std::to_string(instr.ri12.rd) + "].du[1] = 0; }");
+			break;
+		}
+		case InstrId::FLD_D: {
+			// Load double-precision float (64-bit) into FPR
+			int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
+			std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string(offset);
+			emit.add_code("  { uint64_t val = rd64(cpu, " + addr + ");");
+			emit.add_code("    cpu->vr[" + std::to_string(instr.ri12.rd) + "].du[0] = val;");
+			emit.add_code("    cpu->vr[" + std::to_string(instr.ri12.rd) + "].du[1] = 0; }");
+			break;
+		}
+		case InstrId::FST_S: {
+			// Store single-precision float (32-bit) from FPR
+			int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
+			std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string(offset);
+			emit.add_code("  wr32(cpu, " + addr + ", cpu->vr[" + std::to_string(instr.ri12.rd) + "].wu[0]);");
+			break;
+		}
+		case InstrId::FST_D: {
+			// Store double-precision float (64-bit) from FPR
+			int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
+			std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string(offset);
+			emit.add_code("  wr64(cpu, " + addr + ", cpu->vr[" + std::to_string(instr.ri12.rd) + "].du[0]);");
+			break;
+		}
+
+		// Floating-point indexed loads and stores
+		case InstrId::FLDX_S: {
+			// Indexed load single-precision float
+			std::string addr = emit.reg(instr.r3.rj) + " + " + emit.reg(instr.r3.rk);
+			emit.add_code("  { uint32_t val = rd32(cpu, " + addr + ");");
+			emit.add_code("    cpu->vr[" + std::to_string(instr.r3.rd) + "].wu[0] = val;");
+			emit.add_code("    cpu->vr[" + std::to_string(instr.r3.rd) + "].wu[1] = 0; }");
+			break;
+		}
+		case InstrId::FLDX_D: {
+			// Indexed load double-precision float
+			std::string addr = emit.reg(instr.r3.rj) + " + " + emit.reg(instr.r3.rk);
+			emit.add_code("  cpu->vr[" + std::to_string(instr.r3.rd) + "].du[0] = rd64(cpu, " + addr + ");");
+			break;
+		}
+		case InstrId::FSTX_S: {
+			// Indexed store single-precision float
+			std::string addr = emit.reg(instr.r3.rj) + " + " + emit.reg(instr.r3.rk);
+			emit.add_code("  wr32(cpu, " + addr + ", cpu->vr[" + std::to_string(instr.r3.rd) + "].wu[0]);");
+			break;
+		}
+		case InstrId::FSTX_D: {
+			// Indexed store double-precision float
+			std::string addr = emit.reg(instr.r3.rj) + " + " + emit.reg(instr.r3.rk);
+			emit.add_code("  wr64(cpu, " + addr + ", cpu->vr[" + std::to_string(instr.r3.rd) + "].du[0]);");
+			break;
+		}
+
+		// LSX vector loads and stores (128-bit)
+		// These are too slow, and probably need to be optimized harder
+		//case InstrId::VLD: {
+		//	// Load 128-bit vector from memory
+		//	int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
+		//	std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string(offset);
+		//	emit.add_code("  { uint64_t addr = " + addr + ";");
+		//	emit.add_code("    cpu->vr[" + std::to_string(instr.ri12.rd) + "].du[0] = rd64(cpu, addr);");
+		//	emit.add_code("    cpu->vr[" + std::to_string(instr.ri12.rd) + "].du[1] = rd64(cpu, addr + 8);");
+		//	emit.add_code("    cpu->vr[" + std::to_string(instr.ri12.rd) + "].du[2] = 0;");
+		//	emit.add_code("    cpu->vr[" + std::to_string(instr.ri12.rd) + "].du[3] = 0; }");
+		//	break;
+		//}
+		//case InstrId::VST: {
+		//	// Store 128-bit vector to memory
+		//	int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
+		//	std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string(offset);
+		//	emit.add_code("  { uint64_t addr = " + addr + ";");
+		//	emit.add_code("    wr64(cpu, addr, cpu->vr[" + std::to_string(instr.ri12.rd) + "].du[0]);");
+		//	emit.add_code("    wr64(cpu, addr + 8, cpu->vr[" + std::to_string(instr.ri12.rd) + "].du[1]); }");
+		//	break;
+		//}
+		//case InstrId::VLDX: {
+		//	// Vector indexed load (LSX 128-bit)
+		//	std::string addr = emit.reg(instr.r3.rj) + " + " + emit.reg(instr.r3.rk);
+		//	emit.add_code("  { uint64_t addr = " + addr + ";");
+		//	emit.add_code("    cpu->vr[" + std::to_string(instr.r3.rd) + "].du[0] = rd64(cpu, addr);");
+		//	emit.add_code("    cpu->vr[" + std::to_string(instr.r3.rd) + "].du[1] = rd64(cpu, addr + 8);");
+		//	emit.add_code("    cpu->vr[" + std::to_string(instr.r3.rd) + "].du[2] = 0;");
+		//	emit.add_code("    cpu->vr[" + std::to_string(instr.r3.rd) + "].du[3] = 0; }");
+		//	break;
+		//}
+		//case InstrId::VSTX: {
+		//	// Vector indexed store (LSX 128-bit)
+		//	std::string addr = emit.reg(instr.r3.rj) + " + " + emit.reg(instr.r3.rk);
+		//	emit.add_code("  { uint64_t addr = " + addr + ";");
+		//	emit.add_code("    wr64(cpu, addr, cpu->vr[" + std::to_string(instr.r3.rd) + "].du[0]);");
+		//	emit.add_code("    wr64(cpu, addr + 8, cpu->vr[" + std::to_string(instr.r3.rd) + "].du[1]); }");
+		//	break;
+		//}
+
 		default:
 			// Instruction not handled in binary translator
 			emit.emit_fallback(decoded, instr_bits);

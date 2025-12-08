@@ -267,7 +267,7 @@ DecodedExecuteSegment& Memory::create_execute_segment(
 	const MachineOptions& options, const void* data, address_t addr, size_t len,
 	bool is_initial, bool is_likely_jit)
 {
-	(void)options; (void)is_likely_jit;
+	(void)is_likely_jit;
 	if (len % 4 != 0) {
 		throw MachineException(INVALID_PROGRAM, "Execute segment length is not 4-byte aligned");
 	}
@@ -275,6 +275,14 @@ DecodedExecuteSegment& Memory::create_execute_segment(
 	auto segment = std::make_shared<DecodedExecuteSegment>(addr, addr + len);
 
 	populate_decoder_cache(*segment, addr, static_cast<const uint8_t*>(data), len);
+
+#ifdef LA_BINARY_TRANSLATION
+	// Try to activate binary translation if enabled
+	if (is_initial && options.translate_enabled) {
+		extern bool try_translate(const Machine& machine, const MachineOptions& options, DecodedExecuteSegment& exec);
+		try_translate(m_machine, options, *segment);
+	}
+#endif
 
 	if (is_initial) {
 		m_main_exec_segment = segment;

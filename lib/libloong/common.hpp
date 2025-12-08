@@ -16,6 +16,19 @@ namespace loongarch
 		bool verbose_loader = false;
 		bool ignore_text_section = false;
 		bool verbose_syscalls = false;
+
+#ifdef LA_BINARY_TRANSLATION
+		// Binary translation options
+		bool translate_enabled = true;
+		bool translate_trace = false;
+		bool translate_ignore_instruction_limit = false;
+		bool use_shared_execute_segments = false;
+		bool translate_use_register_caching = true;
+		bool unsafe_remove_checks = false;
+		size_t translate_blocks_max = 10000;
+		size_t translate_instr_max = 50'000'000ull;
+		std::string translate_output_file; // Optional: output file path for generated C code
+#endif
 	};
 
 	// Address types for 64-bit LoongArch

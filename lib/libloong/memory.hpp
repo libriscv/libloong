@@ -67,6 +67,8 @@ namespace loongarch
 		address_t rodata_start() const noexcept { return m_rodata_start; }
 		address_t data_start() const noexcept { return m_data_start; }
 		address_t arena_size() const noexcept { return m_arena_size; }
+		const uint8_t* const* arena_ref() const noexcept { return &m_arena; }
+		const uint8_t* arena_ptr() const noexcept { return m_arena; }
 		void allocate_custom_arena(size_t size, address_t rodata_start, address_t data_start);
 		void copy_into_arena_unsafe(address_t dest, const void* src, size_t len);
 

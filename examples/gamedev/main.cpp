@@ -247,9 +247,11 @@ int main(int argc, char* argv[]) {
 
 	ScriptOptions options;
 	options.verbose = verbose;
+	bool was_binary_translated = false;
 
 	try {
 		Script game_script(guest_path, options);
+		was_binary_translated = game_script.machine().is_binary_translation_enabled();
 		if (!game_script.has_function("game_init") ||
 			!game_script.has_function("game_update")) {
 			fmt::print(stderr, "Error: Guest game is missing required functions (game_init, game_update)\n");
@@ -307,7 +309,9 @@ int main(int argc, char* argv[]) {
 		fmt::print("\n╔═══════════════════════════════════════════════════════════════════════════╗\n");
 		fmt::print("║                              GAME OVER                                    ║\n");
 		fmt::print("╚═══════════════════════════════════════════════════════════════════════════╝\n");
-		fmt::print("\nFinal Score: {}\n", game_state.score);
+		fmt::print("\nFinal Score: {}  Binary translation: {}\n",
+			game_state.score,
+			was_binary_translated ? "Enabled" : "Disabled");
 		fmt::print("\nThanks for playing!\n");
 
 	} catch (const std::exception& e) {

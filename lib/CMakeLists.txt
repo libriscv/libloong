@@ -62,24 +62,92 @@ else()
 	message(STATUS "Using handler-based dispatch")
 endif()
 
-# Binary translation support
-if (LA_BINARY_TRANSLATION)
-	list(APPEND SOURCES
-		libloong/tr_api.cpp
-		libloong/tr_emit.cpp
-		libloong/tr_translate.cpp
-	)
-	if (NOT MSVC)
-		list(APPEND SOURCES libloong/tr_compiler.cpp)
-	endif()
-endif()
-
 # Generate settings header
 configure_file(libloong_settings.h.in ${CMAKE_CURRENT_BINARY_DIR}/libloong_settings.h)
 configure_file(libloong.pc.in ${CMAKE_CURRENT_BINARY_DIR}/libloong.pc)
 
-# Create library
+# Create loong library
 add_library(loong ${SOURCES})
+
+# Binary translation support
+if (LA_BINARY_TRANSLATION)
+	target_sources(loong PRIVATE
+		libloong/tr_api.cpp
+		libloong/tr_emit.cpp
+		libloong/tr_translate.cpp
+		libloong/tr_compiler.cpp
+	)
+	target_compile_definitions(loong PUBLIC
+		ENABLE_LIBTCC=1
+	)
+
+	# TinyCC integration for JIT compilation
+	enable_language(C)
+	include(FetchContent)
+	FetchContent_Declare(tinycc
+		GIT_REPOSITORY https://github.com/fwsGonzo/tinycc.git
+		GIT_TAG        mob
+	)
+	FetchContent_MakeAvailable(tinycc)
+
+	set(TINYCC_LOCATION    "${CMAKE_BINARY_DIR}/_deps/tinycc-src")
+	set(CONFIG_H_LOCATION "${TINYCC_LOCATION}/config.h")
+	configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CONFIG_H_LOCATION})
+	set_source_files_properties(${CONFIG_H_LOCATION} PROPERTIES GENERATED TRUE)
+	file(COPY "${TINYCC_LOCATION}/libtcc.h" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
+	file(COPY "${TINYCC_LOCATION}/libtcc1.h" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
+	file(COPY "${TINYCC_LOCATION}/lib-arm64.h" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
+
+	target_sources(loong PRIVATE
+		${tinycc_SOURCE_DIR}/libtcc.c
+		${tinycc_SOURCE_DIR}/libtcc.h
+		${CONFIG_H_LOCATION}
+	)
+	target_compile_definitions(loong PRIVATE
+		CONFIG_TCC_PREDEFS=1
+		TCC_VERSION="0.9.27"
+		TCC_IS_NATIVE=1
+		CONFIG_TCC_BACKTRACE=0
+		CONFIG_TCC_BCHECK=0
+	)
+	# We support: Windows, Linux, macOS and Android
+	if (ANDROID_TOOLCHAIN)
+		target_compile_definitions(loong PRIVATE
+			TARGETOS_ANDROID=1
+			TCC_TARGET_ARM64=1
+		)
+	elseif (CMAKE_HOST_APPLE OR APPLE)
+		target_compile_definitions(loong PRIVATE
+			TARGETOS_Darwin=1
+			TCC_TARGET_MACHO=1
+			TCC_TARGET_ARM64=1
+		)
+	elseif (CMAKE_HOST_WIN32 OR MINGW_TOOLCHAIN)
+		target_compile_definitions(loong PRIVATE
+			TARGETOS_Windows=1
+			TCC_TARGET_PE=1
+			TCC_TARGET_X86_64=1
+		)
+	elseif (CMAKE_SYSTEM_NAME STREQUAL FreeBSD)
+		target_compile_definitions(loong PRIVATE
+			TARGETOS_FreeBSD=1
+			TCC_TARGET_X86_64=1
+		)
+	elseif (RISCV_TOOLCHAIN)
+		target_compile_definitions(loong PRIVATE
+			TARGETOS_Linux=1
+			TCC_TARGET_RISCV64=1
+		)
+	elseif (CMAKE_HOST_UNIX)
+		target_compile_definitions(loong PRIVATE
+			TARGETOS_Linux=1
+			TCC_TARGET_X86_64=1
+		)
+	endif()
+	target_include_directories(loong PUBLIC
+		"${CMAKE_CURRENT_BINARY_DIR}"
+	)
+endif()
 
 target_include_directories(loong PUBLIC
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
@@ -101,8 +169,6 @@ if (UNIX AND NOT APPLE)
 	if (LA_BINARY_TRANSLATION)
 		target_link_libraries(loong PUBLIC dl)
 	endif()
-elseif (WIN32)
-	target_link_libraries(loong PUBLIC wsock32 ws2_32)
 endif()
 
 # Installation

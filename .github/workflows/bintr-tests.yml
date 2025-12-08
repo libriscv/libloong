@@ -1,0 +1,63 @@
+name: Binary Translation Unit Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  bintr-unit-tests:
+    name: Binary Translation Unit Tests
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          cmake \
+          ninja-build \
+          g++-14-loongarch64-linux-gnu
+
+    - name: Install Catch2
+      run: |
+        # Check if Catch2 submodule exists
+        if [ ! -f "tests/Catch2/CMakeLists.txt" ]; then
+          echo "Catch2 submodule not found, cloning..."
+          git submodule update --init --recursive tests/Catch2
+        fi
+
+    - name: Configure CMake with Binary Translation
+      run: |
+        mkdir -p build
+        cd build
+        cmake .. \
+          -G Ninja \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_C_COMPILER=gcc \
+          -DCMAKE_CXX_COMPILER=g++ \
+          -DLA_BINARY_TRANSLATION=ON
+
+    - name: Build
+      run: |
+        cd build
+        ninja
+
+    - name: Run unit tests
+      run: |
+        cd build
+        ctest --output-on-failure --verbose
+
+    - name: Run unit tests directly (detailed output)
+      if: always()
+      run: |
+        cd build
+        if [ -f tests/unit/unit_tests ]; then
+          ./tests/unit/unit_tests --reporter console
+        fi

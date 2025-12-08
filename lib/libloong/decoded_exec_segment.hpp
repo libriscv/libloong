@@ -1,6 +1,8 @@
 #pragma once
 #include "common.hpp"
 #include "decoder_cache.hpp"
+#include "tr_types.hpp"
+#include <vector>
 
 namespace loongarch
 {
@@ -53,12 +55,33 @@ namespace loongarch
 
 		uint32_t optimize_bytecode(uint8_t& bytecode, address_t pc, uint32_t instruction_bits) const;
 
+#ifdef LA_BINARY_TRANSLATION
+		// Binary translation support
+		bool is_binary_translated() const noexcept { return !m_translator_mappings.empty(); }
+		bool is_libtcc() const noexcept { return m_is_libtcc; }
+		void set_libtcc(bool value) noexcept { m_is_libtcc = value; }
+
+		auto& create_mappings(size_t n) {
+			m_translator_mappings.resize(n);
+			return m_translator_mappings;
+		}
+		void set_mapping(unsigned i, bintr_block_func handler) { m_translator_mappings.at(i) = handler; }
+		bintr_block_func mapping_at(unsigned i) const { return m_translator_mappings.at(i); }
+		bintr_block_func unchecked_mapping_at(unsigned i) const { return m_translator_mappings[i]; }
+#else
+		bool is_binary_translated() const noexcept { return false; }
+#endif
+
 	private:
 		address_t m_exec_begin;
 		address_t m_exec_end;
 		DecoderCache m_decoder_cache;
 		bool m_stale = false;
 		bool m_execute_only = false;
+#ifdef LA_BINARY_TRANSLATION
+		bool m_is_libtcc = false;
+		std::vector<bintr_block_func> m_translator_mappings;
+#endif
 	};
 
 } // loongarch

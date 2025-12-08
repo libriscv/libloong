@@ -146,6 +146,16 @@ namespace loongarch
 		cpu.reg(REG_SP) = sp;
 	}
 
+	Machine::syscall_t** Machine::get_syscall_handlers()
+	{
+		return m_syscall_handlers.data();
+	}
+
+	Machine::unknown_syscall_t* Machine::get_unknown_syscall_handler()
+	{
+		return m_unknown_syscall_handler;
+	}
+
 	address_t Machine::address_of(const std::string& name) const
 	{
 		return memory.address_of(name);
@@ -216,6 +226,16 @@ namespace loongarch
 			m_mt = std::make_unique<MultiThreading>(*this);
 		}
 		return *m_mt;
+	}
+
+	bool Machine::is_binary_translation_enabled() const noexcept
+	{
+		return cpu.current_execute_segment().is_binary_translated();
+	}
+
+	intptr_t Machine::counter_offset() const noexcept
+	{
+		return offsetof(Machine, m_counter);
 	}
 
 } // loongarch

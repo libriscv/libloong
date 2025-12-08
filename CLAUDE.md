@@ -45,7 +45,7 @@ WARNING: Do _NOT_ use debug_test for benchmarks such as stream.elf and coremark.
 
 A single bytecode means modifying 5 different places:
 1. Adding the new bytecode in threaded_bytecodes.hpp
-2. Decoding to the new bytecode in decoder_cache.cpp
+2. Select which instruction the bytecode replaces in decoder_cache.cpp
 3. Implementing an optimized instruction layout in threaded_rewriter.cpp
 4. Implementing the actual bytecode handler in bytecode_impl.cpp
 5. Adding an entry connecting the bytecode to the handler in threaded_bytecode_array.hpp
@@ -63,6 +63,18 @@ Especially LSX or LASX instructions with subtypes B, H, W and D should share an 
 	INSTRUCTION_P(VSEQI_W, VSEQI);
 	INSTRUCTION_P(VSEQI_D, VSEQI);
 ```
+
+## Adding a new instruction to binary translator
+
+The only special instructions in the translator (tr_emit.cpp) are those that rely on or modify PC. All branches and jumps have a lot of special code which shouldn't be modified unless asked for. All other non-SIMD functions can be implemented as any other existing instruction in that file. Look at la_instr_impl.hpp for the slow-path instruction handler for how it can be implemented. SIMD functions cannot currently be implemented in tr_emit.cpp because the CPU register struct is incomplete. But, it is perfectly possible to implement all regular instructions.
+
+A decoded instruction has 3 members now:
+```
+	handler_t handler;
+	printer_t printer;
+	InstrId id;
+```
+The handler can be called directly from bintr for unimplemented instructions (as is already the case). The id is the crucial one for translating new instructions, as it directly correlates to an enum value in la_instr_enum.hpp, which lets us avoid decoding errors and code duplication.
 
 ## Instruction statistics
 

@@ -295,3 +295,26 @@ struct InstructionHelpers {	// Sign extend immediate values
 };
 
 } // loongarch
+
+// Include instruction ID enum (must be outside namespace to avoid nesting)
+#include "la_instr_enum.hpp"
+
+namespace loongarch {
+
+// Forward declarations
+struct CPU;
+
+// Instruction descriptor
+struct Instruction {
+	using handler_t = void(*)(CPU&, la_instruction);
+	using printer_t = int(*)(char*, size_t, const CPU&, la_instruction, address_t);
+
+	handler_t handler;
+	printer_t printer;
+	InstrId id;
+
+	constexpr Instruction(handler_t h, printer_t p, InstrId instr_id)
+		: handler(h), printer(p), id(instr_id) {}
+};
+
+} // loongarch

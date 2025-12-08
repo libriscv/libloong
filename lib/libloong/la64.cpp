@@ -16,11 +16,11 @@ namespace loongarch
 	// Helper macro to create instruction descriptors
 	// All instructions must have printers for debugging
 	#define INSTRUCTION(name) \
-		static constexpr CPU::instruction_t instr64_##name { Impl::name, Printers::name }
+		static constexpr CPU::instruction_t instr64_##name { Impl::name, Printers::name, InstrId::name }
 
 	// Macro to create instruction with custom printer
 	#define INSTRUCTION_P(name, printer) \
-		static constexpr CPU::instruction_t instr64_##name { Impl::name, Printers::printer }
+		static constexpr CPU::instruction_t instr64_##name { Impl::name, Printers::printer, InstrId::name }
 
 	#define DECODED_INSTR(name) instr64_##name
 
@@ -112,16 +112,16 @@ namespace loongarch
 	INSTRUCTION(FST_D);
 
 	// Atomic operations (using separate template class)
-	static constexpr CPU::instruction_t instr64_AMSWAP_W { AtomicI::AMSWAP_W, AtomicP::AMSWAP_W };
-	static constexpr CPU::instruction_t instr64_AMSWAP_D { AtomicI::AMSWAP_D, AtomicP::AMSWAP_D };
-	static constexpr CPU::instruction_t instr64_AMADD_W { AtomicI::AMADD_W, AtomicP::AMADD_W };
-	static constexpr CPU::instruction_t instr64_AMADD_D { AtomicI::AMADD_D, AtomicP::AMADD_D };
-	static constexpr CPU::instruction_t instr64_AMAND_W { AtomicI::AMAND_W, AtomicP::AMAND_W };
-	static constexpr CPU::instruction_t instr64_AMAND_D { AtomicI::AMAND_D, AtomicP::AMAND_D };
-	static constexpr CPU::instruction_t instr64_AMOR_W { AtomicI::AMOR_W, AtomicP::AMOR_W };
-	static constexpr CPU::instruction_t instr64_AMOR_D { AtomicI::AMOR_D, AtomicP::AMOR_D };
-	static constexpr CPU::instruction_t instr64_AMXOR_W { AtomicI::AMXOR_W, AtomicP::AMXOR_W };
-	static constexpr CPU::instruction_t instr64_AMXOR_D { AtomicI::AMXOR_D, AtomicP::AMXOR_D };
+	static constexpr CPU::instruction_t instr64_AMSWAP_W { AtomicI::AMSWAP_W, AtomicP::AMSWAP_W, InstrId::AMSWAP_W };
+	static constexpr CPU::instruction_t instr64_AMSWAP_D { AtomicI::AMSWAP_D, AtomicP::AMSWAP_D, InstrId::AMSWAP_D };
+	static constexpr CPU::instruction_t instr64_AMADD_W { AtomicI::AMADD_W, AtomicP::AMADD_W, InstrId::AMADD_W };
+	static constexpr CPU::instruction_t instr64_AMADD_D { AtomicI::AMADD_D, AtomicP::AMADD_D, InstrId::AMADD_D };
+	static constexpr CPU::instruction_t instr64_AMAND_W { AtomicI::AMAND_W, AtomicP::AMAND_W, InstrId::AMAND_W };
+	static constexpr CPU::instruction_t instr64_AMAND_D { AtomicI::AMAND_D, AtomicP::AMAND_D, InstrId::AMAND_D };
+	static constexpr CPU::instruction_t instr64_AMOR_W { AtomicI::AMOR_W, AtomicP::AMOR_W, InstrId::AMOR_W };
+	static constexpr CPU::instruction_t instr64_AMOR_D { AtomicI::AMOR_D, AtomicP::AMOR_D, InstrId::AMOR_D };
+	static constexpr CPU::instruction_t instr64_AMXOR_W { AtomicI::AMXOR_W, AtomicP::AMXOR_W, InstrId::AMXOR_W };
+	static constexpr CPU::instruction_t instr64_AMXOR_D { AtomicI::AMXOR_D, AtomicP::AMXOR_D, InstrId::AMXOR_D };
 
 	// Branches
 	INSTRUCTION(BEQZ);
@@ -155,8 +155,8 @@ namespace loongarch
 	INSTRUCTION(SYSCALL);
 
 	// Memory barriers (no-ops)
-	static constexpr CPU::instruction_t instr64_DBAR { Impl::NOP, Printers::DBAR };
-	static constexpr CPU::instruction_t instr64_IBAR { Impl::NOP, Printers::IBAR };
+	static constexpr CPU::instruction_t instr64_DBAR { Impl::NOP, Printers::DBAR, InstrId::DBAR };
+	static constexpr CPU::instruction_t instr64_IBAR { Impl::NOP, Printers::IBAR, InstrId::IBAR };
 
 	// LL/SC atomics
 	INSTRUCTION(LL_W);

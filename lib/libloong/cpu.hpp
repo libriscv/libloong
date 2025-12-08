@@ -11,17 +11,6 @@ namespace loongarch
 	struct Machine;
 	struct Memory;
 
-	struct Instruction {
-		using handler_t = void(*)(CPU&, la_instruction);
-		using printer_t = int(*)(char*, size_t, const CPU&, la_instruction, address_t);
-
-		handler_t handler;
-		printer_t printer;
-
-		constexpr Instruction(handler_t h, printer_t p = nullptr)
-			: handler(h), printer(p) {}
-	};
-
 	struct CPU
 	{
 		using format_t = la_instruction;

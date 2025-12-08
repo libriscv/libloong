@@ -106,9 +106,35 @@ INSTRUCTION(LA64_BC_SYSCALLIMM, la64_syscall_imm)
 	goto check_jump;
 }
 
+#ifdef LA_BINARY_TRANSLATION
+INSTRUCTION(LA64_BC_TRANSLATOR, execute_translated_block)
+{
+	// The instr field contains the index into the translator mappings array
+	const auto mapping_idx = DECODER().instr;
+	const auto handler = exec->unchecked_mapping_at(mapping_idx);
+
+	// Save PC for binary translated function
+	REGISTERS().pc = pc;
+
+	// Call the binary translated function
+	// It returns updated instruction counter values
+	const auto result = handler(CPU(), counter, max_counter, RECONSTRUCT_PC());
+
+	// Update instruction counter and max counter
+	counter = result.ic;
+	max_counter = result.max_ic;
+
+	// Read updated PC from CPU
+	pc = REGISTERS().pc;
+
+	// The translated block updated PC, so we need to check for new execute segment
+	goto check_jump;
+}
+#endif
+
 INSTRUCTION(LA64_BC_STOP, la64_stop)
 {
-	REGISTERS().pc = pc;
+	REGISTERS().pc = pc + 4;
 	return true;
 }
 

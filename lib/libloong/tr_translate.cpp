@@ -33,7 +33,7 @@ namespace loongarch
 
 	// Helper to read instruction from execute segment via memory
 	static inline la_instruction read_instruction(const Memory& memory, address_t pc, address_t end_pc) {
-		if (pc + 4 > end_pc)
+		if (pc >= end_pc)
 			throw MachineException(ILLEGAL_OPERATION, "Reading instruction outside execute segment");
 		return la_instruction(memory.read<uint32_t>(pc));
 	}
@@ -83,7 +83,7 @@ namespace loongarch
 		return false;
 	}
 
-	// Check if instruction is a direct jump (JAL/JIRL with known target)
+	// Check if instruction is a direct jump
 	static bool is_direct_jump(la_instruction instr, address_t& target, address_t pc, bool& is_call) {
 		const uint32_t opcode = instr.opcode() & 0xFC000000;
 
@@ -169,17 +169,16 @@ namespace loongarch
 				// Check for direct jumps (B, BL)
 				if (is_direct_jump(instruction, location, pc, is_call)) {
 
-					// All JAL target addresses need to be recorded
-					global_jump_locations.insert(location);
+					// If jump target is within current block, record as local jump
+					if (location >= block && location < block_end)
+						jump_locations.insert(location);
+					else
+						global_jump_locations.insert(location);
 
 					// Record return location for calls
 					if (is_call) {
 						global_jump_locations.insert(pc + 4);
 					}
-
-					// If jump target is within current block, record as local jump
-					if (location >= block && location < block_end)
-						jump_locations.insert(location);
 				}
 				// Check for conditional branches
 				else if (is_branch_instruction(instruction, location, pc)) {
@@ -213,11 +212,7 @@ namespace loongarch
 					block, block_end,
 					basepc, endbasepc,
 					is_libtcc,
-					options.translate_trace,
-					options.translate_ignore_instruction_limit,
-					options.use_shared_execute_segments,
-					options.translate_use_register_caching,
-					options.unsafe_remove_checks,
+					options,
 					std::move(jump_locations),
 					nullptr, // blocks pointer (set below)
 					global_jump_locations,
@@ -329,10 +324,9 @@ VISIBLE const struct Mapping mappings[] = {
 
 	// Simplified compilation for libtcc
 	// This compiles the generated C code using libtcc and returns a "dylib" handle
-	#ifdef LA_BINARY_TRANSLATION
 	void* compile_with_libtcc(const std::string& code, const MachineOptions& options)
 	{
-		#ifdef ENABLE_LIBTCC
+#ifdef ENABLE_LIBTCC
 		extern void* libtcc_compile(const std::string&, int arch, const std::unordered_map<std::string, std::string>& defines, const std::string&);
 
 		// Create defines map (empty for now, can be extended later)
@@ -356,12 +350,11 @@ VISIBLE const struct Mapping mappings[] = {
 		}
 
 		return dylib;
-		#else
+#else
 		(void)code;
 		(void)options;
 		return nullptr;
-		#endif
+#endif
 	}
-	#endif
 
 } // namespace loongarch

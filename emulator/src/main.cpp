@@ -24,6 +24,7 @@ struct EmulatorOptions {
 	bool timing = false;
 	bool silent = false;
 	bool show_bytecode_stats = false;
+	bool enable_translation = true;
 	bool trace_translation = false;
 	std::string translate_output_file; // Output file for generated C code
 };
@@ -133,6 +134,7 @@ static int run_program(const std::vector<uint8_t>& binary, const EmulatorOptions
 			.verbose_loader = opts.verbose,
 			.verbose_syscalls = opts.verbose,
 #ifdef LA_BINARY_TRANSLATION
+			.translate_enabled = opts.enable_translation,
 			.translate_trace = opts.trace_translation,
 			.translate_ignore_instruction_limit = opts.max_instructions == 0,
 			.translate_output_file = opts.translate_output_file,
@@ -241,6 +243,7 @@ static void print_help(const char* progname)
 	printf("  -f, --fuel <num>        Maximum instructions to execute (default: 2000000000)\n");
 	printf("                          Use 0 for unlimited execution\n");
 	printf("  -m, --memory <size>     Maximum memory in MiB (default: 512)\n");
+	printf("  -n, --no-translate      Disable binary translation (interpret only)\n");
 	printf("  -T, --trace             Trace binary translation execution\n");
 	printf("  -O, --output <file>     Write generated translation code to file\n\n");
 	printf("The emulator automatically detects LA32/LA64 architecture from the ELF binary.\n\n");
@@ -267,13 +270,14 @@ static EmulatorOptions parse_arguments(int argc, char* argv[])
 		{"stats",   no_argument,       0, '\x02'},
 		{"fuel",    required_argument, 0, 'f'},
 		{"memory",  required_argument, 0, 'm'},
+		{"no-translate", no_argument, 0,  'n'},
 		{"trace",   no_argument,       0, 'T'},
 		{"output",  required_argument, 0, 'O'},
 		{0, 0, 0, 0}
 	};
 
 	int opt;
-	while ((opt = getopt_long(argc, argv, "hvstf:m:TO:", long_options, nullptr)) != -1) {
+	while ((opt = getopt_long(argc, argv, "hvstf:m:nTO:", long_options, nullptr)) != -1) {
 		switch (opt) {
 		case 'h':
 			print_help(argv[0]);
@@ -296,6 +300,9 @@ static EmulatorOptions parse_arguments(int argc, char* argv[])
 			break;
 		case 'm':
 			opts.memory_max = strtoull(optarg, nullptr, 10) << 20; // Convert MiB to bytes
+			break;
+		case 'n':
+			opts.enable_translation = false;
 			break;
 		case 'T':
 			opts.trace_translation = true;

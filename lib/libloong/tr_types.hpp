@@ -46,11 +46,7 @@ namespace loongarch
 		address_t segment_basepc;            // Segment base PC
 		address_t segment_endpc;             // Segment end PC
 		bool is_libtcc;                      // Using libtcc (vs system compiler)
-		bool trace_instructions;             // Add tracing code
-		bool ignore_instruction_limit;       // Don't count instructions
-		bool use_shared_execute_segments;    // Segments shared across machines
-		bool use_register_caching;           // Cache registers in local variables
-		bool unsafe_remove_checks;           // Remove safety checks
+		const MachineOptions& options;       // Translation options
 		std::unordered_set<address_t> jump_locations;  // Jump targets within block
 		// Pointer to all blocks (including current)
 		std::vector<TransInfo>* blocks = nullptr;

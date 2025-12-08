@@ -20,7 +20,7 @@ namespace loongarch
 		DecodedExecuteSegment& exec, TransOutput& output);
 
 #ifdef ENABLE_LIBTCC
-	static void* libtcc_compile(const std::string& code, const std::unordered_map<std::string, std::string>& defines, const std::string& libtcc1)
+	void* libtcc_compile(const std::string& code, const std::unordered_map<std::string, std::string>& defines, const std::string& libtcc1)
 	{
 		(void)libtcc1;
 

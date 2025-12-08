@@ -327,7 +327,7 @@ VISIBLE const struct Mapping mappings[] = {
 	void* compile_with_libtcc(const std::string& code, const MachineOptions& options)
 	{
 #ifdef ENABLE_LIBTCC
-		extern void* libtcc_compile(const std::string&, int arch, const std::unordered_map<std::string, std::string>& defines, const std::string&);
+		extern void* libtcc_compile(const std::string&, const std::unordered_map<std::string, std::string>& defines, const std::string&);
 
 		// Create defines map (empty for now, can be extended later)
 		std::unordered_map<std::string, std::string> defines;
@@ -343,7 +343,7 @@ VISIBLE const struct Mapping mappings[] = {
 
 		// Compile with libtcc
 		// arch = 64 for 64-bit LoongArch (matching XLEN)
-		void* dylib = libtcc_compile(code, 64, defines, "");
+		void* dylib = libtcc_compile(code, defines, "");
 
 		if (dylib == nullptr && options.verbose_loader) {
 			fprintf(stderr, "libloong: libtcc compilation failed\n");

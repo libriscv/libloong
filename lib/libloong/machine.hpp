@@ -150,6 +150,7 @@ namespace loongarch
 			uint32_t sample_instruction; // Sample instruction bits for fallback bytecodes
 		};
 		std::vector<BytecodeStats> collect_bytecode_statistics() const;
+		bool is_binary_translation_enabled() const noexcept;
 
 		// Signal handling
 		Signals& signals();

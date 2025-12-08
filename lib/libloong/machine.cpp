@@ -228,6 +228,11 @@ namespace loongarch
 		return *m_mt;
 	}
 
+	bool Machine::is_binary_translation_enabled() const noexcept
+	{
+		return cpu.current_execute_segment().is_binary_translated();
+	}
+
 	intptr_t Machine::counter_offset() const noexcept
 	{
 		return offsetof(Machine, m_counter);

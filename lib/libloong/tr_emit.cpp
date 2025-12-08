@@ -788,6 +788,16 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 					emit.add_code("  " + emit.reg(instr.r3.rd) + " = " +
 						emit.reg(instr.r3.rj) + " | " + emit.reg(instr.r3.rk) + ";");
 				}
+			} else if (instr.r3.rk == 0 && instr.r3.rj == 0) {
+				// Special STOP instruction: MOVE zero, zero
+				// STOP: PC += 4; return
+				emit.flush_instruction_counter();
+				emit.add_code("  cpu->pc = " + hex_address(emit.pc() + 4) + "LL;");
+				if (!tinfo.options.translate_ignore_instruction_limit) {
+					emit.add_code("  return (ReturnValues){ic, 0};");
+				} else {
+					emit.add_code("  return (ReturnValues){0, 0};");
+				}
 			}
 			break;
 

@@ -1410,46 +1410,185 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			break;
 		}
 
+		// VLDI - Vector load immediate (LSX 128-bit)
+		// Pre-compute the pattern at translation time since instruction bits are known
+		case InstrId::VLDI: {
+			uint32_t vd = instr_bits & 0x1F;
+			uint32_t imm13 = (instr_bits >> 5) & 0x1FFF;
+
+			// Extract mode bits
+			uint32_t top3 = (imm13 >> 10) & 0x7;  // imm[12:10]
+			uint32_t top5 = (imm13 >> 8) & 0x1F;  // imm[12:8]
+			uint32_t imm8 = imm13 & 0xFF;         // imm[7:0]
+			uint32_t imm10 = imm13 & 0x3FF;       // imm[9:0]
+
+			// Sign-extend imm10 from 10 bits to 64 bits
+			int64_t sext_imm10 = (int64_t)(int16_t)(imm10 << 6) >> 6;
+
+			emit.add_code("  { lasx_reg* vr_ptr = &cpu->vr[" + std::to_string(vd) + "];");
+
+			// Generate code based on mode (pre-computed at translation time)
+			if (top3 == 0b000) {
+				// Broadcast imm[7:0] as 8-bit elements
+				uint64_t pattern = 0x0101010101010101ULL * imm8;
+				emit.add_code("    vr_ptr->du[0] = " + hex_address(pattern) + "ULL;");
+				emit.add_code("    vr_ptr->du[1] = " + hex_address(pattern) + "ULL;");
+			} else if (top3 == 0b001) {
+				// Broadcast sign-extended imm[9:0] as 16-bit elements
+				uint16_t val = (uint16_t)sext_imm10;
+				uint64_t pattern = 0x0001000100010001ULL * val;
+				emit.add_code("    vr_ptr->du[0] = " + hex_address(pattern) + "ULL;");
+				emit.add_code("    vr_ptr->du[1] = " + hex_address(pattern) + "ULL;");
+			} else if (top3 == 0b010) {
+				// Broadcast sign-extended imm[9:0] as 32-bit elements
+				uint32_t val = (uint32_t)sext_imm10;
+				uint64_t pattern = ((uint64_t)val << 32) | val;
+				emit.add_code("    vr_ptr->du[0] = " + hex_address(pattern) + "ULL;");
+				emit.add_code("    vr_ptr->du[1] = " + hex_address(pattern) + "ULL;");
+			} else if (top3 == 0b011) {
+				// Broadcast sign-extended imm[9:0] as 64-bit elements
+				uint64_t val = (uint64_t)sext_imm10;
+				emit.add_code("    vr_ptr->du[0] = " + hex_address(val) + "ULL;");
+				emit.add_code("    vr_ptr->du[1] = " + hex_address(val) + "ULL;");
+			} else if (top5 == 0b10000) {
+				// Broadcast imm[7:0] as 32-bit elements
+				uint32_t val = imm8;
+				uint64_t pattern = ((uint64_t)val << 32) | val;
+				emit.add_code("    vr_ptr->du[0] = " + hex_address(pattern) + "ULL;");
+				emit.add_code("    vr_ptr->du[1] = " + hex_address(pattern) + "ULL;");
+			} else if (top5 == 0b10001) {
+				// Broadcast imm[7:0] << 8 as 32-bit elements
+				uint32_t val = imm8 << 8;
+				uint64_t pattern = ((uint64_t)val << 32) | val;
+				emit.add_code("    vr_ptr->du[0] = " + hex_address(pattern) + "ULL;");
+				emit.add_code("    vr_ptr->du[1] = " + hex_address(pattern) + "ULL;");
+			} else if (top5 == 0b10010) {
+				// Broadcast imm[7:0] << 16 as 32-bit elements
+				uint32_t val = imm8 << 16;
+				uint64_t pattern = ((uint64_t)val << 32) | val;
+				emit.add_code("    vr_ptr->du[0] = " + hex_address(pattern) + "ULL;");
+				emit.add_code("    vr_ptr->du[1] = " + hex_address(pattern) + "ULL;");
+			} else if (top5 == 0b10011) {
+				// Broadcast imm[7:0] << 24 as 32-bit elements
+				uint32_t val = imm8 << 24;
+				uint64_t pattern = ((uint64_t)val << 32) | val;
+				emit.add_code("    vr_ptr->du[0] = " + hex_address(pattern) + "ULL;");
+				emit.add_code("    vr_ptr->du[1] = " + hex_address(pattern) + "ULL;");
+			} else if (top5 == 0b10100) {
+				// Broadcast imm[7:0] as 16-bit elements
+				uint16_t val = (uint16_t)imm8;
+				uint64_t pattern = 0x0001000100010001ULL * val;
+				emit.add_code("    vr_ptr->du[0] = " + hex_address(pattern) + "ULL;");
+				emit.add_code("    vr_ptr->du[1] = " + hex_address(pattern) + "ULL;");
+			} else if (top5 == 0b10101) {
+				// Broadcast imm[7:0] << 8 as 16-bit elements
+				uint16_t val = (uint16_t)(imm8 << 8);
+				uint64_t pattern = 0x0001000100010001ULL * val;
+				emit.add_code("    vr_ptr->du[0] = " + hex_address(pattern) + "ULL;");
+				emit.add_code("    vr_ptr->du[1] = " + hex_address(pattern) + "ULL;");
+			} else if (top5 == 0b10110) {
+				// Broadcast (imm[7:0] << 8) | 0xFF as 32-bit elements
+				uint32_t val = (imm8 << 8) | 0xFF;
+				uint64_t pattern = ((uint64_t)val << 32) | val;
+				emit.add_code("    vr_ptr->du[0] = " + hex_address(pattern) + "ULL;");
+				emit.add_code("    vr_ptr->du[1] = " + hex_address(pattern) + "ULL;");
+			} else if (top5 == 0b10111) {
+				// Broadcast (imm[7:0] << 16) | 0xFFFF as 32-bit elements
+				uint32_t val = (imm8 << 16) | 0xFFFF;
+				uint64_t pattern = ((uint64_t)val << 32) | val;
+				emit.add_code("    vr_ptr->du[0] = " + hex_address(pattern) + "ULL;");
+				emit.add_code("    vr_ptr->du[1] = " + hex_address(pattern) + "ULL;");
+			} else if (top5 == 0b11000) {
+				// Broadcast imm[7:0] as 8-bit elements (same as 0b000)
+				uint64_t pattern = 0x0101010101010101ULL * imm8;
+				emit.add_code("    vr_ptr->du[0] = " + hex_address(pattern) + "ULL;");
+				emit.add_code("    vr_ptr->du[1] = " + hex_address(pattern) + "ULL;");
+			} else if (top5 == 0b11001) {
+				// Repeat each bit of imm[7:0] eight times, broadcast as 64-bit elements
+				uint64_t val = 0;
+				for (int bit = 0; bit < 8; bit++) {
+					if (imm8 & (1 << bit)) {
+						val |= (0xFFULL << (bit * 8));
+					}
+				}
+				emit.add_code("    vr_ptr->du[0] = " + hex_address(val) + "ULL;");
+				emit.add_code("    vr_ptr->du[1] = " + hex_address(val) + "ULL;");
+			} else if (top5 == 0b11010) {
+				// Broadcast specific pattern as 32-bit elements (FP32 encoding)
+				uint32_t bit7 = (imm8 >> 7) & 1;
+				uint32_t bit6 = (imm8 >> 6) & 1;
+				uint32_t bits5_0 = imm8 & 0x3F;
+				uint32_t val = (bit7 << 31) | ((1 - bit6) << 30) | ((bit6 * 0x1F) << 25) | (bits5_0 << 19);
+				uint64_t pattern = ((uint64_t)val << 32) | val;
+				emit.add_code("    vr_ptr->du[0] = " + hex_address(pattern) + "ULL;");
+				emit.add_code("    vr_ptr->du[1] = " + hex_address(pattern) + "ULL;");
+			} else if (top5 == 0b11011) {
+				// Broadcast specific pattern as 64-bit elements (lower 32-bit FP32 encoding)
+				uint32_t bit7 = (imm8 >> 7) & 1;
+				uint32_t bit6 = (imm8 >> 6) & 1;
+				uint32_t bits5_0 = imm8 & 0x3F;
+				uint64_t val = (uint64_t)((bit7 << 31) | ((1 - bit6) << 30) | ((bit6 * 0x1F) << 25) | (bits5_0 << 19));
+				emit.add_code("    vr_ptr->du[0] = " + hex_address(val) + "ULL;");
+				emit.add_code("    vr_ptr->du[1] = " + hex_address(val) + "ULL;");
+			} else if (top5 == 0b11100) {
+				// Broadcast specific pattern as 64-bit elements (FP64 encoding)
+				uint64_t bit7 = (imm8 >> 7) & 1;
+				uint64_t bit6 = (imm8 >> 6) & 1;
+				uint64_t bits5_0 = imm8 & 0x3F;
+				uint64_t val = (bit7 << 63) | ((1 - bit6) << 62) | ((bit6 * 0xFF) << 54) | (bits5_0 << 48);
+				emit.add_code("    vr_ptr->du[0] = " + hex_address(val) + "ULL;");
+				emit.add_code("    vr_ptr->du[1] = " + hex_address(val) + "ULL;");
+			} else {
+				// Unknown mode - fallback to slow path
+				emit.add_code("  }");
+				emit.emit_fallback(decoded, instr_bits);
+				break;
+			}
+
+			emit.add_code("  }");
+			break;
+		}
+
 		// LSX vector loads and stores (128-bit)
-		// These are too slow, and probably need to be optimized harder
-		//case InstrId::VLD: {
-		//	// Load 128-bit vector from memory
-		//	int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
-		//	std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string(offset);
-		//	emit.add_code("  { uint64_t addr = " + addr + ";");
-		//	emit.add_code("    cpu->vr[" + std::to_string(instr.ri12.rd) + "].du[0] = rd64(cpu, addr);");
-		//	emit.add_code("    cpu->vr[" + std::to_string(instr.ri12.rd) + "].du[1] = rd64(cpu, addr + 8);");
-		//	emit.add_code("    cpu->vr[" + std::to_string(instr.ri12.rd) + "].du[2] = 0;");
-		//	emit.add_code("    cpu->vr[" + std::to_string(instr.ri12.rd) + "].du[3] = 0; }");
-		//	break;
-		//}
-		//case InstrId::VST: {
-		//	// Store 128-bit vector to memory
-		//	int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
-		//	std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string(offset);
-		//	emit.add_code("  { uint64_t addr = " + addr + ";");
-		//	emit.add_code("    wr64(cpu, addr, cpu->vr[" + std::to_string(instr.ri12.rd) + "].du[0]);");
-		//	emit.add_code("    wr64(cpu, addr + 8, cpu->vr[" + std::to_string(instr.ri12.rd) + "].du[1]); }");
-		//	break;
-		//}
-		//case InstrId::VLDX: {
-		//	// Vector indexed load (LSX 128-bit)
-		//	std::string addr = emit.reg(instr.r3.rj) + " + " + emit.reg(instr.r3.rk);
-		//	emit.add_code("  { uint64_t addr = " + addr + ";");
-		//	emit.add_code("    cpu->vr[" + std::to_string(instr.r3.rd) + "].du[0] = rd64(cpu, addr);");
-		//	emit.add_code("    cpu->vr[" + std::to_string(instr.r3.rd) + "].du[1] = rd64(cpu, addr + 8);");
-		//	emit.add_code("    cpu->vr[" + std::to_string(instr.r3.rd) + "].du[2] = 0;");
-		//	emit.add_code("    cpu->vr[" + std::to_string(instr.r3.rd) + "].du[3] = 0; }");
-		//	break;
-		//}
-		//case InstrId::VSTX: {
-		//	// Vector indexed store (LSX 128-bit)
-		//	std::string addr = emit.reg(instr.r3.rj) + " + " + emit.reg(instr.r3.rk);
-		//	emit.add_code("  { uint64_t addr = " + addr + ";");
-		//	emit.add_code("    wr64(cpu, addr, cpu->vr[" + std::to_string(instr.r3.rd) + "].du[0]);");
-		//	emit.add_code("    wr64(cpu, addr + 8, cpu->vr[" + std::to_string(instr.r3.rd) + "].du[1]); }");
-		//	break;
-		//}
+		// These are slow, and probably need to be optimized harder
+		case InstrId::VLD: {
+			// Load 128-bit vector from memory
+			int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
+			std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string(offset);
+			emit.add_code("  { uint64_t addr = " + addr + ";");
+			emit.add_code("    lasx_reg* vr_ptr = &cpu->vr[" + std::to_string(instr.ri12.rd) + "];");
+			emit.add_code("    vr_ptr->du[0] = rd64(cpu, addr);");
+			emit.add_code("    vr_ptr->du[1] = rd64(cpu, addr + 8); }");
+			break;
+		}
+		case InstrId::VST: {
+			// Store 128-bit vector to memory
+			int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
+			std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string(offset);
+			emit.add_code("  { uint64_t addr = " + addr + ";");
+			emit.add_code("    lasx_reg* vr_ptr = &cpu->vr[" + std::to_string(instr.ri12.rd) + "];");
+			emit.add_code("    wr64(cpu, addr, vr_ptr->du[0]);");
+			emit.add_code("    wr64(cpu, addr + 8, vr_ptr->du[1]); }");
+			break;
+		}
+		case InstrId::VLDX: {
+			// Vector indexed load (LSX 128-bit)
+			std::string addr = emit.reg(instr.r3.rj) + " + " + emit.reg(instr.r3.rk);
+			emit.add_code("  { uint64_t addr = " + addr + ";");
+			emit.add_code("    lasx_reg* vr_ptr = &cpu->vr[" + std::to_string(instr.r3.rd) + "];");
+			emit.add_code("    vr_ptr->du[0] = rd64(cpu, addr);");
+			emit.add_code("    vr_ptr->du[1] = rd64(cpu, addr + 8); }");
+			break;
+		}
+		case InstrId::VSTX: {
+			// Vector indexed store (LSX 128-bit)
+			std::string addr = emit.reg(instr.r3.rj) + " + " + emit.reg(instr.r3.rk);
+			emit.add_code("  { uint64_t addr = " + addr + ";");
+			emit.add_code("    lasx_reg* vr_ptr = &cpu->vr[" + std::to_string(instr.r3.rd) + "];");
+			emit.add_code("    wr64(cpu, addr, vr_ptr->du[0]);");
+			emit.add_code("    wr64(cpu, addr + 8, vr_ptr->du[1]); }");
+			break;
+		}
 
 		default:
 			// Instruction not handled in binary translator

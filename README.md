@@ -28,7 +28,7 @@ make -j$(nproc)
 CMake configuration options:
 
 - `LA_DEBUG=ON/OFF` - Enable debug output (default: OFF)
-- `LA_BINARY_TRANSLATION=ON/OFF` - Enable binary translation (unimplemented, default: OFF)
+- `LA_BINARY_TRANSLATION=ON/OFF` - Enable binary translation (default: OFF)
 - `LA_THREADED=ON/OFF` - Enable threaded bytecode dispatch (default: ON)
 - `LA_MASKED_MEMORY_BITS=N` - Set masked memory arena size to 2^N bytes (0 = disabled, default: 0)
 
@@ -82,6 +82,11 @@ Triad:          13502.2     0.021949     0.017775     0.024309
 <img width="600" height="371" alt="CoreMark 1 0 interpreters, Dec 2025 (Ryzen 7950X)" src="https://github.com/user-attachments/assets/b37e985e-8332-44fc-880b-781bc1a07cc5" />
 
 Register machines still stand strongest at the end of 2025.
+
+With basic just-in-time binary translation enabled. About 25% of native:
+
+> CoreMark 1.0 : 9237.574287 / GCC14.2.0 -O3 -DPERFORMANCE_RUN=1   / Static
+
 
 ## Documentation
 

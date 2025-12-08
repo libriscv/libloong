@@ -123,6 +123,7 @@ INSTRUCTION(LA64_BC_SYSCALLIMM, la64_syscall_imm)
 	goto check_jump;
 }
 
+#ifdef LA_BINARY_TRANSLATION
 INSTRUCTION(LA64_BC_TRANSLATOR, execute_translated_block)
 {
 	// The instr field contains the index into the translator mappings array
@@ -135,6 +136,7 @@ INSTRUCTION(LA64_BC_TRANSLATOR, execute_translated_block)
 	max_counter = result.max_ic;
 	goto check_jump;
 }
+#endif
 
 INSTRUCTION(LA64_BC_STOP, la64_stop)
 {

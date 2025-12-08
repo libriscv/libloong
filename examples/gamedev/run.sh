@@ -9,7 +9,7 @@ echo ""
 echo "[1/4] Building host game engine..."
 mkdir -p build
 cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release > /dev/null
+cmake .. -DCMAKE_BUILD_TYPE=Release -DLA_BINARY_TRANSLATION=ON > /dev/null
 make -j$(nproc)
 cd ..
 echo "      ✓ Host engine built"

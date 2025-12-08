@@ -172,12 +172,14 @@ namespace loongarch
 		EXECUTE_CURRENT();
 	}
 
+#ifdef LA_BINARY_TRANSLATION
 	INSTRUCTION(LA64_BC_TRANSLATOR, execute_translated_block)
 	{
 		// Binary translation placeholder - not yet implemented for tailcall dispatch
 		// Fall back to normal execution
 		cpu.trigger_exception(ILLEGAL_OPCODE);
 	}
+#endif
 
 	// Bytecode function table for tailcall dispatch
 	namespace {

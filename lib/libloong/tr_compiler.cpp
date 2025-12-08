@@ -147,8 +147,10 @@ namespace loongarch
 			unsigned (*execute)(CPU&, uint32_t);
 			unsigned (*execute_handler)(CPU&, uint32_t, uintptr_t);
 			DecoderData::handler_t* handlers;
+			int  (*syscall)(CPU&, uint64_t, uint64_t, address_t);
 			void (*exception) (CPU&, address_t, int);
 			void (*trace) (CPU&, const char*, address_t, uint32_t);
+			void (*log) (CPU&, address_t, const char*);
 			float  (*sqrtf32)(float);
 			double (*sqrtf64)(double);
 			int (*clz) (uint32_t);
@@ -176,11 +178,26 @@ namespace loongarch
 			}
 			return 0; // Continue execution
 		};
+		callback_table.syscall = [](CPU& cpu, uint64_t ic, uint64_t max_ic, address_t pc) -> int {
+			try {
+				cpu.registers().pc = pc;
+				cpu.machine().set_max_instructions(max_ic);
+				cpu.machine().system_call(cpu.reg(REG_A7));
+				return cpu.machine().stopped() || (cpu.pc() != pc);
+			} catch (...) {
+				// XXX: Set CPU exception state here
+				return -1; // Indicate error
+			}
+		};
 		callback_table.handlers = DecoderData::get_handlers_array();
 		callback_table.exception = nullptr;
 		callback_table.trace = [](CPU& cpu, const char* desc, address_t pc, uint32_t instr) {
-			(void)cpu;
-			printf("[trace] PC=0x%lx: %s (0x%08x)\n", (unsigned long)pc, desc, instr);
+			char buffer[256];
+			(void)cpu.decode(la_instruction{instr}).printer(buffer, sizeof(buffer), cpu, la_instruction{instr}, pc);
+			printf("[trace] PC=0x%lx: %s (0x%08x): %s\n", (unsigned long)pc, desc, instr, buffer);
+		};
+		callback_table.log = [](CPU& cpu, address_t pc, const char* msg) {
+			printf("[trace] PC=0x%lx (0x%lX) %s\n", (unsigned long)pc, (unsigned long)cpu.pc(), msg);
 		};
 		callback_table.sqrtf32 = [](float x) { return __builtin_sqrtf(x); };
 		callback_table.sqrtf64 = [](double x) { return __builtin_sqrt(x); };

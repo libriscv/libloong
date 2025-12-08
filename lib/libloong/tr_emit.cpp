@@ -131,9 +131,9 @@ struct Emitter
 
 		std::string cond_str;
 		if (is_signed) {
-			cond_str = "(int64_t)" + reg(rd) + " " + cond + " (int64_t)" + reg(rj);
+			cond_str = "(int64_t)" + reg(rj) + " " + cond + " (int64_t)" + reg(rd);
 		} else {
-			cond_str = reg(rd) + " " + cond + " " + reg(rj);
+			cond_str = reg(rj) + " " + cond + " " + reg(rd);
 		}
 
 		add_code("if (" + cond_str + ") {");
@@ -184,19 +184,16 @@ struct Emitter
 	}
 
 	// Emit indirect jump (JIRL)
-	void emit_jirl(unsigned rd, unsigned rj, int64_t offset, address_t return_addr) {
+	void emit_jirl(unsigned rd, unsigned rj, int32_t offset) {
 		flush_instruction_counter();
+
+		// Indirect jump (avoid clobbering rj before computing target)
+		add_code("cpu->pc = " + reg(rj) + " + " + std::to_string(offset) + ";");
 
 		// Store return address
 		if (rd != 0) {
+			const address_t return_addr = pc() + 4;
 			add_code(reg(rd) + " = " + hex_address(return_addr) + "ULL;");
-		}
-
-		// Indirect jump
-		if (offset == 0) {
-			add_code("cpu->pc = " + reg(rj) + ";");
-		} else {
-			add_code("cpu->pc = " + reg(rj) + " + " + std::to_string(offset) + "LL;");
 		}
 
 		this->emit_return();
@@ -369,9 +366,8 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			break;
 		}
 		case InstrId::JIRL: {
-			int64_t offs = InstructionHelpers::sign_extend_16(instr.ri16.imm);
-			address_t return_addr = emit.pc() + 4;
-			emit.emit_jirl(instr.ri16.rd, instr.ri16.rj, offs << 2, return_addr);
+			int32_t offset = InstructionHelpers::sign_extend_16(instr.ri16.imm) << 2;
+			emit.emit_jirl(instr.ri16.rd, instr.ri16.rj, offset);
 			break;
 		}
 
@@ -387,8 +383,8 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 		}
 		case InstrId::PCADDU12I: {
 			if (instr.ri20.rd != 0) {
-				int64_t si20 = InstructionHelpers::sign_extend_20(instr.ri20.imm);
-				int64_t offset = si20 << 12;
+				int32_t si20 = InstructionHelpers::sign_extend_20(instr.ri20.imm);
+				int64_t offset = (int64_t)(si20 << 12);
 				emit.add_code("  " + emit.reg(instr.ri20.rd) + " = " +
 					hex_address(emit.pc() + offset) + "ULL;");
 			}
@@ -416,8 +412,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 		// System instructions
 		case InstrId::SYSCALL:
 			emit.flush_instruction_counter();
-			emit.add_code("  cpu->pc = " + hex_address(emit.pc()) + "ULL;");
-			emit.add_code("  if (do_syscall(cpu, ic, max_ic, " + emit.reg(REG_A7) + ")) {");
+			emit.add_code("  if (api.syscall(cpu, ic, max_ic, " + hex_address(emit.pc()) + ")) {");
 			if (!tinfo.options.translate_ignore_instruction_limit) {
 				emit.add_code("    cpu->pc += 4; return (ReturnValues){ic, MAX_COUNTER(cpu)}; }");
 				emit.add_code("  max_ic = MAX_COUNTER(cpu);");

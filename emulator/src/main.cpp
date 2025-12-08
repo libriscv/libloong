@@ -163,6 +163,21 @@ static int run_program(const std::vector<uint8_t>& binary, const EmulatorOptions
 				   (uint64_t)machine->memory.start_address());
 		}
 
+		std::set_terminate([]() {
+			try {
+				std::rethrow_exception(std::current_exception());
+			} catch (const MachineException& me) {
+				fprintf(stderr, "Machine exception: %s, data: 0x%llx (%ld)\n",
+					me.what(), (unsigned long long)me.data(), (long)me.data());
+			} catch (const std::exception& e) {
+				fprintf(stderr, "Unhandled exception: %s\n", e.what());
+			} catch (...) {
+				fprintf(stderr, "Unhandled exception of unknown type\n");
+			}
+
+			exit(1);
+		});
+
 		const auto t0 = std::chrono::high_resolution_clock::now();
 
 		// Run the program

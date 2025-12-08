@@ -2916,7 +2916,7 @@ struct InstrImpl {
 		uint32_t top5 = (imm13 >> 8) & 0x1F;  // imm[12:8]
 		uint32_t imm8 = imm13 & 0xFF;         // imm[7:0]
 		uint32_t imm10 = imm13 & 0x3FF;       // imm[9:0]
-		
+
 		// Sign-extend imm10 from 10 bits to 64 bits
 		int64_t sext_imm10 = (int64_t)(int16_t)(imm10 << 6) >> 6;
 
@@ -4535,7 +4535,7 @@ struct InstrImpl {
 		uint32_t top5 = (imm13 >> 8) & 0x1F;  // imm[12:8]
 		uint32_t imm8 = imm13 & 0xFF;         // imm[7:0]
 		uint32_t imm10 = imm13 & 0x3FF;       // imm[9:0]
-		
+
 		// Sign-extend imm10 from 10 bits to 64 bits
 		int64_t sext_imm10 = (int64_t)(int16_t)(imm10 << 6) >> 6;
 

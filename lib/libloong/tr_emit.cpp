@@ -764,14 +764,14 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			if (instr.r3.rd != 0) {
 				emit.add_code("  { int32_t a = (int32_t)" + emit.reg(instr.r3.rj) +
 					", b = (int32_t)" + emit.reg(instr.r3.rk) + ";");
-				emit.add_code("    " + emit.reg(instr.r3.rd) + " = (b != 0) ? (int64_t)(a / b) : 0; }");
+				emit.add_code("    " + emit.reg(instr.r3.rd) + " = (b != 0 && !(a == INT32_MIN && b == -1)) ? (int64_t)(a / b) : 0; }");
 			}
 			break;
 		case InstrId::MOD_W:
 			if (instr.r3.rd != 0) {
 				emit.add_code("  { int32_t a = (int32_t)" + emit.reg(instr.r3.rj) +
 					", b = (int32_t)" + emit.reg(instr.r3.rk) + ";");
-				emit.add_code("    " + emit.reg(instr.r3.rd) + " = (b != 0) ? (int64_t)(a % b) : 0; }");
+				emit.add_code("    " + emit.reg(instr.r3.rd) + " = (b != 0 && !(a == INT32_MIN && b == -1)) ? (int64_t)(a % b) : 0; }");
 			}
 			break;
 		case InstrId::DIV_WU:
@@ -792,14 +792,14 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			if (instr.r3.rd != 0) {
 				emit.add_code("  { int64_t a = (int64_t)" + emit.reg(instr.r3.rj) +
 					", b = (int64_t)" + emit.reg(instr.r3.rk) + ";");
-				emit.add_code("    " + emit.reg(instr.r3.rd) + " = (b != 0) ? (a / b) : 0; }");
+				emit.add_code("    " + emit.reg(instr.r3.rd) + " = (b != 0 && !(a == INT64_MIN && b == -1)) ? (a / b) : 0; }");
 			}
 			break;
 		case InstrId::MOD_D:
 			if (instr.r3.rd != 0) {
 				emit.add_code("  { int64_t a = (int64_t)" + emit.reg(instr.r3.rj) +
 					", b = (int64_t)" + emit.reg(instr.r3.rk) + ";");
-				emit.add_code("    " + emit.reg(instr.r3.rd) + " = (b != 0) ? (a % b) : 0; }");
+				emit.add_code("    " + emit.reg(instr.r3.rd) + " = (b != 0 && !(a == INT64_MIN && b == -1)) ? (a % b) : 0; }");
 			}
 			break;
 		case InstrId::DIV_DU:
@@ -1090,12 +1090,12 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 				uint32_t lsbw = (instr.whole >> 10) & 0x1F;
 				if (msbw >= lsbw) {
 					uint32_t width = msbw - lsbw + 1;
-					emit.add_code("  { uint32_t src = (uint32_t)" + emit.reg(instr.ri16.rj) +
-						", dst = (uint32_t)" + emit.reg(instr.ri16.rd) + ";");
-					emit.add_code("    uint32_t mask = ((1U << " + std::to_string(width) + ") - 1) << " +
-						std::to_string(lsbw) + ";");
-					emit.add_code("    uint32_t bits = (src << " + std::to_string(lsbw) + ") & mask;");
-					emit.add_code("    " + emit.reg(instr.ri16.rd) + " = (int64_t)(int32_t)((dst & ~mask) | bits); }");
+					uint32_t mask = ((1U << width) - 1) << lsbw;  // Precomputed at translation time
+					uint32_t inv_mask = ~mask;  // Precomputed at translation time
+					emit.add_code("  " + emit.reg(instr.ri16.rd) + " = (int64_t)(int32_t)(((uint32_t)" +
+						emit.reg(instr.ri16.rd) + " & " + std::to_string(inv_mask) + "U) | (((uint32_t)" +
+						emit.reg(instr.ri16.rj) + " << " + std::to_string(lsbw) + ") & " +
+						std::to_string(mask) + "U));");
 				}
 			}
 			break;
@@ -1105,12 +1105,12 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 				uint32_t lsbd = (instr.whole >> 10) & 0x3F;
 				if (msbd >= lsbd) {
 					uint32_t width = msbd - lsbd + 1;
-					emit.add_code("  { uint64_t src = " + emit.reg(instr.ri16.rj) +
-						", dst = " + emit.reg(instr.ri16.rd) + ";");
-					emit.add_code("    uint64_t mask = ((1ULL << " + std::to_string(width) + ") - 1) << " +
-						std::to_string(lsbd) + ";");
-					emit.add_code("    uint64_t bits = (src << " + std::to_string(lsbd) + ") & mask;");
-					emit.add_code("    " + emit.reg(instr.ri16.rd) + " = (dst & ~mask) | bits; }");
+					uint64_t mask = ((1ULL << width) - 1) << lsbd;  // Precomputed at translation time
+					uint64_t inv_mask = ~mask;  // Precomputed at translation time
+					emit.add_code("  " + emit.reg(instr.ri16.rd) + " = (" +
+						emit.reg(instr.ri16.rd) + " & " + std::to_string(inv_mask) + "ULL) | ((" +
+						emit.reg(instr.ri16.rj) + " << " + std::to_string(lsbd) + ") & " +
+						std::to_string(mask) + "ULL);");
 				}
 			}
 			break;
@@ -1119,9 +1119,10 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 				uint32_t msbw = (instr.whole >> 16) & 0x1F;
 				uint32_t lsbw = (instr.whole >> 10) & 0x1F;
 				uint32_t width = msbw - lsbw + 1;
-				emit.add_code("  { uint32_t src = (uint32_t)" + emit.reg(instr.ri16.rj) + ";");
-				emit.add_code("    uint32_t mask = (1U << " + std::to_string(width) + ") - 1;");
-				emit.add_code("    " + emit.reg(instr.ri16.rd) + " = (src >> " + std::to_string(lsbw) + ") & mask; }");
+				uint32_t mask = (1U << width) - 1;  // Precomputed at translation time
+				emit.add_code("  " + emit.reg(instr.ri16.rd) + " = ((uint32_t)" +
+					emit.reg(instr.ri16.rj) + " >> " + std::to_string(lsbw) +
+					") & " + std::to_string(mask) + "U;");
 			}
 			break;
 		case InstrId::BSTRPICK_D:
@@ -1129,9 +1130,10 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 				uint32_t msbd = (instr.whole >> 16) & 0x3F;
 				uint32_t lsbd = (instr.whole >> 10) & 0x3F;
 				uint32_t width = msbd - lsbd + 1;
-				emit.add_code("  { uint64_t src = " + emit.reg(instr.ri16.rj) + ";");
-				emit.add_code("    uint64_t mask = (1ULL << " + std::to_string(width) + ") - 1;");
-				emit.add_code("    " + emit.reg(instr.ri16.rd) + " = (src >> " + std::to_string(lsbd) + ") & mask; }");
+				uint64_t mask = (1ULL << width) - 1;  // Precomputed at translation time
+				emit.add_code("  " + emit.reg(instr.ri16.rd) + " = (" +
+					emit.reg(instr.ri16.rj) + " >> " + std::to_string(lsbd) +
+					") & " + std::to_string(mask) + "ULL;");
 			}
 			break;
 

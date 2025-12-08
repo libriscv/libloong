@@ -70,6 +70,34 @@ Rust language example for LoongArch:
 
 See [rust/README.md](rust/README.md) for details.
 
+### script/
+
+LoongScript framework examples showing how to use libloong as a scripting engine:
+- Compile and execute C++ or Rust code at runtime
+- Host function bindings (callbacks from guest to host)
+- String and vector manipulation across host/guest boundary
+- Event system for cached function calls
+- Complete working examples for C++ and Rust guests
+
+See [script/README.md](script/README.md) for details.
+
+### gamedev/
+
+**Asteroid Dodge** - A complete game demonstrating LoongScript for game development:
+- Terminal-based ASCII game with Rust guest logic
+- Real-time game loop running at 60 FPS
+- Entity system, physics, and collision detection in Rust
+- Host callbacks for rendering, input, timing, and RNG
+- Shows practical use of the LoongScript framework
+
+See [gamedev/README.md](gamedev/README.md) for details.
+
+**Quick start:**
+```bash
+cd gamedev
+./run.sh  # Builds everything and launches the game!
+```
+
 ## Using with Real LoongArch Binaries
 
 To use these examples with actual LoongArch ELF binaries:

@@ -37,6 +37,13 @@ namespace loongarch {
 #include <stdint.h>
 #endif
 
+#ifndef INT64_MIN
+#define INT64_MIN  0x8000000000000000LL
+#endif
+#ifndef INT32_MIN
+#define INT32_MIN  0x80000000L
+#endif
+
 #define LIKELY(x) __builtin_expect((x), 1)
 #define UNLIKELY(x) __builtin_expect((x), 0)
 #define ILLEGAL_OPCODE  0

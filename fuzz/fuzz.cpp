@@ -34,11 +34,13 @@ static void fuzz_instruction_set(const uint8_t* data, size_t len)
 
 	constexpr uint32_t EXEC_ADDR  =  0x10000;
 	constexpr uint32_t STACK_ADDR = 0x800000;
+	auto options = std::make_shared<MachineOptions>();
 
 	try
 	{
 		// Create machine with custom arena
-		Machine machine { std::string_view{}, {} };
+		Machine machine { std::string_view{}, *options };
+		machine.set_options(options);
 		machine.memory.allocate_custom_arena(16ull << 20, 0x10000, 0x20000);
 
 		// Initialize stack pointer

@@ -8,4 +8,4 @@ popd
 
 mkdir -p .fuzz_inputs
 #./build/vmfuzzer -runs=1000000 .fuzz_inputs/
-./build/elffuzzer .fuzz_inputs/
+gdb --args ./build/elffuzzer .fuzz_inputs/

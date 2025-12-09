@@ -731,32 +731,6 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		return snprintf(buf, len, "ibar 0x%x", hint);
 	}
 
-	// === LL/SC Atomics ===
-
-	static int LL_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		int32_t imm = InstructionHelpers::sign_extend_14(instr.ri14.imm) << 2;
-		return snprintf(buf, len, "ll.w %s, %s, %d",
-			reg_name(instr.ri14.rd), reg_name(instr.ri14.rj), imm);
-	}
-
-	static int LL_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		int32_t imm = InstructionHelpers::sign_extend_14(instr.ri14.imm) << 2;
-		return snprintf(buf, len, "ll.d %s, %s, %d",
-			reg_name(instr.ri14.rd), reg_name(instr.ri14.rj), imm);
-	}
-
-	static int SC_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		int32_t imm = InstructionHelpers::sign_extend_14(instr.ri14.imm) << 2;
-		return snprintf(buf, len, "sc.w %s, %s, %d",
-			reg_name(instr.ri14.rd), reg_name(instr.ri14.rj), imm);
-	}
-
-	static int SC_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		int32_t imm = InstructionHelpers::sign_extend_14(instr.ri14.imm) << 2;
-		return snprintf(buf, len, "sc.d %s, %s, %d",
-			reg_name(instr.ri14.rd), reg_name(instr.ri14.rj), imm);
-	}
-
 	// === Indexed Load Instructions ===
 
 	static int LDX_B(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {

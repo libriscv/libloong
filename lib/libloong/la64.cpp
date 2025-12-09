@@ -120,6 +120,11 @@ namespace loongarch
 	static constexpr CPU::instruction_t instr64_AMOR_D { AtomicI::AMOR_D, AtomicP::AMOR_D, InstrId::AMOR_D };
 	static constexpr CPU::instruction_t instr64_AMXOR_W { AtomicI::AMXOR_W, AtomicP::AMXOR_W, InstrId::AMXOR_W };
 	static constexpr CPU::instruction_t instr64_AMXOR_D { AtomicI::AMXOR_D, AtomicP::AMXOR_D, InstrId::AMXOR_D };
+	// LL/SC atomics
+	static constexpr CPU::instruction_t instr64_LL_W { AtomicI::LL_W, AtomicP::LL_W, InstrId::LL_W };
+	static constexpr CPU::instruction_t instr64_LL_D { AtomicI::LL_D, AtomicP::LL_D, InstrId::LL_D };
+	static constexpr CPU::instruction_t instr64_SC_W { AtomicI::SC_W, AtomicP::SC_W, InstrId::SC_W };
+	static constexpr CPU::instruction_t instr64_SC_D { AtomicI::SC_D, AtomicP::SC_D, InstrId::SC_D };
 
 	// Branches
 	INSTRUCTION(BEQZ);
@@ -155,12 +160,6 @@ namespace loongarch
 	// Memory barriers (no-ops)
 	static constexpr CPU::instruction_t instr64_DBAR { Impl::NOP, Printers::DBAR, InstrId::DBAR };
 	static constexpr CPU::instruction_t instr64_IBAR { Impl::NOP, Printers::IBAR, InstrId::IBAR };
-
-	// LL/SC atomics
-	INSTRUCTION(LL_W);
-	INSTRUCTION(LL_D);
-	INSTRUCTION(SC_W);
-	INSTRUCTION(SC_D);
 
 	// Indexed loads
 	INSTRUCTION(LDX_B);

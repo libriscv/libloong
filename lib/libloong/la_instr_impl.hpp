@@ -679,43 +679,6 @@ struct InstrImpl {
 		cpu.reg(instr.r2.rd) = CPUCFG_BASIC;
 	}
 
-	// === Load-Linked / Store-Conditional ===
-
-	static void LL_W(cpu_t& cpu, la_instruction instr) {
-		auto addr = cpu.reg(instr.ri14.rj) + (InstructionHelpers::sign_extend_14(instr.ri14.imm) << 2);
-		cpu.reg(instr.ri14.rd) = (int64_t)(int32_t)cpu.memory().template read<uint32_t, true>(addr);
-		// In single-threaded mode, we always succeed
-		cpu.set_ll_bit(true);
-	}
-
-	static void LL_D(cpu_t& cpu, la_instruction instr) {
-		auto addr = cpu.reg(instr.ri14.rj) + (InstructionHelpers::sign_extend_14(instr.ri14.imm) << 2);
-		cpu.reg(instr.ri14.rd) = cpu.memory().template read<uint64_t, true>(addr);
-		cpu.set_ll_bit(true);
-	}
-
-	static void SC_W(cpu_t& cpu, la_instruction instr) {
-		auto addr = cpu.reg(instr.ri14.rj) + (InstructionHelpers::sign_extend_14(instr.ri14.imm) << 2);
-		if (cpu.ll_bit()) {
-			cpu.memory().template write<uint32_t, true>(addr, cpu.reg(instr.ri14.rd));
-			cpu.reg(instr.ri14.rd) = 1; // Success
-		} else {
-			cpu.reg(instr.ri14.rd) = 0; // Failure
-		}
-		cpu.set_ll_bit(false);
-	}
-
-	static void SC_D(cpu_t& cpu, la_instruction instr) {
-		auto addr = cpu.reg(instr.ri14.rj) + (InstructionHelpers::sign_extend_14(instr.ri14.imm) << 2);
-		if (cpu.ll_bit()) {
-			cpu.memory().template write<uint64_t, true>(addr, cpu.reg(instr.ri14.rd));
-			cpu.reg(instr.ri14.rd) = 1; // Success
-		} else {
-			cpu.reg(instr.ri14.rd) = 0; // Failure
-		}
-		cpu.set_ll_bit(false);
-	}
-
 	// === Indexed Load Instructions ===
 
 	static void LDX_B(cpu_t& cpu, la_instruction instr) {

@@ -139,6 +139,45 @@ namespace loongarch
 			if (instr.r3.rd != 0)
 				cpu.reg(instr.r3.rd) = old_value;
 		}
+
+		// === Load-Linked / Store-Conditional ===
+
+		static void LL_W(cpu_t& cpu, la_instruction instr) {
+			auto addr = cpu.reg(instr.ri14.rj) + (InstructionHelpers::sign_extend_14(instr.ri14.imm) << 2);
+			cpu.reg(instr.ri14.rd) = (int64_t)(int32_t)cpu.memory().template read<uint32_t, true>(addr);
+			// In single-threaded mode, we always succeed
+			cpu.set_ll_bit(true);
+		}
+
+		static void LL_D(cpu_t& cpu, la_instruction instr) {
+			auto addr = cpu.reg(instr.ri14.rj) + (InstructionHelpers::sign_extend_14(instr.ri14.imm) << 2);
+			cpu.reg(instr.ri14.rd) = cpu.memory().template read<uint64_t, true>(addr);
+			cpu.set_ll_bit(true);
+		}
+
+		static void SC_W(cpu_t& cpu, la_instruction instr) {
+			auto addr = cpu.reg(instr.ri14.rj) + (InstructionHelpers::sign_extend_14(instr.ri14.imm) << 2);
+			if (cpu.ll_bit()) {
+				cpu.memory().template write<uint32_t, true>(addr, cpu.reg(instr.ri14.rd));
+				if (instr.ri14.rd != 0)
+					cpu.reg(instr.ri14.rd) = 1; // Success
+			} else {
+				if (instr.ri14.rd != 0)
+					cpu.reg(instr.ri14.rd) = 0; // Failure
+			}
+			cpu.set_ll_bit(false);
+		}
+
+		static void SC_D(cpu_t& cpu, la_instruction instr) {
+			auto addr = cpu.reg(instr.ri14.rj) + (InstructionHelpers::sign_extend_14(instr.ri14.imm) << 2);
+			if (cpu.ll_bit()) {
+				cpu.memory().template write<uint64_t, true>(addr, cpu.reg(instr.ri14.rd));
+				cpu.reg(instr.ri14.rd) = 1; // Success
+			} else {
+				cpu.reg(instr.ri14.rd) = 0; // Failure
+			}
+			cpu.set_ll_bit(false);
+		}
 	};
 
 	// Template printers for atomic operations
@@ -216,6 +255,32 @@ namespace loongarch
 	static int AMXOR_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "amxor%s.d %s, %s, %s", get_atomic_suffix(instr.whole),
 			reg_name(instr.r3.rd), reg_name(instr.r3.rk), reg_name(instr.r3.rj));
+	}
+
+	// === LL/SC Atomics ===
+
+	static int LL_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
+		int32_t imm = InstructionHelpers::sign_extend_14(instr.ri14.imm) << 2;
+		return snprintf(buf, len, "ll.w %s, %s, %d",
+			reg_name(instr.ri14.rd), reg_name(instr.ri14.rj), imm);
+	}
+
+	static int LL_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
+		int32_t imm = InstructionHelpers::sign_extend_14(instr.ri14.imm) << 2;
+		return snprintf(buf, len, "ll.d %s, %s, %d",
+			reg_name(instr.ri14.rd), reg_name(instr.ri14.rj), imm);
+	}
+
+	static int SC_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
+		int32_t imm = InstructionHelpers::sign_extend_14(instr.ri14.imm) << 2;
+		return snprintf(buf, len, "sc.w %s, %s, %d",
+			reg_name(instr.ri14.rd), reg_name(instr.ri14.rj), imm);
+	}
+
+	static int SC_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
+		int32_t imm = InstructionHelpers::sign_extend_14(instr.ri14.imm) << 2;
+		return snprintf(buf, len, "sc.d %s, %s, %d",
+			reg_name(instr.ri14.rd), reg_name(instr.ri14.rj), imm);
 	}
 };
 

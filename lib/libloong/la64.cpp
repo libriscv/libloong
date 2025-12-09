@@ -6,8 +6,6 @@
 
 namespace loongarch
 {
-	// LA64 instruction table using template implementations
-
 	using Impl = InstrImpl;
 	using Printers = InstrPrinters;
 	using AtomicI = AtomicImpl;

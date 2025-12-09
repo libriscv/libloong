@@ -63,46 +63,46 @@ struct InstrPrinters {
 	using cpu_t = CPU;
 	using addr_t = address_t;
 
-	static int INVALID(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int INVALID(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "ILLEGAL 0x%08x", instr.whole);
 	}
 
-	static int UNIMPLEMENTED(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int UNIMPLEMENTED(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "UNIMPL 0x%08x", instr.whole);
 	}
 
-	static int NOP(char* buf, size_t len, const cpu_t&, la_instruction, addr_t) {
+	static int NOP(char* buf, size_t len, const cpu_t&, la_instruction, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "nop");
 	}
 
-	static int RDTIME_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int RDTIME_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "rdtime.d %s, %s",
 			reg_name(instr.r2.rd), reg_name(instr.r2.rj));
 	}
 
-	static int CPUCFG(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int CPUCFG(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "cpucfg %s, %s",
 			reg_name(instr.r2.rd), reg_name(instr.r2.rj));
 	}
 
 	// === Arithmetic Instructions ===
 
-	static int ADD_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int ADD_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "add.w %s, %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
 
-	static int ADD_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int ADD_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "add.d %s, %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
 
-	static int SUB_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int SUB_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "sub.w %s, %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
 
-	static int SUB_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int SUB_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "sub.d %s, %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
@@ -135,42 +135,42 @@ struct InstrPrinters {
 
 	// === Division/Modulo Instructions ===
 
-	static int DIV_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int DIV_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "div.w %s, %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
 
-	static int MOD_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int MOD_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "mod.w %s, %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
 
-	static int DIV_WU(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int DIV_WU(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "div.wu %s, %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
 
-	static int MOD_WU(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int MOD_WU(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "mod.wu %s, %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
 
-	static int DIV_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int DIV_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "div.d %s, %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
 
-	static int MOD_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int MOD_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "mod.d %s, %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
 
-	static int DIV_DU(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int DIV_DU(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "div.du %s, %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
 
-	static int MOD_DU(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int MOD_DU(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "mod.du %s, %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
@@ -197,37 +197,37 @@ struct InstrPrinters {
 				reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 		}
 
-	static int NOR(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int NOR(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "nor %s, %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
 
-	static int ORN(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int ORN(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "orn %s, %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
 
-	static int ANDN(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int ANDN(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "andn %s, %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
 
-	static int MASKEQZ(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int MASKEQZ(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "maskeqz %s, %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
 
-	static int MASKNEZ(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int MASKNEZ(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "masknez %s, %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
 
-	static int SLT(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int SLT(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "slt %s, %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
 
-	static int SLTU(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int SLTU(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "sltu %s, %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
@@ -249,7 +249,7 @@ struct InstrPrinters {
 				reg_name(instr.ri12.rd), reg_name(instr.ri12.rj), instr.ri12.imm);
 		}
 
-	static int XORI(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int XORI(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "xori %s, %s, 0x%x",
 			reg_name(instr.ri12.rd), reg_name(instr.ri12.rj), instr.ri12.imm);
 	}
@@ -279,7 +279,7 @@ struct InstrPrinters {
 				reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 		}
 
-	static int SLL_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int SLL_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "sll.d %s, %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
@@ -327,7 +327,7 @@ struct InstrPrinters {
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj), ui6);
 	}
 
-	static int SRL_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int SRL_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "srl.d %s, %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
@@ -469,52 +469,52 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 
 	// === Indexed Load/Store Instructions ===
 
-	static int STX_B(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int STX_B(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "stx.b %s, %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
 
-	static int STX_H(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int STX_H(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "stx.h %s, %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
 
-	static int STX_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int STX_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "stx.w %s, %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
 
-	static int STX_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int STX_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "stx.d %s, %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
 
-	static int FLDX_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int FLDX_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "fldx.d $fa%u, %s, %s",
 			instr.r3.rd, reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
 
-	static int FLDX_S(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int FLDX_S(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "fldx.s $fa%u, %s, %s",
 			instr.r3.rd, reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
 
-	static int FSTX_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int FSTX_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "fstx.d $fa%u, %s, %s",
 			instr.r3.rd, reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
 
-	static int FSTX_S(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int FSTX_S(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "fstx.s $fa%u, %s, %s",
 			instr.r3.rd, reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
 
-	static int VLDX(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int VLDX(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "vldx $vr%u, %s, %s",
 			instr.r3.rd, reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
 
-	static int VSTX(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int VSTX(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "vstx $vr%u, %s, %s",
 			instr.r3.rd, reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
@@ -759,69 +759,69 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 
 	// === Indexed Load Instructions ===
 
-	static int LDX_B(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int LDX_B(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "ldx.b %s, %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
 
-	static int LDX_H(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int LDX_H(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "ldx.h %s, %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
 
-	static int LDX_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int LDX_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "ldx.w %s, %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
 
-	static int LDX_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int LDX_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "ldx.d %s, %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
 
-	static int LDX_BU(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int LDX_BU(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "ldx.bu %s, %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
 
-	static int LDX_HU(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int LDX_HU(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "ldx.hu %s, %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
 
-	static int LDX_WU(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int LDX_WU(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "ldx.wu %s, %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
 
 	// === Multiply Instructions ===
 
-	static int MUL_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int MUL_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "mul.w %s, %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
 
-	static int MULH_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int MULH_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "mulh.w %s, %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
 
-	static int MULH_WU(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int MULH_WU(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "mulh.wu %s, %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
 
-	static int MUL_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int MUL_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "mul.d %s, %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
 
-	static int MULH_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int MULH_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "mulh.d %s, %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
 
-	static int MULH_DU(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int MULH_DU(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "mulh.du %s, %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
@@ -842,12 +842,12 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 
 	// === Rotate Instructions ===
 
-	static int ROTR_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int ROTR_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "rotr.w %s, %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
 
-	static int ROTR_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int ROTR_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "rotr.d %s, %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
@@ -860,109 +860,109 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 
 	// === Bit Manipulation 2R Instructions ===
 
-	static int EXT_W_B(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int EXT_W_B(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "ext.w.b %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj));
 	}
 
-	static int EXT_W_H(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int EXT_W_H(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "ext.w.h %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj));
 	}
 
-	static int CLO_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int CLO_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "clo.w %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj));
 	}
 
-	static int CLZ_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int CLZ_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "clz.w %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj));
 	}
 
-	static int CTO_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int CTO_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "cto.w %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj));
 	}
 
-	static int CTZ_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int CTZ_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "ctz.w %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj));
 	}
 
-	static int CLO_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int CLO_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "clo.d %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj));
 	}
 
-	static int CLZ_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int CLZ_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "clz.d %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj));
 	}
 
-	static int CTO_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int CTO_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "cto.d %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj));
 	}
 
-	static int CTZ_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int CTZ_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "ctz.d %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj));
 	}
 
-	static int REVB_2H(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int REVB_2H(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "revb.2h %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj));
 	}
 
-	static int REVB_4H(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int REVB_4H(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "revb.4h %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj));
 	}
 
-	static int REVB_2W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int REVB_2W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "revb.2w %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj));
 	}
 
-	static int REVB_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int REVB_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "revb.d %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj));
 	}
 
-	static int REVH_2W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int REVH_2W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "revh.2w %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj));
 	}
 
-	static int REVH_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int REVH_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "revh.d %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj));
 	}
 
-	static int BITREV_4B(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int BITREV_4B(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "bitrev.4b %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj));
 	}
 
-	static int BITREV_8B(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int BITREV_8B(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "bitrev.8b %s, %s",
 			reg_name(instr.r3.rd), reg_name(instr.r3.rj));
 	}
 
-	static int BITREV_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int BITREV_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "bitrev.w %s, %s",
 			reg_name(instr.r2.rd), reg_name(instr.r2.rj));
 	}
 
-	static int BITREV_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int BITREV_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "bitrev.d %s, %s",
 			reg_name(instr.r2.rd), reg_name(instr.r2.rj));
 	}
 
 	// === ALSL.W ===
 
-	static int ALSL_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int ALSL_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "alsl.w %s, %s, %s, 0x%x",
 			reg_name(instr.r3sa2.rd), reg_name(instr.r3sa2.rj),
 			reg_name(instr.r3sa2.rk), instr.r3sa2.sa2 + 1);
@@ -1871,12 +1871,12 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		return snprintf(buf, len, "xvpermi.q $xr%u, $xr%u, 0x%x", xd, xj, imm);
 	}
 
-	static int XVLDX(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int XVLDX(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "xvldx $xr%u, %s, %s",
 			instr.r3.rd, reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}
 
-	static int XVSTX(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int XVSTX(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "xvstx $xr%u, %s, %s",
 			instr.r3.rd, reg_name(instr.r3.rj), reg_name(instr.r3.rk));
 	}

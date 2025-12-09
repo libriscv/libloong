@@ -307,7 +307,7 @@ struct CPU;
 // Instruction descriptor
 struct Instruction {
 	using handler_t = void(*)(CPU&, la_instruction);
-	using printer_t = int(*)(char*, size_t, const CPU&, la_instruction, address_t);
+	using printer_t = LA_COLD_PATH() int(*)(char*, size_t, const CPU&, la_instruction, address_t);
 
 	handler_t handler;
 	printer_t printer;

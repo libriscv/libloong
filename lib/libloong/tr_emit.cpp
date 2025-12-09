@@ -31,6 +31,7 @@ struct Emitter
 	std::string func_name;
 	unsigned m_instr_counter = 0;
 	bool gpr_used[32] = {}; // Track which registers are actually used
+	address_t nbit_mask = 0;
 
 	Emitter(const TransInfo& info)
 	  : tinfo(info), current_pc(info.basepc)
@@ -38,6 +39,14 @@ struct Emitter
 		char buf[64];
 		snprintf(buf, sizeof(buf), "f_%" PRIx64, (uint64_t)info.basepc);
 		func_name = buf;
+		if (tinfo.options.translate_automatic_nbit_address_space) {
+			// Determine n-bit mask based on arena size
+			// The mask must under-estimate the size to avoid out-of-bounds accesses
+			size_t size = tinfo.arena_size;
+			size_t nbit = 1;
+			while (nbit < size) nbit <<= 1;
+			this->nbit_mask = nbit - 1;
+		}
 	}
 
 	void add_code(const std::string& line) {
@@ -97,10 +106,10 @@ struct Emitter
 	}
 
 	// Generate FP register access
-	std::string freg32(unsigned idx) {
+	static std::string freg32(unsigned idx) {
 		return "cpu->vr[" + std::to_string(idx) + "].f[0]";
 	}
-	std::string freg64(unsigned idx) {
+	static std::string freg64(unsigned idx) {
 		return "cpu->vr[" + std::to_string(idx) + "].df[0]";
 	}
 
@@ -115,40 +124,49 @@ struct Emitter
 		add_code("  " + reg(rd) + " = " + reg(rj) + " " + op + " " + reg(rk) + ";");
 	}
 
+	std::string arena_offset(const std::string& offset) const {
+		if (this->nbit_mask != 0) {
+			return "(((char*)" + hex_address(tinfo.arena_ptr) + ") + (" + offset + " & " +
+				hex_address(this->nbit_mask) + "))";
+		} else {
+			return "(((char*)" + hex_address(tinfo.arena_ptr) + ") + " + offset + ")";
+		}
+	}
+
 	// Emit memory load - templatized for different sizes and signedness
 	// size: 8, 16, 32, or 64 bits
 	// is_signed: whether to sign-extend (only matters for sizes < 64)
 	void emit_load(unsigned size, bool is_signed, unsigned rd, unsigned rj, int64_t offset) {
 		if (rd == 0) return;
 		std::string addr = reg(rj) + " + " + std::to_string(offset);
-		std::string cast_type;
+		std::string ptr = arena_offset(addr);
 
 		if (size == 64) {
-			// 64-bit load: always use rd64
-			add_code("  " + reg(rd) + " = rd64(cpu, " + addr + ");");
+			// 64-bit load
+			add_code("  " + reg(rd) + " = *(uint64_t*)" + ptr + ";");
 		} else if (size == 32) {
 			if (is_signed) {
 				// Sign-extend 32-bit to 64-bit
-				add_code("  " + reg(rd) + " = (int64_t)(int32_t)rd32(cpu, " + addr + ");");
+				add_code("  " + reg(rd) + " = (int64_t)*(int32_t*)" + ptr + ";");
 			} else {
 				// Zero-extend 32-bit to 64-bit
-				add_code("  " + reg(rd) + " = (uint64_t)rd32(cpu, " + addr + ");");
+				add_code("  " + reg(rd) + " = (uint64_t)*(uint32_t*)" + ptr + ";");
 			}
 		} else if (size == 16) {
 			if (is_signed) {
 				// Sign-extend 16-bit to 64-bit
-				add_code("  " + reg(rd) + " = (int64_t)(int16_t)rd16(cpu, " + addr + ");");
+				add_code("  " + reg(rd) + " = (int64_t)*(int16_t*)" + ptr + ";");
 			} else {
 				// Zero-extend 16-bit to 64-bit
-				add_code("  " + reg(rd) + " = (uint64_t)(uint16_t)rd16(cpu, " + addr + ");");
+				add_code("  " + reg(rd) + " = (uint64_t)*(uint16_t*)" + ptr + ";");
 			}
 		} else if (size == 8) {
 			if (is_signed) {
 				// Sign-extend 8-bit to 64-bit
-				add_code("  " + reg(rd) + " = (int64_t)(int8_t)rd8(cpu, " + addr + ");");
+				add_code("  " + reg(rd) + " = (int64_t)*(int8_t*)" + ptr + ";");
 			} else {
 				// Zero-extend 8-bit to 64-bit
-				add_code("  " + reg(rd) + " = (uint64_t)(uint8_t)rd8(cpu, " + addr + ");");
+				add_code("  " + reg(rd) + " = (uint64_t)*(uint8_t*)" + ptr + ";");
 			}
 		}
 	}
@@ -157,15 +175,16 @@ struct Emitter
 	// size: 8, 16, 32, or 64 bits
 	void emit_store(unsigned size, unsigned rd, unsigned rj, int64_t offset) {
 		std::string addr = reg(rj) + " + " + std::to_string(offset);
+		std::string ptr = arena_offset(addr);
 
 		if (size == 64) {
-			add_code("  wr64(cpu, " + addr + ", " + reg(rd) + ");");
+			add_code("  *(uint64_t*)" + ptr + " = " + reg(rd) + ";");
 		} else if (size == 32) {
-			add_code("  wr32(cpu, " + addr + ", " + reg(rd) + ");");
+			add_code("  *(uint32_t*)" + ptr + " = " + reg(rd) + ";");
 		} else if (size == 16) {
-			add_code("  wr16(cpu, " + addr + ", " + reg(rd) + ");");
+			add_code("  *(uint16_t*)" + ptr + " = " + reg(rd) + ";");
 		} else if (size == 8) {
-			add_code("  wr8(cpu, " + addr + ", " + reg(rd) + ");");
+			add_code("  *(uint8_t*)" + ptr + " = " + reg(rd) + ";");
 		}
 	}
 
@@ -173,26 +192,27 @@ struct Emitter
 	void emit_load_indexed(unsigned size, bool is_signed, unsigned rd, unsigned rj, unsigned rk) {
 		if (rd == 0) return;
 		std::string addr = reg(rj) + " + " + reg(rk);
+		std::string ptr = arena_offset(addr);
 
 		if (size == 64) {
-			add_code("  " + reg(rd) + " = rd64(cpu, " + addr + ");");
+			add_code("  " + reg(rd) + " = *(uint64_t*)" + ptr + ";");
 		} else if (size == 32) {
 			if (is_signed) {
-				add_code("  " + reg(rd) + " = (int64_t)(int32_t)rd32(cpu, " + addr + ");");
+				add_code("  " + reg(rd) + " = (int64_t)*(int32_t*)" + ptr + ";");
 			} else {
-				add_code("  " + reg(rd) + " = (uint64_t)rd32(cpu, " + addr + ");");
+				add_code("  " + reg(rd) + " = (uint64_t)*(uint32_t*)" + ptr + ";");
 			}
 		} else if (size == 16) {
 			if (is_signed) {
-				add_code("  " + reg(rd) + " = (int64_t)(int16_t)rd16(cpu, " + addr + ");");
+				add_code("  " + reg(rd) + " = (int64_t)*(int16_t*)" + ptr + ";");
 			} else {
-				add_code("  " + reg(rd) + " = (uint64_t)(uint16_t)rd16(cpu, " + addr + ");");
+				add_code("  " + reg(rd) + " = (uint64_t)*(uint16_t*)" + ptr + ";");
 			}
 		} else if (size == 8) {
 			if (is_signed) {
-				add_code("  " + reg(rd) + " = (int64_t)(int8_t)rd8(cpu, " + addr + ");");
+				add_code("  " + reg(rd) + " = (int64_t)*(int8_t*)" + ptr + ";");
 			} else {
-				add_code("  " + reg(rd) + " = (uint64_t)(uint8_t)rd8(cpu, " + addr + ");");
+				add_code("  " + reg(rd) + " = (uint64_t)*(uint8_t*)" + ptr + ";");
 			}
 		}
 	}
@@ -200,15 +220,16 @@ struct Emitter
 	// Emit indexed memory store (register + register addressing)
 	void emit_store_indexed(unsigned size, unsigned rd, unsigned rj, unsigned rk) {
 		std::string addr = reg(rj) + " + " + reg(rk);
+		std::string ptr = arena_offset(addr);
 
 		if (size == 64) {
-			add_code("  wr64(cpu, " + addr + ", " + reg(rd) + ");");
+			add_code("  *(uint64_t*)" + ptr + " = " + reg(rd) + ";");
 		} else if (size == 32) {
-			add_code("  wr32(cpu, " + addr + ", " + reg(rd) + ");");
+			add_code("  *(uint32_t*)" + ptr + " = " + reg(rd) + ";");
 		} else if (size == 16) {
-			add_code("  wr16(cpu, " + addr + ", " + reg(rd) + ");");
+			add_code("  *(uint16_t*)" + ptr + " = " + reg(rd) + ";");
 		} else if (size == 8) {
-			add_code("  wr8(cpu, " + addr + ", " + reg(rd) + ");");
+			add_code("  *(uint8_t*)" + ptr + " = " + reg(rd) + ";");
 		}
 	}
 
@@ -1160,33 +1181,32 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			// Load single-precision float (32-bit) into FPR
 			int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 			std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string(offset);
-			emit.add_code("  { uint32_t val = rd32(cpu, " + addr + ");");
-			emit.add_code("    cpu->vr[" + std::to_string(instr.ri12.rd) + "].wu[0] = val;");
-			emit.add_code("    cpu->vr[" + std::to_string(instr.ri12.rd) + "].wu[1] = 0;");
-			emit.add_code("    cpu->vr[" + std::to_string(instr.ri12.rd) + "].du[1] = 0; }");
+			std::string ptr = emit.arena_offset(addr);
+			emit.add_code("  cpu->vr[" + std::to_string(instr.ri12.rd) + "].wu[0] = *(uint32_t*)" + ptr + ";");
 			break;
 		}
 		case InstrId::FLD_D: {
 			// Load double-precision float (64-bit) into FPR
 			int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 			std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string(offset);
-			emit.add_code("  { uint64_t val = rd64(cpu, " + addr + ");");
-			emit.add_code("    cpu->vr[" + std::to_string(instr.ri12.rd) + "].du[0] = val;");
-			emit.add_code("    cpu->vr[" + std::to_string(instr.ri12.rd) + "].du[1] = 0; }");
+			std::string ptr = emit.arena_offset(addr);
+			emit.add_code("  cpu->vr[" + std::to_string(instr.ri12.rd) + "].du[0] = *(uint64_t*)" + ptr + ";");
 			break;
 		}
 		case InstrId::FST_S: {
 			// Store single-precision float (32-bit) from FPR
 			int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 			std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string(offset);
-			emit.add_code("  wr32(cpu, " + addr + ", cpu->vr[" + std::to_string(instr.ri12.rd) + "].wu[0]);");
+			std::string ptr = emit.arena_offset(addr);
+			emit.add_code("  *(uint32_t*)" + ptr + " = cpu->vr[" + std::to_string(instr.ri12.rd) + "].wu[0];");
 			break;
 		}
 		case InstrId::FST_D: {
 			// Store double-precision float (64-bit) from FPR
 			int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 			std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string(offset);
-			emit.add_code("  wr64(cpu, " + addr + ", cpu->vr[" + std::to_string(instr.ri12.rd) + "].du[0]);");
+			std::string ptr = emit.arena_offset(addr);
+			emit.add_code("  *(uint64_t*)" + ptr + " = cpu->vr[" + std::to_string(instr.ri12.rd) + "].du[0];");
 			break;
 		}
 
@@ -1194,27 +1214,29 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 		case InstrId::FLDX_S: {
 			// Indexed load single-precision float
 			std::string addr = emit.reg(instr.r3.rj) + " + " + emit.reg(instr.r3.rk);
-			emit.add_code("  { uint32_t val = rd32(cpu, " + addr + ");");
-			emit.add_code("    cpu->vr[" + std::to_string(instr.r3.rd) + "].wu[0] = val;");
-			emit.add_code("    cpu->vr[" + std::to_string(instr.r3.rd) + "].wu[1] = 0; }");
+			std::string ptr = emit.arena_offset(addr);
+			emit.add_code("  cpu->vr[" + std::to_string(instr.r3.rd) + "].wu[0] = *(uint32_t*)" + ptr + ";");
 			break;
 		}
 		case InstrId::FLDX_D: {
 			// Indexed load double-precision float
 			std::string addr = emit.reg(instr.r3.rj) + " + " + emit.reg(instr.r3.rk);
-			emit.add_code("  cpu->vr[" + std::to_string(instr.r3.rd) + "].du[0] = rd64(cpu, " + addr + ");");
+			std::string ptr = emit.arena_offset(addr);
+			emit.add_code("  cpu->vr[" + std::to_string(instr.r3.rd) + "].du[0] = *(uint64_t*)" + ptr + ";");
 			break;
 		}
 		case InstrId::FSTX_S: {
 			// Indexed store single-precision float
 			std::string addr = emit.reg(instr.r3.rj) + " + " + emit.reg(instr.r3.rk);
-			emit.add_code("  wr32(cpu, " + addr + ", cpu->vr[" + std::to_string(instr.r3.rd) + "].wu[0]);");
+			std::string ptr = emit.arena_offset(addr);
+			emit.add_code("  *(uint32_t*)" + ptr + " = cpu->vr[" + std::to_string(instr.r3.rd) + "].wu[0];");
 			break;
 		}
 		case InstrId::FSTX_D: {
 			// Indexed store double-precision float
 			std::string addr = emit.reg(instr.r3.rj) + " + " + emit.reg(instr.r3.rk);
-			emit.add_code("  wr64(cpu, " + addr + ", cpu->vr[" + std::to_string(instr.r3.rd) + "].du[0]);");
+			std::string ptr = emit.arena_offset(addr);
+			emit.add_code("  *(uint64_t*)" + ptr + " = cpu->vr[" + std::to_string(instr.r3.rd) + "].du[0];");
 			break;
 		}
 
@@ -1555,38 +1577,42 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			// Load 128-bit vector from memory
 			int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 			std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string(offset);
-			emit.add_code("  { uint64_t addr = " + addr + ";");
-			emit.add_code("    lasx_reg* vr_ptr = &cpu->vr[" + std::to_string(instr.ri12.rd) + "];");
-			emit.add_code("    vr_ptr->du[0] = rd64(cpu, addr);");
-			emit.add_code("    vr_ptr->du[1] = rd64(cpu, addr + 8); }");
+			std::string ptr0 = emit.arena_offset(addr);
+			std::string ptr1 = emit.arena_offset(addr + " + 8");
+			emit.add_code("  { lasx_reg* vr_ptr = &cpu->vr[" + std::to_string(instr.ri12.rd) + "];");
+			emit.add_code("    vr_ptr->du[0] = *(uint64_t*)" + ptr0 + ";");
+			emit.add_code("    vr_ptr->du[1] = *(uint64_t*)" + ptr1 + "; }");
 			break;
 		}
 		case InstrId::VST: {
 			// Store 128-bit vector to memory
 			int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 			std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string(offset);
-			emit.add_code("  { uint64_t addr = " + addr + ";");
-			emit.add_code("    lasx_reg* vr_ptr = &cpu->vr[" + std::to_string(instr.ri12.rd) + "];");
-			emit.add_code("    wr64(cpu, addr, vr_ptr->du[0]);");
-			emit.add_code("    wr64(cpu, addr + 8, vr_ptr->du[1]); }");
+			std::string ptr0 = emit.arena_offset(addr);
+			std::string ptr1 = emit.arena_offset(addr + " + 8");
+			emit.add_code("  { lasx_reg* vr_ptr = &cpu->vr[" + std::to_string(instr.ri12.rd) + "];");
+			emit.add_code("    *(uint64_t*)" + ptr0 + " = vr_ptr->du[0];");
+			emit.add_code("    *(uint64_t*)" + ptr1 + " = vr_ptr->du[1]; }");
 			break;
 		}
 		case InstrId::VLDX: {
 			// Vector indexed load (LSX 128-bit)
 			std::string addr = emit.reg(instr.r3.rj) + " + " + emit.reg(instr.r3.rk);
-			emit.add_code("  { uint64_t addr = " + addr + ";");
-			emit.add_code("    lasx_reg* vr_ptr = &cpu->vr[" + std::to_string(instr.r3.rd) + "];");
-			emit.add_code("    vr_ptr->du[0] = rd64(cpu, addr);");
-			emit.add_code("    vr_ptr->du[1] = rd64(cpu, addr + 8); }");
+			std::string ptr0 = emit.arena_offset(addr);
+			std::string ptr1 = emit.arena_offset(addr + " + 8");
+			emit.add_code("  { lasx_reg* vr_ptr = &cpu->vr[" + std::to_string(instr.r3.rd) + "];");
+			emit.add_code("    vr_ptr->du[0] = *(uint64_t*)" + ptr0 + ";");
+			emit.add_code("    vr_ptr->du[1] = *(uint64_t*)" + ptr1 + "; }");
 			break;
 		}
 		case InstrId::VSTX: {
 			// Vector indexed store (LSX 128-bit)
 			std::string addr = emit.reg(instr.r3.rj) + " + " + emit.reg(instr.r3.rk);
-			emit.add_code("  { uint64_t addr = " + addr + ";");
-			emit.add_code("    lasx_reg* vr_ptr = &cpu->vr[" + std::to_string(instr.r3.rd) + "];");
-			emit.add_code("    wr64(cpu, addr, vr_ptr->du[0]);");
-			emit.add_code("    wr64(cpu, addr + 8, vr_ptr->du[1]); }");
+			std::string ptr0 = emit.arena_offset(addr);
+			std::string ptr1 = emit.arena_offset(addr + " + 8");
+			emit.add_code("  { lasx_reg* vr_ptr = &cpu->vr[" + std::to_string(instr.r3.rd) + "];");
+			emit.add_code("    *(uint64_t*)" + ptr0 + " = vr_ptr->du[0];");
+			emit.add_code("    *(uint64_t*)" + ptr1 + " = vr_ptr->du[1]; }");
 			break;
 		}
 

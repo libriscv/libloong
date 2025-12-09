@@ -85,7 +85,7 @@ Register machines still stand strongest at the end of 2025.
 
 With basic just-in-time binary translation enabled. About 25% of native:
 
-> CoreMark 1.0 : 9237.574287 / GCC14.2.0 -O3 -DPERFORMANCE_RUN=1   / Static
+> CoreMark 1.0 : 10568.235530 / GCC14.2.0 -O3 -DPERFORMANCE_RUN=1   / Static
 
 
 ## Documentation

@@ -24,7 +24,10 @@ namespace loongarch
 		bool translate_ignore_instruction_limit = false;
 		bool use_shared_execute_segments = false;
 		bool translate_use_register_caching = true;
-		bool unsafe_remove_checks = false;
+		/// @brief Enable automatic n-bit address space for the binary translator by rounding down to the nearest power of 2.
+		/// @details This will allow the binary translator to use and-masked addresses
+		/// for all memory accesses, which can drastically improve performance.
+		bool translate_automatic_nbit_address_space = true;
 		size_t translate_blocks_max = 10000;
 		size_t translate_instr_max = 50'000'000ull;
 		std::string translate_output_file; // Optional: output file path for generated C code

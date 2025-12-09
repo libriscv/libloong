@@ -21,9 +21,13 @@ static std::string hex_address(uint64_t addr) {
 // This is a simplified version focusing on the most common instructions
 struct Emitter
 {
-	static constexpr int CACHE_START = 1; // Start at Rx
-	static constexpr int CACHE_END = 24; // End after Rx (exclusive)
+	static constexpr int CACHE_START = 1; // Start at r1
+	static constexpr int CACHE_END = 24; // End after rx (exclusive)
 	static constexpr int CACHED_REGISTERS = CACHE_END - CACHE_START;
+
+	static constexpr int FPR_CACHE_START = 0; // Start at fa0
+	static constexpr int FPR_CACHE_END = 4; // End after faX (exclusive)
+	static constexpr int CACHED_FP_REGISTERS = FPR_CACHE_END - FPR_CACHE_START;
 
 	std::string code;
 	const TransInfo& tinfo;
@@ -31,6 +35,7 @@ struct Emitter
 	std::string func_name;
 	unsigned m_instr_counter = 0;
 	bool gpr_used[32] = {}; // Track which registers are actually used
+	bool fpr_used[32] = {}; // Track which FP registers are actually used
 	address_t nbit_mask = 0;
 
 	Emitter(const TransInfo& info)
@@ -66,6 +71,22 @@ struct Emitter
 	void mark_register_used(unsigned idx) {
 		if (idx >= CACHE_START && idx < CACHE_END) {
 			gpr_used[idx] = true;
+		}
+	}
+
+	// FP register caching helpers
+	std::string cached_fpregname(unsigned idx) {
+		return "freg" + std::to_string(idx);
+	}
+
+	bool is_cached_fpreg(unsigned idx) const {
+		return tinfo.options.translate_use_register_caching
+			&& idx >= FPR_CACHE_START && idx < FPR_CACHE_END;
+	}
+
+	void mark_fpreg_used(unsigned idx) {
+		if (idx >= FPR_CACHE_START && idx < FPR_CACHE_END) {
+			fpr_used[idx] = true;
 		}
 	}
 
@@ -106,11 +127,39 @@ struct Emitter
 	}
 
 	// Generate FP register access
-	static std::string freg32(unsigned idx) {
+	std::string freg32(unsigned idx) {
+		// Use cached FP register if within cache range
+		if (is_cached_fpreg(idx)) {
+			mark_fpreg_used(idx);
+			return cached_fpregname(idx) + "->f[0]";
+		}
 		return "cpu->vr[" + std::to_string(idx) + "].f[0]";
 	}
-	static std::string freg64(unsigned idx) {
+	std::string freg64(unsigned idx) {
+		// Use cached FP register if within cache range
+		if (is_cached_fpreg(idx)) {
+			mark_fpreg_used(idx);
+			return cached_fpregname(idx) + "->df[0]";
+		}
 		return "cpu->vr[" + std::to_string(idx) + "].df[0]";
+	}
+
+	// Generate FP register access for word unsigned (32-bit load/store)
+	std::string freg_wu(unsigned idx) {
+		if (is_cached_fpreg(idx)) {
+			mark_fpreg_used(idx);
+			return cached_fpregname(idx) + "->wu[0]";
+		}
+		return "cpu->vr[" + std::to_string(idx) + "].wu[0]";
+	}
+
+	// Generate FP register access for double unsigned (64-bit load/store)
+	std::string freg_du(unsigned idx) {
+		if (is_cached_fpreg(idx)) {
+			mark_fpreg_used(idx);
+			return cached_fpregname(idx) + "->du[0]";
+		}
+		return "cpu->vr[" + std::to_string(idx) + "].du[0]";
 	}
 
 	// Emit a simple arithmetic/logic instruction
@@ -1182,7 +1231,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 			std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string(offset);
 			std::string ptr = emit.arena_offset(addr);
-			emit.add_code("  cpu->vr[" + std::to_string(instr.ri12.rd) + "].wu[0] = *(uint32_t*)" + ptr + ";");
+			emit.add_code("  " + emit.freg_wu(instr.ri12.rd) + " = *(uint32_t*)" + ptr + ";");
 			break;
 		}
 		case InstrId::FLD_D: {
@@ -1190,7 +1239,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 			std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string(offset);
 			std::string ptr = emit.arena_offset(addr);
-			emit.add_code("  cpu->vr[" + std::to_string(instr.ri12.rd) + "].du[0] = *(uint64_t*)" + ptr + ";");
+			emit.add_code("  " + emit.freg_du(instr.ri12.rd) + " = *(uint64_t*)" + ptr + ";");
 			break;
 		}
 		case InstrId::FST_S: {
@@ -1198,7 +1247,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 			std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string(offset);
 			std::string ptr = emit.arena_offset(addr);
-			emit.add_code("  *(uint32_t*)" + ptr + " = cpu->vr[" + std::to_string(instr.ri12.rd) + "].wu[0];");
+			emit.add_code("  *(uint32_t*)" + ptr + " = " + emit.freg_wu(instr.ri12.rd) + ";");
 			break;
 		}
 		case InstrId::FST_D: {
@@ -1206,7 +1255,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 			std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string(offset);
 			std::string ptr = emit.arena_offset(addr);
-			emit.add_code("  *(uint64_t*)" + ptr + " = cpu->vr[" + std::to_string(instr.ri12.rd) + "].du[0];");
+			emit.add_code("  *(uint64_t*)" + ptr + " = " + emit.freg_du(instr.ri12.rd) + ";");
 			break;
 		}
 
@@ -1215,95 +1264,95 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			// Indexed load single-precision float
 			std::string addr = emit.reg(instr.r3.rj) + " + " + emit.reg(instr.r3.rk);
 			std::string ptr = emit.arena_offset(addr);
-			emit.add_code("  cpu->vr[" + std::to_string(instr.r3.rd) + "].wu[0] = *(uint32_t*)" + ptr + ";");
+			emit.add_code("  " + emit.freg_wu(instr.r3.rd) + " = *(uint32_t*)" + ptr + ";");
 			break;
 		}
 		case InstrId::FLDX_D: {
 			// Indexed load double-precision float
 			std::string addr = emit.reg(instr.r3.rj) + " + " + emit.reg(instr.r3.rk);
 			std::string ptr = emit.arena_offset(addr);
-			emit.add_code("  cpu->vr[" + std::to_string(instr.r3.rd) + "].du[0] = *(uint64_t*)" + ptr + ";");
+			emit.add_code("  " + emit.freg_du(instr.r3.rd) + " = *(uint64_t*)" + ptr + ";");
 			break;
 		}
 		case InstrId::FSTX_S: {
 			// Indexed store single-precision float
 			std::string addr = emit.reg(instr.r3.rj) + " + " + emit.reg(instr.r3.rk);
 			std::string ptr = emit.arena_offset(addr);
-			emit.add_code("  *(uint32_t*)" + ptr + " = cpu->vr[" + std::to_string(instr.r3.rd) + "].wu[0];");
+			emit.add_code("  *(uint32_t*)" + ptr + " = " + emit.freg_wu(instr.r3.rd) + ";");
 			break;
 		}
 		case InstrId::FSTX_D: {
 			// Indexed store double-precision float
 			std::string addr = emit.reg(instr.r3.rj) + " + " + emit.reg(instr.r3.rk);
 			std::string ptr = emit.arena_offset(addr);
-			emit.add_code("  *(uint64_t*)" + ptr + " = cpu->vr[" + std::to_string(instr.r3.rd) + "].du[0];");
+			emit.add_code("  *(uint64_t*)" + ptr + " = " + emit.freg_du(instr.r3.rd) + ";");
 			break;
 		}
 
 		// Floating-point arithmetic - double precision
 		case InstrId::FADD_D:
-			emit.add_code("  cpu->vr[" + std::to_string(instr.r3.rd) + "].df[0] = "
-				"cpu->vr[" + std::to_string(instr.r3.rj) + "].df[0] + "
-				"cpu->vr[" + std::to_string(instr.r3.rk) + "].df[0];");
+			emit.add_code("  " + emit.freg64(instr.r3.rd) + " = "
+				+ emit.freg64(instr.r3.rj) + " + "
+				+ emit.freg64(instr.r3.rk) + ";");
 			break;
 		case InstrId::FSUB_D:
-			emit.add_code("  cpu->vr[" + std::to_string(instr.r3.rd) + "].df[0] = "
-				"cpu->vr[" + std::to_string(instr.r3.rj) + "].df[0] - "
-				"cpu->vr[" + std::to_string(instr.r3.rk) + "].df[0];");
+			emit.add_code("  " + emit.freg64(instr.r3.rd) + " = "
+				+ emit.freg64(instr.r3.rj) + " - "
+				+ emit.freg64(instr.r3.rk) + ";");
 			break;
 		case InstrId::FMUL_D:
-			emit.add_code("  cpu->vr[" + std::to_string(instr.r3.rd) + "].df[0] = "
-				"cpu->vr[" + std::to_string(instr.r3.rj) + "].df[0] * "
-				"cpu->vr[" + std::to_string(instr.r3.rk) + "].df[0];");
+			emit.add_code("  " + emit.freg64(instr.r3.rd) + " = "
+				+ emit.freg64(instr.r3.rj) + " * "
+				+ emit.freg64(instr.r3.rk) + ";");
 			break;
 		case InstrId::FDIV_D:
-			emit.add_code("  cpu->vr[" + std::to_string(instr.r3.rd) + "].df[0] = "
-				"cpu->vr[" + std::to_string(instr.r3.rj) + "].df[0] / "
-				"cpu->vr[" + std::to_string(instr.r3.rk) + "].df[0];");
+			emit.add_code("  " + emit.freg64(instr.r3.rd) + " = "
+				+ emit.freg64(instr.r3.rj) + " / "
+				+ emit.freg64(instr.r3.rk) + ";");
 			break;
 
 		// Floating-point arithmetic - single precision
 		case InstrId::FADD_S:
-			emit.add_code("  cpu->vr[" + std::to_string(instr.r3.rd) + "].f[0] = "
-				"cpu->vr[" + std::to_string(instr.r3.rj) + "].f[0] + "
-				"cpu->vr[" + std::to_string(instr.r3.rk) + "].f[0];");
+			emit.add_code("  " + emit.freg32(instr.r3.rd) + " = "
+				+ emit.freg32(instr.r3.rj) + " + "
+				+ emit.freg32(instr.r3.rk) + ";");
 			break;
 		case InstrId::FSUB_S:
-			emit.add_code("  cpu->vr[" + std::to_string(instr.r3.rd) + "].f[0] = "
-				"cpu->vr[" + std::to_string(instr.r3.rj) + "].f[0] - "
-				"cpu->vr[" + std::to_string(instr.r3.rk) + "].f[0];");
+			emit.add_code("  " + emit.freg32(instr.r3.rd) + " = "
+				+ emit.freg32(instr.r3.rj) + " - "
+				+ emit.freg32(instr.r3.rk) + ";");
 			break;
 		case InstrId::FMUL_S:
-			emit.add_code("  cpu->vr[" + std::to_string(instr.r3.rd) + "].f[0] = "
-				"cpu->vr[" + std::to_string(instr.r3.rj) + "].f[0] * "
-				"cpu->vr[" + std::to_string(instr.r3.rk) + "].f[0];");
+			emit.add_code("  " + emit.freg32(instr.r3.rd) + " = "
+				+ emit.freg32(instr.r3.rj) + " * "
+				+ emit.freg32(instr.r3.rk) + ";");
 			break;
 		case InstrId::FDIV_S:
-			emit.add_code("  cpu->vr[" + std::to_string(instr.r3.rd) + "].f[0] = "
-				"cpu->vr[" + std::to_string(instr.r3.rj) + "].f[0] / "
-				"cpu->vr[" + std::to_string(instr.r3.rk) + "].f[0];");
+			emit.add_code("  " + emit.freg32(instr.r3.rd) + " = "
+				+ emit.freg32(instr.r3.rj) + " / "
+				+ emit.freg32(instr.r3.rk) + ";");
 			break;
 
 		// Floating-point min/max
 		case InstrId::FMAX_D:
-			emit.add_code("  cpu->vr[" + std::to_string(instr.r3.rd) + "].df[0] = "
-				"fmax(cpu->vr[" + std::to_string(instr.r3.rj) + "].df[0], "
-				"cpu->vr[" + std::to_string(instr.r3.rk) + "].df[0]);");
+			emit.add_code("  " + emit.freg64(instr.r3.rd) + " = "
+				"fmax(" + emit.freg64(instr.r3.rj) + ", "
+				+ emit.freg64(instr.r3.rk) + ");");
 			break;
 		case InstrId::FMIN_D:
-			emit.add_code("  cpu->vr[" + std::to_string(instr.r3.rd) + "].df[0] = "
-				"fmin(cpu->vr[" + std::to_string(instr.r3.rj) + "].df[0], "
-				"cpu->vr[" + std::to_string(instr.r3.rk) + "].df[0]);");
+			emit.add_code("  " + emit.freg64(instr.r3.rd) + " = "
+				"fmin(" + emit.freg64(instr.r3.rj) + ", "
+				+ emit.freg64(instr.r3.rk) + ");");
 			break;
 		case InstrId::FMAX_S:
-			emit.add_code("  cpu->vr[" + std::to_string(instr.r3.rd) + "].f[0] = "
-				"fmaxf(cpu->vr[" + std::to_string(instr.r3.rj) + "].f[0], "
-				"cpu->vr[" + std::to_string(instr.r3.rk) + "].f[0]);");
+			emit.add_code("  " + emit.freg32(instr.r3.rd) + " = "
+				"fmaxf(" + emit.freg32(instr.r3.rj) + ", "
+				+ emit.freg32(instr.r3.rk) + ");");
 			break;
 		case InstrId::FMIN_S:
-			emit.add_code("  cpu->vr[" + std::to_string(instr.r3.rd) + "].f[0] = "
-				"fminf(cpu->vr[" + std::to_string(instr.r3.rj) + "].f[0], "
-				"cpu->vr[" + std::to_string(instr.r3.rk) + "].f[0]);");
+			emit.add_code("  " + emit.freg32(instr.r3.rd) + " = "
+				"fminf(" + emit.freg32(instr.r3.rj) + ", "
+				+ emit.freg32(instr.r3.rk) + ");");
 			break;
 
 		// Floating-point unary operations
@@ -1315,22 +1364,19 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 		case InstrId::FNEG_D: {
 			uint32_t fd = instr.whole & 0x1F;
 			uint32_t fj = (instr.whole >> 5) & 0x1F;
-			emit.add_code("  cpu->vr[" + std::to_string(fd) + "].df[0] = "
-				"-cpu->vr[" + std::to_string(fj) + "].df[0];");
+			emit.add_code("  " + emit.freg64(fd) + " = -" + emit.freg64(fj) + ";");
 			break;
 		}
 		case InstrId::FMOV_D: {
 			uint32_t fd = instr.whole & 0x1F;
 			uint32_t fj = (instr.whole >> 5) & 0x1F;
-			emit.add_code("  cpu->vr[" + std::to_string(fd) + "].du[0] = "
-				"cpu->vr[" + std::to_string(fj) + "].du[0];");
+			emit.add_code("  " + emit.freg_du(fd) + " = " + emit.freg_du(fj) + ";");
 			break;
 		}
 		case InstrId::FMOV_S: {
 			uint32_t fd = instr.whole & 0x1F;
 			uint32_t fj = (instr.whole >> 5) & 0x1F;
-			emit.add_code("  cpu->vr[" + std::to_string(fd) + "].f[0] = "
-				"cpu->vr[" + std::to_string(fj) + "].f[0];");
+			emit.add_code("  " + emit.freg32(fd) + " = " + emit.freg32(fj) + ";");
 			break;
 		}
 
@@ -1341,10 +1387,10 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			uint32_t fj = instr.r4.rj;
 			uint32_t fk = instr.r4.rk;
 			uint32_t fa = instr.r4.ra;
-			emit.add_code("  cpu->vr[" + std::to_string(fd) + "].df[0] = "
-				"cpu->vr[" + std::to_string(fj) + "].df[0] * "
-				"cpu->vr[" + std::to_string(fk) + "].df[0] + "
-				"cpu->vr[" + std::to_string(fa) + "].df[0];");
+			emit.add_code("  " + emit.freg64(fd) + " = "
+				+ emit.freg64(fj) + " * "
+				+ emit.freg64(fk) + " + "
+				+ emit.freg64(fa) + ";");
 			break;
 		}
 		case InstrId::FMADD_S: {
@@ -1353,10 +1399,10 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			uint32_t fj = instr.r4.rj;
 			uint32_t fk = instr.r4.rk;
 			uint32_t fa = instr.r4.ra;
-			emit.add_code("  cpu->vr[" + std::to_string(fd) + "].f[0] = "
-				"cpu->vr[" + std::to_string(fj) + "].f[0] * "
-				"cpu->vr[" + std::to_string(fk) + "].f[0] + "
-				"cpu->vr[" + std::to_string(fa) + "].f[0];");
+			emit.add_code("  " + emit.freg32(fd) + " = "
+				+ emit.freg32(fj) + " * "
+				+ emit.freg32(fk) + " + "
+				+ emit.freg32(fa) + ";");
 			break;
 		}
 		case InstrId::FMSUB_D: {
@@ -1365,10 +1411,10 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			uint32_t fj = instr.r4.rj;
 			uint32_t fk = instr.r4.rk;
 			uint32_t fa = instr.r4.ra;
-			emit.add_code("  cpu->vr[" + std::to_string(fd) + "].df[0] = "
-				"cpu->vr[" + std::to_string(fj) + "].df[0] * "
-				"cpu->vr[" + std::to_string(fk) + "].df[0] - "
-				"cpu->vr[" + std::to_string(fa) + "].df[0];");
+			emit.add_code("  " + emit.freg64(fd) + " = "
+				+ emit.freg64(fj) + " * "
+				+ emit.freg64(fk) + " - "
+				+ emit.freg64(fa) + ";");
 			break;
 		}
 		case InstrId::FMSUB_S: {
@@ -1377,10 +1423,10 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			uint32_t fj = instr.r4.rj;
 			uint32_t fk = instr.r4.rk;
 			uint32_t fa = instr.r4.ra;
-			emit.add_code("  cpu->vr[" + std::to_string(fd) + "].f[0] = "
-				"cpu->vr[" + std::to_string(fj) + "].f[0] * "
-				"cpu->vr[" + std::to_string(fk) + "].f[0] - "
-				"cpu->vr[" + std::to_string(fa) + "].f[0];");
+			emit.add_code("  " + emit.freg32(fd) + " = "
+				+ emit.freg32(fj) + " * "
+				+ emit.freg32(fk) + " - "
+				+ emit.freg32(fa) + ";");
 			break;
 		}
 		case InstrId::FNMADD_D: {
@@ -1389,10 +1435,10 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			uint32_t fj = instr.r4.rj;
 			uint32_t fk = instr.r4.rk;
 			uint32_t fa = instr.r4.ra;
-			emit.add_code("  cpu->vr[" + std::to_string(fd) + "].df[0] = "
-				"-(cpu->vr[" + std::to_string(fj) + "].df[0] * "
-				"cpu->vr[" + std::to_string(fk) + "].df[0] + "
-				"cpu->vr[" + std::to_string(fa) + "].df[0]);");
+			emit.add_code("  " + emit.freg64(fd) + " = "
+				"-(" + emit.freg64(fj) + " * "
+				+ emit.freg64(fk) + " + "
+				+ emit.freg64(fa) + ");");
 			break;
 		}
 		case InstrId::FNMADD_S: {
@@ -1401,10 +1447,10 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			uint32_t fj = instr.r4.rj;
 			uint32_t fk = instr.r4.rk;
 			uint32_t fa = instr.r4.ra;
-			emit.add_code("  cpu->vr[" + std::to_string(fd) + "].f[0] = "
-				"-(cpu->vr[" + std::to_string(fj) + "].f[0] * "
-				"cpu->vr[" + std::to_string(fk) + "].f[0] + "
-				"cpu->vr[" + std::to_string(fa) + "].f[0]);");
+			emit.add_code("  " + emit.freg32(fd) + " = "
+				"-(" + emit.freg32(fj) + " * "
+				+ emit.freg32(fk) + " + "
+				+ emit.freg32(fa) + ");");
 			break;
 		}
 		case InstrId::FNMSUB_D: {
@@ -1413,10 +1459,10 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			uint32_t fj = instr.r4.rj;
 			uint32_t fk = instr.r4.rk;
 			uint32_t fa = instr.r4.ra;
-			emit.add_code("  cpu->vr[" + std::to_string(fd) + "].df[0] = "
-				"-cpu->vr[" + std::to_string(fj) + "].df[0] * "
-				"cpu->vr[" + std::to_string(fk) + "].df[0] + "
-				"cpu->vr[" + std::to_string(fa) + "].df[0];");
+			emit.add_code("  " + emit.freg64(fd) + " = "
+				"-" + emit.freg64(fj) + " * "
+				+ emit.freg64(fk) + " + "
+				+ emit.freg64(fa) + ";");
 			break;
 		}
 		case InstrId::FNMSUB_S: {
@@ -1425,10 +1471,10 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			uint32_t fj = instr.r4.rj;
 			uint32_t fk = instr.r4.rk;
 			uint32_t fa = instr.r4.ra;
-			emit.add_code("  cpu->vr[" + std::to_string(fd) + "].f[0] = "
-				"-cpu->vr[" + std::to_string(fj) + "].f[0] * "
-				"cpu->vr[" + std::to_string(fk) + "].f[0] + "
-				"cpu->vr[" + std::to_string(fa) + "].f[0];");
+			emit.add_code("  " + emit.freg32(fd) + " = "
+				"-" + emit.freg32(fj) + " * "
+				+ emit.freg32(fk) + " + "
+				+ emit.freg32(fa) + ";");
 			break;
 		}
 
@@ -1639,6 +1685,13 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			}
 		}
 
+		// Declare cached FP register variables
+		for (unsigned reg = Emitter::FPR_CACHE_START; reg < Emitter::FPR_CACHE_END; reg++) {
+			if (emit.fpr_used[reg]) {
+				code += "  lasx_reg *" + emit.cached_fpregname(reg) + " = &cpu->vr[" + std::to_string(reg) + "];\n";
+			}
+		}
+
 		// Generate register store/load macros
 		code += "#define STORE_REGS_" + emit.func_name + "() \\\n";
 		for (unsigned reg = Emitter::CACHE_START; reg < Emitter::CACHE_END; reg++) {
@@ -1646,6 +1699,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 				code += "  cpu->r[" + std::to_string(reg) + "] = " + emit.cached_regname(reg) + "; \\\n";
 			}
 		}
+		// FP registers are pointers, so no need to store them back
 		code += "  ;\n";
 
 		code += "#define LOAD_REGS_" + emit.func_name + "() \\\n";
@@ -1654,6 +1708,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 				code += "  " + emit.cached_regname(reg) + " = cpu->r[" + std::to_string(reg) + "]; \\\n";
 			}
 		}
+		// FP registers are pointers, so no need to reload them
 		code += "  ;\n";
 	}
 

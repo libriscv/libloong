@@ -31,7 +31,7 @@ static TextSegmentBounds find_text_section(std::string_view binary, const Elf::H
 	const auto* shstrtab = reinterpret_cast<const Elf::SectionHeader*>(
 		binary.data() + ehdr->shoff + ehdr->shstrndx * sizeof(Elf::SectionHeader));
 
-	if (shstrtab->offset + shstrtab->size > binary.size()) {
+	if (shstrtab->offset + shstrtab->size >= binary.size()) {
 		return bounds;
 	}
 
@@ -43,8 +43,18 @@ static TextSegmentBounds find_text_section(std::string_view binary, const Elf::H
 			binary.data() + ehdr->shoff + i * sizeof(Elf::SectionHeader));
 
 		if (shdr->name < shstrtab->size) {
+			// Verify that the name fits within the string table
+			// in a secure way, by using the actual bounds of the
+			// underlying binary, and not the insecure ELF header.
+			const address_t name_offset = shstrtab->offset + shdr->name;
+			if (name_offset >= binary.size() || name_offset < shstrtab->offset) {
+				continue;
+			}
+			const address_t name_end = name_offset + 6; // ".text" + null terminator
+			if (name_end > binary.size() || name_end < name_offset) {
+				continue;
+			}
 			const char* name = section_strings + shdr->name;
-			// XXX: Insecure string comparison
 			if (strcmp(name, ".text") == 0 && shdr->size > 0) {
 				bounds.start = shdr->addr;
 				bounds.size = shdr->size;
@@ -56,6 +66,14 @@ static TextSegmentBounds find_text_section(std::string_view binary, const Elf::H
 					const auto* next_shdr = reinterpret_cast<const Elf::SectionHeader*>(
 						binary.data() + ehdr->shoff + (i + 1) * sizeof(Elf::SectionHeader));
 					if (next_shdr->name < shstrtab->size) {
+						const address_t next_name_offset = shstrtab->offset + next_shdr->name;
+						if (next_name_offset >= binary.size() || next_name_offset < shstrtab->offset) {
+							continue;
+						}
+						const address_t next_name_end = next_name_offset + 6; // ".text" + null terminator
+						if (next_name_end > binary.size() || next_name_end < next_name_offset) {
+							continue;
+						}
 						const char* next_name = section_strings + next_shdr->name;
 						if (strcmp(next_name, ".text") == 0 && next_shdr->size > 0) {
 							bounds.start = shdr->addr;

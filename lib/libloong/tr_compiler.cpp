@@ -64,7 +64,9 @@ namespace loongarch
 #endif
 
 		if (tcc_compile_string(state, code1.c_str()) < 0) {
-			fprintf(stderr, "%s\n", code1.c_str());
+			if (getenv("VERBOSE")) {
+				fprintf(stderr, "%s\n", code1.c_str());
+			}
 			tcc_delete(state);
 			return nullptr;
 		}
@@ -211,6 +213,20 @@ namespace loongarch
 	// Activate the dylib by mapping handlers to decoder cache
 	void activate_dylib(const MachineOptions& options, DecodedExecuteSegment& exec, void* dylib, const Machine& machine, bool is_libtcc)
 	{
+		// Map all the functions to instruction handlers
+		const uint32_t* no_mappings = (const uint32_t*)dylib_lookup(dylib, "no_mappings", is_libtcc);
+		const auto* mappings = (const Mapping*)dylib_lookup(dylib, "mappings", is_libtcc);
+		const uint32_t* no_handlers = (const uint32_t*)dylib_lookup(dylib, "no_handlers", is_libtcc);
+		const auto* handlers = (const bintr_block_func*)dylib_lookup(dylib, "unique_mappings", is_libtcc);
+
+		if (no_mappings == nullptr || mappings == nullptr || *no_mappings > 500000UL) {
+			dylib_close(dylib, is_libtcc);
+			exec.set_libtcc(false);
+			throw MachineException(INVALID_PROGRAM, "Invalid mappings in binary translation program");
+		}
+		if (*no_mappings == 0)
+			return;
+
 		if (!initialize_translated_segment(exec, dylib, machine, is_libtcc))
 		{
 #ifdef ENABLE_LIBTCC
@@ -225,18 +241,6 @@ namespace loongarch
 			}
 			exec.set_libtcc(false);
 			return;
-		}
-
-		// Map all the functions to instruction handlers
-		const uint32_t* no_mappings = (const uint32_t*)dylib_lookup(dylib, "no_mappings", is_libtcc);
-		const auto* mappings = (const Mapping*)dylib_lookup(dylib, "mappings", is_libtcc);
-		const uint32_t* no_handlers = (const uint32_t*)dylib_lookup(dylib, "no_handlers", is_libtcc);
-		const auto* handlers = (const bintr_block_func*)dylib_lookup(dylib, "unique_mappings", is_libtcc);
-
-		if (no_mappings == nullptr || mappings == nullptr || *no_mappings > 500000UL) {
-			dylib_close(dylib, is_libtcc);
-			exec.set_libtcc(false);
-			throw MachineException(INVALID_PROGRAM, "Invalid mappings in binary translation program");
 		}
 
 		// Mark segment as binary translated
@@ -304,6 +308,12 @@ namespace loongarch
 			if (!output.code || output.code->empty()) {
 				if (options.verbose_loader) {
 					fprintf(stderr, "libloong: Binary translation produced no code\n");
+				}
+				return false;
+			}
+			if (output.mappings.empty()) {
+				if (options.verbose_loader) {
+					fprintf(stderr, "libloong: Binary translation produced no mappings\n");
 				}
 				return false;
 			}

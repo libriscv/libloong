@@ -365,7 +365,7 @@ namespace loongarch
 
 		// Return old action if requested
 		if (old_action != 0x0) {
-			sa.sa_handler = sigact.handler & ~address_t(0xF);
+			sa.sa_handler = sigact.handler & ~address_t(0x3);
 			sa.sa_flags   = (sigact.altstack ? LINUX_SA_ONSTACK : 0x0);
 			sa.sa_restorer = 0;
 			sa.sa_mask    = sigact.mask;
@@ -374,7 +374,7 @@ namespace loongarch
 		// Set new action if provided
 		if (action != 0x0) {
 			machine.memory.copy_from_guest(&sa, action, sizeof(sa));
-			sigact.handler  = sa.sa_handler;
+			sigact.handler  = sa.sa_handler & ~address_t(0x3);
 			sigact.altstack = (sa.sa_flags & LINUX_SA_ONSTACK) != 0;
 			sigact.mask     = sa.sa_mask;
 		}
@@ -589,6 +589,14 @@ namespace loongarch
 			// Fixed address mapping not supported for now
 			machine.set_result(-1);
 		}
+
+		// Anonymous mapping: zero out the memory
+		if (false && machine.template return_value<address_t>() != static_cast<address_t>(-1)) {
+			if (flags & 0x20) { // MAP_ANONYMOUS
+				machine.memory.memset(machine.template return_value<address_t>(), 0, length);
+			}
+		}
+
 		sysprint(machine, "mmap(addr=0x%llx, len=%llu, prot=0x%x, flags=0x%x, fd=%d, offset=%llu) = 0x%llx\n",
 			static_cast<uint64_t>(addr), static_cast<uint64_t>(length), prot, flags, fd,
 			static_cast<uint64_t>(offset),

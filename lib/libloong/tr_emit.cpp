@@ -557,9 +557,30 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 		}
 		case InstrId::BCEQZ:
 		case InstrId::BCNEZ: {
-			// XXX: Unimplemented condition codes
-			emit.add_code("  cpu->pc = " + hex_address(emit.pc()) + "LL;");
-			emit.emit_return();
+			// BCEQZ/BCNEZ: Branch based on floating-point condition flag
+			emit.flush_instruction_counter();
+			// cj (condition flag index) is in bits[7:5]
+			uint32_t cj = (instr.whole >> 5) & 0x7;
+			int64_t offs = InstructionHelpers::sign_extend_21(instr.ri21.offs_lo, instr.ri21.offs_hi);
+			address_t target = emit.pc() + (offs << 2);
+
+			// Extract the condition flag: (cpu->fcc >> cj) & 1
+			std::string cond_flag = "((cpu->fcc >> " + std::to_string(cj) + ") & 1)";
+			std::string cond_str = cond_flag + (instr_id == InstrId::BCEQZ ? " == 0" : " != 0");
+
+			emit.add_code("if (" + cond_str + ")");
+
+			// Check if target is within current block
+			if (emit.tinfo.jump_locations.count(target) != 0) {
+				char label[64];
+				snprintf(label, sizeof(label), "label_%lx", (unsigned long)target);
+				emit.add_code("  goto " + std::string(label) + ";");
+			} else {
+				// External jump (or missing label) - exit bintr
+				emit.add_code("{  cpu->pc = " + hex_address(target) + "ULL;");
+				emit.emit_return();
+				emit.add_code("}");
+			}
 			break;
 		}
 		case InstrId::JIRL: {

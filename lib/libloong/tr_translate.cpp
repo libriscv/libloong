@@ -90,7 +90,7 @@ namespace loongarch
 		// B (unconditional branch, I26 format)
 		if (opcode == 0x50000000) {
 			// Sign-extend 26-bit offset, scale by 4
-			int32_t offs = (int32_t)(instr.i26.offs() << 6) >> 4; // Sign extend and shift left by 2
+			int32_t offs = (int32_t)(instr.i26.offs() << 6) >> 4;
 			target = pc + offs;
 			is_call = false;
 			return true;
@@ -99,9 +99,19 @@ namespace loongarch
 		// BL (branch and link, I26 format)
 		if (opcode == 0x54000000) {
 			// Sign-extend 26-bit offset, scale by 4
-			int32_t offs = (int32_t)(instr.i26.offs() << 6) >> 4; // Sign extend and shift left by 2
+			int32_t offs = (int32_t)(instr.i26.offs() << 6) >> 4;
 			target = pc + offs;
 			is_call = true;
+			return true;
+		}
+
+		// BCEQZ, BCNEZ with link (1RI21 format)
+		// BCEQZ: 0x48000000, BCNEZ: 0x48000100
+		if (opcode == 0x48000000) {
+			// Sign-extend 21-bit offset, scale by 4
+			int32_t offs = (int32_t)(instr.ri21.offs() << 11) >> 9;
+			target = pc + offs;
+			is_call = false;
 			return true;
 		}
 

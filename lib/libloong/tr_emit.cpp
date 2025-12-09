@@ -22,7 +22,7 @@ static std::string hex_address(uint64_t addr) {
 struct Emitter
 {
 	static constexpr int CACHE_START = 1; // Start at Rx
-	static constexpr int CACHE_END = 18; // End after Rx (exclusive)
+	static constexpr int CACHE_END = 24; // End after Rx (exclusive)
 	static constexpr int CACHED_REGISTERS = CACHE_END - CACHE_START;
 
 	std::string code;

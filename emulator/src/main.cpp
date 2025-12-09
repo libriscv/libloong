@@ -27,6 +27,7 @@ struct EmulatorOptions {
 	bool enable_translation = true;
 	bool trace_translation = false;
 	bool enable_register_caching = true;
+	bool translate_nbit_as = false;
 	std::string translate_output_file; // Output file for generated C code
 };
 
@@ -139,6 +140,7 @@ static int run_program(const std::vector<uint8_t>& binary, const EmulatorOptions
 			.translate_trace = opts.trace_translation,
 			.translate_ignore_instruction_limit = opts.max_instructions == 0,
 			.translate_use_register_caching = opts.enable_register_caching,
+			.translate_automatic_nbit_address_space = opts.translate_nbit_as,
 			.translate_output_file = opts.translate_output_file,
 #endif
 		});

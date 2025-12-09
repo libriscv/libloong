@@ -86,9 +86,9 @@ Triad:          13502.2     0.021949     0.017775     0.024309
 
 Register machines still stand strongest at the end of 2025. _libloong_ is currently the fastest 64-bit interpreter, reliably reaching 3000+ CoreMark score.
 
-With basic just-in-time binary translation enabled. About 25% of native:
+With basic just-in-time binary translation enabled. About ~30% of native:
 
-> CoreMark 1.0 : 10568.235530 / GCC14.2.0 -O3 -DPERFORMANCE_RUN=1   / Static
+> CoreMark 1.0 : 11972.662580 / GCC14.2.0 -O3 -DPERFORMANCE_RUN=1   / Static
 
 
 ## Documentation

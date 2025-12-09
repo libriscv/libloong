@@ -80,8 +80,9 @@ struct InstrPrinters {
 			reg_name(instr.r2.rd), reg_name(instr.r2.rj));
 	}
 
-	static int CPUCFG(char* buf, size_t len, const cpu_t&, la_instruction, addr_t) {
-		return snprintf(buf, len, "cpucfg");
+	static int CPUCFG(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		return snprintf(buf, len, "cpucfg %s, %s",
+			reg_name(instr.r2.rd), reg_name(instr.r2.rj));
 	}
 
 	// === Arithmetic Instructions ===

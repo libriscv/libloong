@@ -12,6 +12,9 @@ For discussions & help, [visit Discord](https://discord.gg/n4GcXr66X5).
 - Support for 64-bit LoongArch (LA64)
 - Support for vector LSX and LASX instructions
 - C and C++ API
+- Zero dependencies
+- Execution timeout
+- First-class pause/resume support
 
 ## Building
 
@@ -81,7 +84,7 @@ Triad:          13502.2     0.021949     0.017775     0.024309
 
 <img width="600" height="371" alt="CoreMark 1 0 interpreters, Dec 2025 (Ryzen 7950X)" src="https://github.com/user-attachments/assets/b37e985e-8332-44fc-880b-781bc1a07cc5" />
 
-Register machines still stand strongest at the end of 2025.
+Register machines still stand strongest at the end of 2025. _libloong_ is currently the fastest 64-bit interpreter, reliably reaching 3000+ CoreMark score.
 
 With basic just-in-time binary translation enabled. About 25% of native:
 

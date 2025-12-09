@@ -2,18 +2,7 @@
 
 ## Implemented Instructions
 
-libloong currently implements a subset of the LoongArch instruction set, focusing on the most commonly used instructions for Linux user-space applications.
-
-### Status Overview
-
-- ✅ Basic integer arithmetic
-- ✅ Load/Store operations
-- ✅ Branch instructions
-- ✅ System calls
-- ⚠️ Partial floating-point support
-- ⚠️ Partial atomic operations
-- ❌ Vector extensions (to be implemented)
-- ❌ Privileged instructions (not needed for user-space)
+_libloong_ currently implements a subset of the LoongArch instruction set, focusing on the instructions actually emitted by LLVM and GCC.
 
 ## Integer Operations
 
@@ -152,35 +141,26 @@ System calls use the following register convention:
 
 ## Notes
 
-1. **Register $r0** is hardwired to zero - writes are ignored
-2. **Instruction alignment**: All instructions are 4 bytes and must be 4-byte aligned
-3. **Memory model**: Little-endian byte order
-4. **Address widths**:
+1. Register $r0 is hardwired to zero - writes are ignored
+2. Instruction alignment: All instructions are 4 bytes and must be 4-byte aligned
+3. Memory model: Little-endian byte order
+4. Address widths:
    - LA32: 32-bit addresses (4 GB address space)
    - LA64: 64-bit addresses (full 64-bit address space)
-
-## Planned Extensions
-
-Future versions will add support for:
-- Complete floating-point instruction set
-- Atomic memory operations
-- LoongArch vector extensions (LSX/LASX)
-- Performance counters
-- Additional privileged instructions (for future system emulation)
 
 ## Instruction Format Reference
 
 ### Instruction Types
 
-1. **2R-type**: `op rd, rj`
-2. **3R-type**: `op rd, rj, rk`
-3. **4R-type**: `op rd, rj, rk, ra`
-4. **2RI8-type**: `op rd, rj, imm8`
-5. **2RI12-type**: `op rd, rj, imm12`
-6. **2RI14-type**: `op rd, rj, imm14`
-7. **2RI16-type**: `op rj, rd, offs16`
-8. **1RI20-type**: `op rd, imm20`
-9. **1RI21-type**: `op rj, offs21`
-10. **I26-type**: `op offs26`
+1. 2R-type: `op rd, rj`
+2. 3R-type: `op rd, rj, rk`
+3. 4R-type: `op rd, rj, rk, ra`
+4. 2RI8-type: `op rd, rj, imm8`
+5. 2RI12-type: `op rd, rj, imm12`
+6. 2RI14-type: `op rd, rj, imm14`
+7. 2RI16-type: `op rj, rd, offs16`
+8. 1RI20-type: `op rd, imm20`
+9. 1RI21-type: `op rj, offs21`
+10. I26-type: `op offs26`
 
 All instructions are 32 bits wide with fixed encoding.

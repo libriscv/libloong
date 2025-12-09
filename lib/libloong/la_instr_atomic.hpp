@@ -147,7 +147,7 @@ namespace loongarch
 		using cpu_t = CPU;
 		using addr_t = address_t;
 
-		static const char* reg_name(uint32_t reg) {
+		static const char* reg_name(uint32_t reg) LA_COLD_PATH() {
 			static const char* names[] = {
 				"$zero", "$ra", "$tp", "$sp", "$a0", "$a1", "$a2", "$a3",
 				"$a4", "$a5", "$a6", "$a7", "$t0", "$t1", "$t2", "$t3",
@@ -161,62 +161,62 @@ namespace loongarch
 	// Empirical encoding in bits[19:16]:
 	// - op with no ordering: 0-7
 	// - op with _db: op + 9
-	static const char* get_atomic_suffix(uint32_t whole) {
+	static const char* get_atomic_suffix(uint32_t whole) LA_COLD_PATH() {
 		uint32_t op_ord = (whole >> 16) & 0xF;
 		// If op_ord >= 9, it has _db ordering
 		return (op_ord >= 9) ? "_db" : "";
 		// TODO: Determine encodings for _aq and _rl when encountered
 	}
 
-	static int AMSWAP_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int AMSWAP_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "amswap%s.w %s, %s, %s", get_atomic_suffix(instr.whole),
 			reg_name(instr.r3.rd), reg_name(instr.r3.rk), reg_name(instr.r3.rj));
 	}
 
-	static int AMSWAP_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int AMSWAP_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "amswap%s.d %s, %s, %s", get_atomic_suffix(instr.whole),
 			reg_name(instr.r3.rd), reg_name(instr.r3.rk), reg_name(instr.r3.rj));
 	}
 
-	static int AMADD_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int AMADD_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "amadd%s.w %s, %s, %s", get_atomic_suffix(instr.whole),
 			reg_name(instr.r3.rd), reg_name(instr.r3.rk), reg_name(instr.r3.rj));
 	}
 
-	static int AMADD_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int AMADD_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "amadd%s.d %s, %s, %s", get_atomic_suffix(instr.whole),
 			reg_name(instr.r3.rd), reg_name(instr.r3.rk), reg_name(instr.r3.rj));
 	}
 
-	static int AMAND_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int AMAND_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "amand%s.w %s, %s, %s", get_atomic_suffix(instr.whole),
 			reg_name(instr.r3.rd), reg_name(instr.r3.rk), reg_name(instr.r3.rj));
 	}
 
-	static int AMAND_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int AMAND_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "amand%s.d %s, %s, %s", get_atomic_suffix(instr.whole),
 			reg_name(instr.r3.rd), reg_name(instr.r3.rk), reg_name(instr.r3.rj));
 	}
 
-	static int AMOR_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int AMOR_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "amor%s.w %s, %s, %s", get_atomic_suffix(instr.whole),
 			reg_name(instr.r3.rd), reg_name(instr.r3.rk), reg_name(instr.r3.rj));
 	}
 
-	static int AMOR_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int AMOR_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "amor%s.d %s, %s, %s", get_atomic_suffix(instr.whole),
 			reg_name(instr.r3.rd), reg_name(instr.r3.rk), reg_name(instr.r3.rj));
 	}
 
-	static int AMXOR_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int AMXOR_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "amxor%s.w %s, %s, %s", get_atomic_suffix(instr.whole),
 			reg_name(instr.r3.rd), reg_name(instr.r3.rk), reg_name(instr.r3.rj));
 	}
 
-	static int AMXOR_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+	static int AMXOR_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) LA_COLD_PATH() {
 		return snprintf(buf, len, "amxor%s.d %s, %s, %s", get_atomic_suffix(instr.whole),
 			reg_name(instr.r3.rd), reg_name(instr.r3.rk), reg_name(instr.r3.rj));
 	}
 };
 
-} // namespace loongarch
+} // loongarch

@@ -6,20 +6,10 @@ A complete game development example demonstrating how to use the LoongScript fra
 
 This example showcases:
 
-- **Host-side Game Engine** (C++): Terminal-based renderer, input handling, and main game loop
-- **Guest-side Game Logic** (Rust): Entity system, physics, collision detection, and game state
-- **Host Callbacks**: Drawing functions, input queries, timing, and random number generation
-- **Real-time Scripting**: Game logic runs at ~60 FPS with full access to host capabilities
-
-## Game Description
-
-**Asteroid Dodge** is a simple arcade game where you control a spaceship and dodge falling asteroids:
-
-- Control your ship with **A/D** keys or arrow keys
-- Dodge asteroids as they fall from the sky
-- Score points for each asteroid you successfully avoid
-- Difficulty increases over time with faster asteroids and higher spawn rates
-- Game over if you collide with an asteroid
+- Host-side Game Engine (C++): Terminal-based renderer, input handling, and main game loop
+- Guest-side Game Logic (Rust): Entity system, physics, collision detection, and game state
+- Host Callbacks: Drawing functions, input queries, timing, and random number generation
+- Real-time Scripting: Game logic runs at ~60 FPS with full access to host capabilities
 
 ## Architecture
 
@@ -178,65 +168,6 @@ pub extern "C" fn game_update() {
 }
 ```
 
-## Key Features Demonstrated
-
-### 1. Real-time Game Loop
-The host runs a tight game loop at 60 FPS, calling into guest code each frame via `vmcall`.
-
-### 2. Entity-Component System (in Rust)
-Guest-side entities (Player, Asteroid, Particle) with composition and shared behavior.
-
-### 3. Delta Time-based Movement
-Smooth, framerate-independent movement using `get_delta_time()` callback.
-
-### 4. Collision Detection
-Simple AABB collision detection performed entirely in guest code.
-
-### 5. Particle System
-Explosion effects using velocity-based particles with lifetime management.
-
-### 6. Progressive Difficulty
-Difficulty scaling over time by adjusting spawn rates and speeds.
-
-### 7. Non-blocking Input
-Terminal configured for real-time input without blocking the game loop.
-
-## Performance Considerations
-
-- The game runs at ~60 FPS with negligible overhead from the emulator
-- Each frame involves:
-  - ~10-20 asteroid updates
-  - Player physics update
-  - Collision checks
-  - Particle system updates
-  - ASCII rendering (all drawing is buffered)
-- The LoongArch bytecode system provides near-native performance for game logic
-- Host callbacks have minimal overhead due to optimized dispatch
-
-## Extending the Game
-
-Some ideas for extending this example:
-
-1. **Power-ups**: Add collectible items that give temporary abilities
-2. **Shooting**: Let the player shoot projectiles to destroy asteroids
-3. **Levels**: Create distinct levels with different layouts
-4. **Enemies**: Add enemy ships with AI
-5. **Audio**: Integrate audio callbacks for sound effects
-6. **Better Graphics**: Use Unicode box-drawing characters or colors (ANSI codes)
-7. **High Scores**: Persist scores to disk using file I/O callbacks
-8. **Multiplayer**: Add a second player
-
-## Learning Points
-
-This example teaches:
-
-- **How to structure a game** with LoongScript (host vs guest responsibilities)
-- **Entity management** in Rust with safe patterns
-- **Callback design** for game engine APIs
-- **Real-time scripting** with predictable performance
-- **Cross-language integration** (C++ host, Rust guest)
-- **Game loop architecture** with fixed timestep rendering
-
 ## Troubleshooting
 
 **Game doesn't compile:**
@@ -246,20 +177,3 @@ This example teaches:
 **Game runs but crashes immediately:**
 - Make sure you ran `--generate-bindings` before building the guest
 - Verify `guest_game/game.elf` exists and was built recently
-
-**Input doesn't work:**
-- Terminal must support non-blocking input (most Linux terminals do)
-- Try running in a different terminal emulator
-
-**Game is too fast/slow:**
-- Check your system's performance
-- Adjust the frame delay in [main.cpp](main.cpp:320) (currently 16ms for 60 FPS)
-
-## Related Examples
-
-- [examples/script](../script) - Basic LoongScript examples with C++ and Rust guests
-- [examples/simple.cpp](../simple.cpp) - Minimal libloong usage
-
-## License
-
-Same as libloong project.

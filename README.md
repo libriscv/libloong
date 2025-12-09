@@ -88,7 +88,7 @@ Register machines still stand strongest at the end of 2025. _libloong_ is curren
 
 With basic just-in-time binary translation enabled. About ~30% of native:
 
-> CoreMark 1.0 : 11972.662580 / GCC14.2.0 -O3 -DPERFORMANCE_RUN=1   / Static
+> CoreMark 1.0 : 12048.336480 / GCC14.2.0 -O3 -DPERFORMANCE_RUN=1   / Static
 
 
 ## Documentation

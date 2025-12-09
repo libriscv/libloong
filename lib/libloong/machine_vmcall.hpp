@@ -154,6 +154,26 @@ namespace loongarch
 		return vmcall<Ret, MAX_INSTRUCTIONS>(func_addr, std::forward<Args>(args)...);
 	}
 
+	template <typename... Args>
+	inline void Machine::timed_vmcall(address_t func_addr, uint64_t max_instructions, Args&&... args)
+	{
+		// Use the exit address set via memory.set_exit_address()
+		const address_t exit_addr = memory.exit_address();
+
+		// Setup the call with arguments
+		setup_call(*this, exit_addr, std::forward<Args>(args)...);
+
+		// Set PC to the function address
+		cpu.registers().pc = func_addr;
+
+		// Execute until the function returns and calls exit
+		this->simulate(max_instructions, 0);
+		if (this->instruction_limit_reached()) {
+			throw MachineException(MACHINE_TIMEOUT,
+				"timed_vmcall: Instruction limit reached", func_addr);
+		}
+	}
+
 	// preempt: Call a guest function with instruction limit and optional register save
 	template <bool Throw, bool StoreRegs, typename... Args>
 	inline address_t Machine::preempt(uint64_t max_instr, address_t func_addr, Args&&... args)

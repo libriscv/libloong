@@ -104,6 +104,11 @@ namespace loongarch
 		template <typename Ret = address_t, uint64_t MAX_INSTRUCTIONS = UINT64_MAX, typename... Args>
 		Ret vmcall(const std::string& func_name, Args&&... args);
 
+		// Timed function call with run-time instruction limit
+		// Use Machine::return_value<T>() to get typed return values
+		template <typename... Args>
+		void timed_vmcall(address_t func_addr, uint64_t max_instructions, Args&&... args);
+
 		// Preemptible function calls with instruction limit
 		template <bool Throw = true, bool StoreRegs = false, typename... Args>
 		address_t preempt(uint64_t max_instr, address_t func_addr, Args&&... args);

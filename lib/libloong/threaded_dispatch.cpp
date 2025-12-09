@@ -135,6 +135,7 @@ INSTRUCTION(LA64_BC_TRANSLATOR, execute_translated_block)
 INSTRUCTION(LA64_BC_STOP, la64_stop)
 {
 	REGISTERS().pc = pc + 4;
+	machine().set_instruction_counter(counter);
 	return true;
 }
 

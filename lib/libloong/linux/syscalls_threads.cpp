@@ -94,8 +94,14 @@ namespace loongarch
 			}
 			machine.stop();
 		});
-		// exit_group
-		this->install_syscall_handler(94, m_syscall_handlers[93]);
+		this->install_syscall_handler(94,
+		[](Machine& machine) {
+			[[maybe_unused]] const int status = machine.sysarg<int>(0);
+			thprint(machine,
+				">>> Exit group on tid=%d, exit code = %d\n",
+					machine.threads().get_tid(), static_cast<int>(status));
+			machine.stop();
+		});
 
 		// set_tid_address
 		this->install_syscall_handler(96,

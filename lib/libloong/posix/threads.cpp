@@ -224,13 +224,15 @@ bool MultiThreading::preempt()
 	return false;
 }
 
-bool MultiThreading::yield_to(int tid, bool store_retval)
+bool MultiThreading::yield_to(int tid, bool store_retval, address_t retval)
 {
 	auto* thread = get_thread(tid);
 	if (thread == nullptr) return false;
 
 	auto* current = get_thread();
 	if (store_retval)
+		current->suspend(retval);
+	else
 		current->suspend();
 
 	thread->resume();

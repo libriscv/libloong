@@ -52,7 +52,7 @@ namespace loongarch
 		Thread*   get_thread(int tid); /* or nullptr */
 		bool      preempt();
 		bool      suspend_and_yield(long result = 0);
-		bool      yield_to(int tid, bool store_retval = true);
+		bool      yield_to(int tid, bool store_retval = false, address_t retval = 0);
 		void      erase_thread(int tid);
 		void      wakeup_next();
 		bool      block(address_t retval, uint32_t reason, uint32_t extra = 0);

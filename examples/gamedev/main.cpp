@@ -50,11 +50,17 @@ namespace GameEngine {
 		screen_buffer[SCREEN_HEIGHT - 1][SCREEN_WIDTH - 1] = '+';
 	}
 
-	void render() {
+	void render(double t, uint64_t cycles) {
 		clear_screen();
-		for (int y = 0; y < SCREEN_HEIGHT; y++) {
-			fmt::print("{}\n", screen_buffer[y]);
+		for (int y = 0; y < SCREEN_HEIGHT; y += 2) {
+			fmt::print("{}\n{}\n", screen_buffer[y+0], screen_buffer[y+1]);
 		}
+		// One line up, display stats
+		fmt::print("\033[{}A", 1);
+		fmt::print("+= Time: {:.2f}us  Instr: {}  MI/s: {:.2f} ==\n",
+			t * 1e6,
+			cycles,
+			(cycles / 1e6) / t);
 	}
 }
 
@@ -222,7 +228,7 @@ int main(int argc, char* argv[]) {
 		const std::filesystem::path rust_api_path = "guest_game/libloong_api.rs";
 		const std::filesystem::path rust_src_path = "guest_game/src";
 		APIGenerator::write_rust_api(rust_api_path, rust_src_path);
-		fmt::print("  Rust API: {} (with DCE protection)\n", rust_api_path.string());
+		fmt::print("  Rust API: {}\n", rust_api_path.string());
 		fmt::print("\nAPI generation complete!\n");
 		fmt::print("Build the game with:\n");
 		fmt::print("  cd guest_game && chmod +x build.sh && ./build.sh\n");
@@ -292,10 +298,15 @@ int main(int argc, char* argv[]) {
 			GameEngine::draw_border();
 
 			// Update game logic (guest-side)
+			auto start_time = std::chrono::steady_clock::now();
 			game_script.call<void>("game_update");
+			auto cycles = game_script.machine().instruction_counter();
+			auto end_time = std::chrono::steady_clock::now();
 
 			// Render
-			GameEngine::render();
+			GameEngine::render(
+				std::chrono::duration<double>(end_time - start_time).count(),
+				cycles);
 
 			// Target 30 FPS
 			std::this_thread::sleep_for(std::chrono::milliseconds(32));

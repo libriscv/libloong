@@ -44,7 +44,7 @@ struct ScriptOptions {
 
     // Runtime options
     bool verbose = false;
-    uint64_t max_instructions = 0;  // 0 = unlimited
+    uint64_t max_instructions = 32'000'000ull;  // 0 = unlimited
 
     // Temporary file handling
     std::string temp_dir = "/tmp";
@@ -66,8 +66,11 @@ public:
     template<typename Ret = int, typename... Args>
     Ret call(address_t addr, Args&&... args) {
         try {
-			return m_machine->template vmcall<Ret, UINT64_MAX>(
-				addr, std::forward<Args>(args)...);
+			m_machine->timed_vmcall(addr,
+				m_options.max_instructions, std::forward<Args>(args)...);
+			if constexpr (!std::is_same_v<Ret, void>) {
+				return m_machine->template return_value<Ret>();
+			}
         } catch (const MachineException& e) {
 			handle_exception(e);
         }
@@ -181,4 +184,4 @@ private:
     mutable address_t m_address;
 };
 
-} // namespace loongarch::script
+} // loongarch::script

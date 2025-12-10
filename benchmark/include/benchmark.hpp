@@ -77,9 +77,6 @@ inline BenchmarkResult run_benchmark(
 			setup();
 		}
 
-		// Warmup iteration
-		perform_test<1>(test);
-
 		// Measured iteration
 		int64_t time = perform_test<Iterations>(test);
 		results.push_back(time / Iterations);

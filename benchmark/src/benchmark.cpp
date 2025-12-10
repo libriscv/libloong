@@ -33,6 +33,7 @@ static std::vector<uint8_t> load_binary(const std::string& path) {
 }
 
 // Initialize the machine with the guest binary
+static long syscall_counter = 0;
 void initialize(const std::string& binary_path) {
 	if (g_machine != nullptr) {
 		return;
@@ -47,11 +48,6 @@ void initialize(const std::string& binary_path) {
 
 	// Create machine with reasonable options
 	MachineOptions options;
-	options.verbose_loader = false;
-	options.verbose_syscalls = false;
-	options.memory_max = 64 * 1024 * 1024;  // 64 MB
-	options.stack_size = 2 * 1024 * 1024;   // 2 MB
-	options.brk_size = 1 * 1024 * 1024;     // 1 MB
 #ifdef LA_BINARY_TRANSLATION
 	options.translate_enabled = true;
 	options.translate_automatic_nbit_address_space = true;
@@ -70,6 +66,7 @@ void initialize(const std::string& binary_path) {
 
 	Machine::install_syscall_handler(1, [](Machine&) {
 		// Custom empty syscall for benchmarking
+		syscall_counter++;
 	});
 
 	// Set up exit address for vmcalls
@@ -102,16 +99,15 @@ void initialize(const std::string& binary_path) {
 }
 
 // Get the machine instance
-Machine& get_machine() {
+static Machine& get_machine() {
 	if (g_machine == nullptr) {
 		throw std::runtime_error("Machine not initialized. Call initialize() first.");
 	}
 	return *g_machine;
 }
 
-// Reset instruction counter (no-op setup for benchmarks)
-void reset_counter() {
-	// Nothing to do - just a placeholder for setup function
+static void reset_counter() {
+	syscall_counter = 0;
 }
 
 // Test: Empty function call (pure vmcall overhead)
@@ -304,6 +300,12 @@ void run_all_benchmarks(int samples) {
 		test_syscall<0>,
 		base_vmcall_overhead
 	);
+	const long syscall_counter_end = syscall_counter;
+	if (syscall_counter_end != 1+iterations) {
+		fprintf(stderr, "Expected %d syscalls, but counted %ld\n",
+			1+iterations, syscall_counter_end);
+		throw std::runtime_error("Syscall count mismatch - some syscalls may not have been executed correctly");
+	}
 	print_result(syscall0);
 
 	auto syscall1 = run_benchmark<iterations>(

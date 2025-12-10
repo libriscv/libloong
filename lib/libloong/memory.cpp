@@ -174,7 +174,7 @@ void Memory::parse_symbol_table(const Elf::SectionHeader* symtab,
 		// Only add function symbols with non-zero addresses
 		uint8_t type = Elf::ST_TYPE(sym.info);
 		if ((type == Elf::STT_FUNC || type == Elf::STT_OBJECT) && sym.value != 0) {
-			if (sym.name < strtab->size) {
+			if (sym.name + 1 < strtab->size && sym.name + 1 > sym.name) {
 				const char* name = string_table + sym.name;
 				if (name[0] != '\0') {
 					m_symbols.push_back({static_cast<address_t>(sym.value), static_cast<address_t>(sym.size), name});

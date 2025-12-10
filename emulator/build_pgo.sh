@@ -20,7 +20,6 @@ MASKED_MEMORY_BITS="-DLA_MASKED_MEMORY_BITS=0"
 LA_DEBUG=""
 LA_BINARY_TRANSLATION=""
 LA_THREADED="-DLA_THREADED=ON"
-LA_ARENA_BASE_REGISTER="-DLA_ENABLE_ARENA_BASE_REGISTER=OFF"
 LA_TAILCALL="-DLA_TAILCALL_DISPATCH=OFF"
 
 while [[ $# -gt 0 ]]; do
@@ -45,10 +44,6 @@ while [[ $# -gt 0 ]]; do
 		-N|--masked-memory-bits)
 			MASKED_MEMORY_BITS="-DLA_MASKED_MEMORY_BITS=$2"
 			shift 2
-			;;
-		--arena-base-register)
-			LA_ARENA_BASE_REGISTER="-DLA_ENABLE_ARENA_BASE_REGISTER=ON"
-			shift
 			;;
 		--binary-translation)
 			LA_BINARY_TRANSLATION="-DLA_BINARY_TRANSLATION=ON"
@@ -77,7 +72,6 @@ while [[ $# -gt 0 ]]; do
 			echo "                                Example: -N 32 (4GB arena)"
 			echo "  --binary-translation          Enable binary translation (experimental)"
 			echo "  --no-threaded                 Disable threaded dispatch"
-			echo "  --arena-base-register         Enable arena base register optimization"
 			echo "  --tailcall-dispatch           Enable tailcall dispatch"
 			echo ""
 			echo "Examples:"
@@ -176,7 +170,6 @@ cmake .. \
 	$LA_BINARY_TRANSLATION \
 	$LA_THREADED \
 	$MASKED_MEMORY_BITS \
-	$LA_ARENA_BASE_REGISTER \
 	$LA_TAILCALL
 
 make -j$(nproc)
@@ -237,7 +230,6 @@ cmake .. \
 	$LA_BINARY_TRANSLATION \
 	$LA_THREADED \
 	$MASKED_MEMORY_BITS \
-	$LA_ARENA_BASE_REGISTER \
 	$LA_TAILCALL
 
 make -j$(nproc)

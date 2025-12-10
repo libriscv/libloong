@@ -97,19 +97,6 @@ namespace loongarch
 
 		void reset();
 
-		void set_arena_base_register() {
-#ifdef LA_ENABLE_ARENA_BASE_REGISTER
-#  ifdef __linux__
-			// On Linux, set the GS base to the start of the arena for fast access
-			asm volatile (
-				"wrgsbase %0"
-				:
-				: "r"((uintptr_t)m_arena)
-			);
-#  endif
-#endif
-		}
-
 	private:
 		// Single memory arena (mmap'd on POSIX, new[] otherwise)
 		uint8_t* m_arena = nullptr;

@@ -174,7 +174,6 @@ namespace loongarch
 	void CPU::simulate_inaccurate(address_t pc)
 	{
 		machine().set_max_instructions(~0ull);
-		memory().set_arena_base_register();
 
 		auto* exec = this->m_exec;
 

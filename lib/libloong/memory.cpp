@@ -61,8 +61,6 @@ void Memory::allocate_arena(size_t size)
 	this->m_arena_size = size;
 	this->m_arena_end_sub_rodata = this->m_arena_size - this->m_rodata_start;
 	this->m_arena_end_sub_data = this->m_arena_size - this->m_data_start;
-	// Ensure arena base register is set
-	this->set_arena_base_register();
 }
 void Memory::allocate_custom_arena(size_t size, address_t rodata_start, address_t data_start)
 {

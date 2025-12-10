@@ -191,7 +191,6 @@ namespace loongarch
 	bool CPU::simulate(address_t pc, uint64_t inscounter, uint64_t maxcounter)
 	{
 		InstrCounter counter{inscounter, maxcounter};
-		memory().set_arena_base_register();
 
 		auto* exec = this->m_exec;
 

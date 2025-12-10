@@ -19,16 +19,7 @@ inline T Memory::read(address_t addr) const
 			protection_fault(addr, "Read from unmapped memory");
 		}
 	}
-#ifdef LA_ENABLE_ARENA_BASE_REGISTER
-#  ifdef __linux__
-	if constexpr (sizeof(T) <= 8) {
-		// On Linux, use GS-relative addressing for faster access
-		T value;
-		asm volatile ("mov %%gs:(%1), %0" : "=r"(value) : "r"((uint32_t)addr));
-		return value;
-	}
-#  endif
-#endif
+
 	return *reinterpret_cast<const T*>(&m_arena[addr]);
 }
 
@@ -46,15 +37,7 @@ inline void Memory::write(address_t addr, T value)
 			protection_fault(addr, "Write to read-only memory");
 		}
 	}
-#ifdef LA_ENABLE_ARENA_BASE_REGISTER
-#  ifdef __linux__
-	if constexpr (sizeof(T) <= 8 && EnableSegReg) {
-		// On Linux, use GS-relative addressing for faster access
-		asm volatile ("mov %0, %%gs:(%1)" : : "r"(value), "r"((uint32_t)addr));
-		return;
-	}
-#  endif
-#endif
+
 	*reinterpret_cast<T*>(&m_arena[addr]) = value;
 }
 

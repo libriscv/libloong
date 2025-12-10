@@ -153,7 +153,6 @@ namespace loongarch
 
 	void CPU::simulate_precise()
 	{
-		memory().set_arena_base_register();
 		while (machine().instruction_counter() < machine().max_instructions()) {
 			step_one(true);
 		}

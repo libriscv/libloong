@@ -43,7 +43,6 @@ namespace loongarch
 #else
 		constexpr bool TRACE_DISPATCH = false;
 #endif
-		memory().set_arena_base_register();
 		// Include computed goto table
 		#include "threaded_bytecode_array.hpp"
 #ifdef JUMPTABLE_GS_SUPPORTED

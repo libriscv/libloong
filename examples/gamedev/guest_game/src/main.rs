@@ -92,7 +92,7 @@ impl Asteroid {
 
     fn spawn(&mut self, x: f32, speed: f32) {
         self.pos.x = x;
-        self.pos.y = 2.0;  // Start below HUD
+        self.pos.y = 1.0;
         self.velocity.x = (random_int(-10, 10) as f32) * 0.1;
         self.velocity.y = speed;
         self.active = true;
@@ -137,7 +137,7 @@ impl Asteroid {
         let y = self.pos.y as i32;
 
         // Draw asteroid with rotation effect
-        let phase = (self.rotation_time.sin() * 2.0) as i32;
+        let phase = (-2.0 + self.rotation_time.sin() * 2.0) as i32;
         match phase {
             -2 => {
                 draw_pixel(x, y, self.char_sprite as u8 as i8);
@@ -243,7 +243,7 @@ impl Game {
             asteroids: core::array::from_fn(|_| Asteroid::new()),
             particles: Vec::new(),
             spawn_timer: 0.0,
-            spawn_rate: 1.5,
+            spawn_rate: 0.5,
             difficulty: 1.0,
             frames: 0,
         }

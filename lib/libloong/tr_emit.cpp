@@ -287,6 +287,9 @@ struct Emitter
 		// For unimplemented instructions, call the slow-path handler
 		// Store cached registers before calling handler
 		store_all_registers();
+		if (tinfo.options.translate_verbose_fallbacks) {
+			add_code("  api.fallback(cpu, " + hex_address(pc()) + "ULL, " + hex_address(instr_bits) + ");");
+		}
 		const uintptr_t handler_func = reinterpret_cast<uintptr_t>(instr.handler);
 		add_code("  ((handler_t)" + hex_address(handler_func) + ")(cpu, " + hex_address(instr_bits) + ");");
 		// Reload cached registers after handler returns

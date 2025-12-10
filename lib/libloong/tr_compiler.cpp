@@ -151,6 +151,7 @@ namespace loongarch
 			void (*exception) (CPU&, address_t, int);
 			void (*trace) (CPU&, const char*, address_t, uint32_t);
 			void (*log) (CPU&, address_t, const char*);
+			void (*fallback) (CPU&, address_t, uint32_t);
 			float  (*sqrtf32)(float);
 			double (*sqrtf64)(double);
 			int (*clz) (uint32_t);
@@ -184,6 +185,12 @@ namespace loongarch
 		};
 		callback_table.log = [](CPU& cpu, address_t pc, const char* msg) {
 			printf("[trace] PC=0x%lx (0x%lX) %s\n", (unsigned long)pc, (unsigned long)cpu.pc(), msg);
+		};
+		callback_table.fallback = [](CPU& cpu, address_t pc, uint32_t instr) {
+			auto decoded = cpu.decode(la_instruction{instr});
+			char buffer[256];
+			decoded.printer(buffer, sizeof(buffer), cpu, la_instruction{instr}, pc);
+			printf("[trace] PC=0x%lx: fallback 0x%08x: %s\n", (unsigned long)pc, instr, buffer);
 		};
 		callback_table.sqrtf32 = [](float x) { return __builtin_sqrtf(x); };
 		callback_table.sqrtf64 = [](double x) { return __builtin_sqrt(x); };

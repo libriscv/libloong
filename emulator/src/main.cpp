@@ -141,6 +141,7 @@ static int run_program(const std::vector<uint8_t>& binary, const EmulatorOptions
 			.translate_ignore_instruction_limit = opts.max_instructions == 0,
 			.translate_use_register_caching = opts.enable_register_caching,
 			.translate_automatic_nbit_address_space = opts.translate_nbit_as,
+			.translate_verbose_fallbacks = opts.verbose,
 			.translate_output_file = opts.translate_output_file,
 #endif
 		});

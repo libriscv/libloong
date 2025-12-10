@@ -28,6 +28,9 @@ namespace loongarch
 		/// @details This will allow the binary translator to use and-masked addresses
 		/// for all memory accesses, which can drastically improve performance.
 		bool translate_automatic_nbit_address_space = true;
+		/// @brief Verbose logging for binary translation fallbacks
+		/// Observe which instructions do not have a binary translation emitted
+		bool translate_verbose_fallbacks = false;
 		size_t translate_blocks_max = 10000;
 		size_t translate_instr_max = 50'000'000ull;
 		std::string translate_output_file; // Optional: output file path for generated C code

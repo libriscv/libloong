@@ -2987,13 +2987,9 @@ struct InstrImpl {
 
 	static void VFADD_D(cpu_t& cpu, la_instruction instr) {
 		// VFADD.D: Vector floating-point add (double precision, 2x64-bit)
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
-
-		const auto& src1 = cpu.registers().getvr(vj);
-		const auto& src2 = cpu.registers().getvr(vk);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src1 = cpu.registers().getvr(instr.r4.rj);
+		const auto& src2 = cpu.registers().getvr(instr.r4.rk);
+		auto& dst = cpu.registers().getvr(instr.r4.rd);
 
 		dst.df[0] = src1.df[0] + src2.df[0];
 		dst.df[1] = src1.df[1] + src2.df[1];
@@ -3004,13 +3000,9 @@ struct InstrImpl {
 
 	static void VFDIV_D(cpu_t& cpu, la_instruction instr) {
 		// VFDIV.D: Vector floating-point divide (double precision, 2x64-bit)
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
-
-		const auto& src1 = cpu.registers().getvr(vj);
-		const auto& src2 = cpu.registers().getvr(vk);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src1 = cpu.registers().getvr(instr.r4.rj);
+		const auto& src2 = cpu.registers().getvr(instr.r4.rk);
+		auto& dst = cpu.registers().getvr(instr.r4.rd);
 
 		dst.df[0] = src1.df[0] / src2.df[0];
 		dst.df[1] = src1.df[1] / src2.df[1];
@@ -3021,13 +3013,9 @@ struct InstrImpl {
 
 	static void VFMUL_S(cpu_t& cpu, la_instruction instr) {
 		// VFMUL.S: Vector floating-point multiply (single precision, 4x32-bit)
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
-
-		const auto& src1 = cpu.registers().getvr(vj);
-		const auto& src2 = cpu.registers().getvr(vk);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src1 = cpu.registers().getvr(instr.r4.rj);
+		const auto& src2 = cpu.registers().getvr(instr.r4.rk);
+		auto& dst = cpu.registers().getvr(instr.r4.rd);
 
 		dst.f[0] = src1.f[0] * src2.f[0];
 		dst.f[1] = src1.f[1] * src2.f[1];
@@ -3092,15 +3080,10 @@ struct InstrImpl {
 	static void VFMADD_D(cpu_t& cpu, la_instruction instr) {
 		// VFMADD.D: Vector fused multiply-add (double precision, 2x64-bit)
 		// 4R-type format: vd = va + vj * vk
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
-		uint32_t va = (instr.whole >> 15) & 0x1F;
-
-		const auto& src_j = cpu.registers().getvr(vj);
-		const auto& src_k = cpu.registers().getvr(vk);
-		const auto& src_a = cpu.registers().getvr(va);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src_j = cpu.registers().getvr(instr.r4.rj);
+		const auto& src_k = cpu.registers().getvr(instr.r4.rk);
+		const auto& src_a = cpu.registers().getvr(instr.r4.ra);
+		auto& dst = cpu.registers().getvr(instr.r4.rd);
 
 		dst.df[0] = src_a.df[0] + src_j.df[0] * src_k.df[0];
 		dst.df[1] = src_a.df[1] + src_j.df[1] * src_k.df[1];
@@ -3112,15 +3095,10 @@ struct InstrImpl {
 	static void VFNMADD_D(cpu_t& cpu, la_instruction instr) {
 		// VFNMADD.D: Vector fused negative multiply-add (double precision, 2x64-bit)
 		// 4R-type format: vd = -(vj * vk) + va = va - vj * vk
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
-		uint32_t va = (instr.whole >> 15) & 0x1F;
-
-		const auto& src_j = cpu.registers().getvr(vj);
-		const auto& src_k = cpu.registers().getvr(vk);
-		const auto& src_a = cpu.registers().getvr(va);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src_j = cpu.registers().getvr(instr.r4.rj);
+		const auto& src_k = cpu.registers().getvr(instr.r4.rk);
+		const auto& src_a = cpu.registers().getvr(instr.r4.ra);
+		auto& dst = cpu.registers().getvr(instr.r4.rd);
 
 		dst.df[0] = src_a.df[0] - src_j.df[0] * src_k.df[0];
 		dst.df[1] = src_a.df[1] - src_j.df[1] * src_k.df[1];

@@ -1381,8 +1381,12 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 
 		// Floating-point unary operations
 		case InstrId::FABS_D:
+			emit.add_code("  " + emit.freg64(instr.r3.rd) + " = "
+				"(" + emit.freg64(instr.r3.rj) + " >= 0.0) ? " + emit.freg64(instr.r3.rj) + " : -" + emit.freg64(instr.r3.rj) + ";");
+			break;
 		case InstrId::FABS_S:
-			emit.emit_fallback(decoded, instr_bits);
+			emit.add_code("  " + emit.freg32(instr.r3.rd) + " = "
+				"(" + emit.freg32(instr.r3.rj) + " >= 0.0f) ? " + emit.freg32(instr.r3.rj) + " : -" + emit.freg32(instr.r3.rj) + ";");
 			break;
 
 		case InstrId::FNEG_D: {
@@ -1683,6 +1687,26 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			emit.add_code("  { lasx_reg* vr_ptr = &cpu->vr[" + std::to_string(instr.r3.rd) + "];");
 			emit.add_code("    *(uint64_t*)" + ptr0 + " = vr_ptr->du[0];");
 			emit.add_code("    *(uint64_t*)" + ptr1 + " = vr_ptr->du[1]; }");
+			break;
+		}
+
+		case InstrId::VFADD_D: {
+			// VFADD.D: Vector floating-point add (double precision, 2x64-bit)
+			emit.add_code("  { lasx_reg* vd_ptr = &cpu->vr[" + std::to_string(instr.r4.rd) + "];");
+			emit.add_code("    const lasx_reg* vj_ptr = &cpu->vr[" + std::to_string(instr.r4.rj) + "];");
+			emit.add_code("    const lasx_reg* vk_ptr = &cpu->vr[" + std::to_string(instr.r4.rk) + "];");
+			emit.add_code("    vd_ptr->df[0] = vj_ptr->df[0] + vk_ptr->df[0];");
+			emit.add_code("    vd_ptr->df[1] = vj_ptr->df[1] + vk_ptr->df[1]; }");
+			break;
+		}
+		case InstrId::VFMADD_D: {
+			// VFMADD.D: Vector fused multiply-add (double precision, 2x64-bit)
+			emit.add_code("  { lasx_reg* vd_ptr = &cpu->vr[" + std::to_string(instr.r4.rd) + "];");
+			emit.add_code("    const lasx_reg* vj_ptr = &cpu->vr[" + std::to_string(instr.r4.rj) + "];");
+			emit.add_code("    const lasx_reg* vk_ptr = &cpu->vr[" + std::to_string(instr.r4.rk) + "];");
+			emit.add_code("    const lasx_reg* va_ptr = &cpu->vr[" + std::to_string(instr.r4.ra) + "];");
+			emit.add_code("    vd_ptr->df[0] = va_ptr->df[0] + vj_ptr->df[0] * vk_ptr->df[0];");
+			emit.add_code("    vd_ptr->df[1] = va_ptr->df[1] + vj_ptr->df[1] * vk_ptr->df[1]; }");
 			break;
 		}
 

@@ -438,8 +438,8 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 	std::vector<TransMapping<>> mappings;
 
 	// Jump table for local jumps within the block
+	emit.add_code("jump_table:");
 	if (!tinfo.jump_locations.empty()) {
-		emit.add_code("jump_table:");
 		emit.add_code("  switch (pc) {");
 		for (address_t jump_target : tinfo.jump_locations) {
 			if (jump_target < tinfo.basepc || jump_target >= tinfo.endpc)

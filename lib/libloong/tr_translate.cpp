@@ -168,6 +168,7 @@ namespace loongarch
 			std::unordered_set<address_t> jump_locations;
 			std::vector<uint32_t> block_instructions;
 			block_instructions.reserve(block_insns);
+			bool nop_seen = false;
 
 			// Find jump locations inside block
 			for (pc = block; pc < block_end; ) {
@@ -178,7 +179,7 @@ namespace loongarch
 
 				// Check for direct jumps (B, BL)
 				if (is_direct_jump(instruction, location, pc, is_call)) {
-
+					nop_seen = false;
 					// If jump target is within current block, record as local jump
 					if (location >= block && location < block_end)
 						jump_locations.insert(location);
@@ -192,11 +193,20 @@ namespace loongarch
 				}
 				// Check for conditional branches
 				else if (is_branch_instruction(instruction, location, pc)) {
+					nop_seen = false;
 					// Only accept branches relative to current block
 					if (location >= block && location < block_end)
 						jump_locations.insert(location);
 					else
 						global_jump_locations.insert(location);
+				}
+				else if (instruction.is_nop()) {
+					nop_seen = true;
+				} else if (nop_seen) {
+					nop_seen = false;
+					// Once we have seen a NOP, any non-NOP ends the block
+					// at which point we speculate a jump target
+					jump_locations.insert(pc);
 				}
 
 				// Add instruction to block

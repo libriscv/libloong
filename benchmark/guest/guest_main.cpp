@@ -85,6 +85,18 @@ void test_heap_cxx(int size) {
 	delete[] arr;
 }
 
+static long fib(long n, long acc, long prev)
+{
+	if (n == 0)
+		return acc;
+	else
+		return fib(n - 1, prev + acc, acc);
+}
+
+long test_fibonacci(long n) {
+	return fib(n, 0, 1);
+}
+
 // Main function - does nothing in benchmark context
 int main() {
 	return 0;

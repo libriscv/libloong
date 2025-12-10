@@ -115,6 +115,7 @@ namespace loongarch {
 
 		constexpr uint32_t opcode() const noexcept { return whole; }
 		constexpr uint32_t length() const noexcept { return 4; } // All LoongArch instructions are 4 bytes
+		constexpr bool is_nop() const noexcept { return whole == 0x03400000; }
 	};
 
 	using instruction_format = la_instruction;

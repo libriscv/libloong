@@ -52,6 +52,12 @@ void initialize(const std::string& binary_path) {
 	options.memory_max = 64 * 1024 * 1024;  // 64 MB
 	options.stack_size = 2 * 1024 * 1024;   // 2 MB
 	options.brk_size = 1 * 1024 * 1024;     // 1 MB
+#ifdef LA_BINARY_TRANSLATION
+	options.translate_enabled = true;
+	options.translate_automatic_nbit_address_space = true;
+	options.translate_ignore_instruction_limit = true;
+	options.translate_use_register_caching = true;
+#endif
 
 	g_machine = std::make_unique<Machine>(binary_view, options);
 
@@ -172,6 +178,11 @@ template<> void test_syscall<0>() {
 template<> void test_syscall<1>() {
 	static uint64_t func_addr = g_machine->address_of("test_syscall_1");
 	g_machine->vmcall(func_addr);
+}
+
+static void test_fibonacci() {
+	static uint64_t func_addr = g_machine->address_of("test_fibonacci");
+	g_machine->vmcall<int>(func_addr, 40); // Fibonacci(40)
 }
 
 // Run all benchmarks
@@ -304,9 +315,19 @@ void run_all_benchmarks(int samples) {
 	);
 	print_result(syscall1);
 
+	printf("\n=== Compute ===\n");
+
+	auto fibonacci_result = run_benchmark<iterations>(
+		"fibonacci(40)",
+		samples,
+		reset_counter,
+		test_fibonacci,
+		base_vmcall_overhead
+	);
+	print_result(fibonacci_result);
+
 	printf("\n");
-	printf("Note: All results show overhead after subtracting benchmark overhead (%ldns)\n", overhead);
-	printf("      Syscall tests additionally subtract base vmcall overhead (%ldns)\n", base_vmcall_overhead);
+	printf("Note: Tests after argument passing subtract base vmcall overhead (%ldns)\n", base_vmcall_overhead);
 	printf("      p75, p90, and p99 represent the 75th, 90th, and 99th percentiles\n");
 }
 

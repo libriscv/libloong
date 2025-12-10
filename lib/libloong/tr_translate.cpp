@@ -131,7 +131,8 @@ namespace loongarch
 		const address_t endbasepc = exec.exec_end();
 		const uintptr_t arena_ptr = (uintptr_t)machine.memory.arena_ptr();
 		const address_t arena_size = machine.memory.arena_size();
-		const address_t arena_roend = 0; // Flat arena, no special read-only end
+		const address_t arena_rostart = (address_t)machine.memory.rodata_start();
+		const address_t arena_datastart = (address_t)machine.memory.data_start();
 
 		// Code block detection
 		const size_t ITS_TIME_TO_SPLIT = is_libtcc ? 5'000 : 1'250;
@@ -237,7 +238,8 @@ namespace loongarch
 					nullptr, // blocks pointer (set below)
 					global_jump_locations,
 					arena_ptr,
-					arena_roend,
+					arena_rostart,
+					arena_datastart,
 					arena_size
 				});
 				icounter += length;

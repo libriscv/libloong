@@ -27,7 +27,10 @@ namespace loongarch
 		/// @brief Enable automatic n-bit address space for the binary translator by rounding down to the nearest power of 2.
 		/// @details This will allow the binary translator to use and-masked addresses
 		/// for all memory accesses, which can drastically improve performance.
-		bool translate_automatic_nbit_address_space = true;
+		bool translate_automatic_nbit_address_space = false;
+		/// @brief Enable unchecked memory accesses in the binary translator, which
+		/// will cause hard faults on invalid accesses instead of raising exceptions.
+		bool translate_unchecked_memory_accesses = false;
 		/// @brief Verbose logging for binary translation fallbacks
 		/// Observe which instructions do not have a binary translation emitted
 		bool translate_verbose_fallbacks = false;

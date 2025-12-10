@@ -220,11 +220,34 @@ struct Emitter
 		//	return "((char*)" + hex_address(tinfo.arena_ptr) + " + (uint32_t)(" + offset + "))";
 		//} else
 		if (this->nbit_mask != 0) {
-			return "((char*)" + hex_address(tinfo.arena_ptr) + " + (" + offset + " & " +
+			return "((char*)" + hex_address(tinfo.arena_ptr) + " + ((" + offset + ") & " +
 				hex_address(this->nbit_mask) + "))";
 		} else {
 			return "((char*)" + hex_address(tinfo.arena_ptr) + " + " + offset + ")";
 		}
+	}
+
+	void emit_load_bounds_check(const std::string& addr) {
+		if (tinfo.options.translate_unchecked_memory_accesses
+			|| this->nbit_mask != 0) return; // No bounds check
+
+		// Emit bounds check for address - memory is over-allocated,
+		// to allow for accesses that slightly exceed the allocated size
+		add_code("  if ((" + addr + ") < " +
+			hex_address(tinfo.arena_rostart) + " || (" + addr + ") >= " +
+			hex_address(tinfo.arena_size) + ")");
+		add_code("    return api.exception(cpu, " + hex_address(pc()) + "ULL, " + addr + ", 2);");
+	}
+	void emit_store_bounds_check(const std::string& addr) {
+		if (tinfo.options.translate_unchecked_memory_accesses
+			|| nbit_mask != 0) return; // No bounds check
+
+		// Emit bounds check for address - memory is over-allocated,
+		// to allow for accesses that slightly exceed the allocated size
+		add_code("  if ((" + addr + ") < " +
+			hex_address(tinfo.arena_datastart) + " || (" + addr + ") >= " +
+			hex_address(tinfo.arena_ptr + tinfo.arena_size) + ")");
+		add_code("    return api.exception(cpu, " + hex_address(pc()) + "ULL, " + addr + ", 2);");
 	}
 
 	// Emit memory load - templatized for different sizes and signedness
@@ -234,6 +257,7 @@ struct Emitter
 		if (rd == 0) return;
 		std::string addr = reg(rj) + " + " + std::to_string(offset);
 		std::string ptr = arena_offset(addr);
+		this->emit_load_bounds_check(addr);
 
 		if (size == 64) {
 			// 64-bit load
@@ -270,6 +294,7 @@ struct Emitter
 	void emit_store(unsigned size, unsigned rd, unsigned rj, int64_t offset) {
 		std::string addr = reg(rj) + " + " + std::to_string(offset);
 		std::string ptr = arena_offset(addr);
+		this->emit_store_bounds_check(addr);
 
 		if (size == 64) {
 			add_code("  *(uint64_t*)" + ptr + " = " + reg(rd) + ";");
@@ -287,6 +312,7 @@ struct Emitter
 		if (rd == 0) return;
 		std::string addr = reg(rj) + " + " + reg(rk);
 		std::string ptr = arena_offset(addr);
+		this->emit_load_bounds_check(addr);
 
 		if (size == 64) {
 			add_code("  " + reg(rd) + " = *(uint64_t*)" + ptr + ";");
@@ -315,6 +341,7 @@ struct Emitter
 	void emit_store_indexed(unsigned size, unsigned rd, unsigned rj, unsigned rk) {
 		std::string addr = reg(rj) + " + " + reg(rk);
 		std::string ptr = arena_offset(addr);
+		this->emit_store_bounds_check(addr);
 
 		if (size == 64) {
 			add_code("  *(uint64_t*)" + ptr + " = " + reg(rd) + ";");
@@ -1310,6 +1337,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 			std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string(offset);
 			std::string ptr = emit.arena_offset(addr);
+			emit.emit_load_bounds_check(addr);
 			emit.add_code("  " + emit.freg_wu(instr.ri12.rd) + " = *(uint32_t*)" + ptr + ";");
 			break;
 		}
@@ -1318,6 +1346,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 			std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string(offset);
 			std::string ptr = emit.arena_offset(addr);
+			emit.emit_load_bounds_check(addr);
 			emit.add_code("  " + emit.freg_du(instr.ri12.rd) + " = *(uint64_t*)" + ptr + ";");
 			break;
 		}
@@ -1326,6 +1355,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 			std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string(offset);
 			std::string ptr = emit.arena_offset(addr);
+			emit.emit_store_bounds_check(addr);
 			emit.add_code("  *(uint32_t*)" + ptr + " = " + emit.freg_wu(instr.ri12.rd) + ";");
 			break;
 		}
@@ -1334,6 +1364,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 			std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string(offset);
 			std::string ptr = emit.arena_offset(addr);
+			emit.emit_store_bounds_check(addr);
 			emit.add_code("  *(uint64_t*)" + ptr + " = " + emit.freg_du(instr.ri12.rd) + ";");
 			break;
 		}
@@ -1343,6 +1374,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			// Indexed load single-precision float
 			std::string addr = emit.reg(instr.r3.rj) + " + " + emit.reg(instr.r3.rk);
 			std::string ptr = emit.arena_offset(addr);
+			emit.emit_load_bounds_check(addr);
 			emit.add_code("  " + emit.freg_wu(instr.r3.rd) + " = *(uint32_t*)" + ptr + ";");
 			break;
 		}
@@ -1350,6 +1382,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			// Indexed load double-precision float
 			std::string addr = emit.reg(instr.r3.rj) + " + " + emit.reg(instr.r3.rk);
 			std::string ptr = emit.arena_offset(addr);
+			emit.emit_load_bounds_check(addr);
 			emit.add_code("  " + emit.freg_du(instr.r3.rd) + " = *(uint64_t*)" + ptr + ";");
 			break;
 		}
@@ -1357,6 +1390,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			// Indexed store single-precision float
 			std::string addr = emit.reg(instr.r3.rj) + " + " + emit.reg(instr.r3.rk);
 			std::string ptr = emit.arena_offset(addr);
+			emit.emit_store_bounds_check(addr);
 			emit.add_code("  *(uint32_t*)" + ptr + " = " + emit.freg_wu(instr.r3.rd) + ";");
 			break;
 		}
@@ -1364,6 +1398,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			// Indexed store double-precision float
 			std::string addr = emit.reg(instr.r3.rj) + " + " + emit.reg(instr.r3.rk);
 			std::string ptr = emit.arena_offset(addr);
+			emit.emit_store_bounds_check(addr);
 			emit.add_code("  *(uint64_t*)" + ptr + " = " + emit.freg_du(instr.r3.rd) + ";");
 			break;
 		}
@@ -1706,6 +1741,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			// Load 128-bit vector from memory
 			int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 			std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string(offset);
+			emit.emit_load_bounds_check(addr);
 			std::string ptr0 = emit.arena_offset(addr);
 			std::string ptr1 = emit.arena_offset(addr + " + 8");
 			emit.add_code("  { lasx_reg* vr_ptr = &cpu->vr[" + std::to_string(instr.ri12.rd) + "];");
@@ -1717,6 +1753,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			// Store 128-bit vector to memory
 			int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 			std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string(offset);
+			emit.emit_store_bounds_check(addr);
 			std::string ptr0 = emit.arena_offset(addr);
 			std::string ptr1 = emit.arena_offset(addr + " + 8");
 			emit.add_code("  { lasx_reg* vr_ptr = &cpu->vr[" + std::to_string(instr.ri12.rd) + "];");
@@ -1727,6 +1764,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 		case InstrId::VLDX: {
 			// Vector indexed load (LSX 128-bit)
 			std::string addr = emit.reg(instr.r3.rj) + " + " + emit.reg(instr.r3.rk);
+			emit.emit_load_bounds_check(addr);
 			std::string ptr0 = emit.arena_offset(addr);
 			std::string ptr1 = emit.arena_offset(addr + " + 8");
 			emit.add_code("  { lasx_reg* vr_ptr = &cpu->vr[" + std::to_string(instr.r3.rd) + "];");
@@ -1737,6 +1775,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 		case InstrId::VSTX: {
 			// Vector indexed store (LSX 128-bit)
 			std::string addr = emit.reg(instr.r3.rj) + " + " + emit.reg(instr.r3.rk);
+			emit.emit_store_bounds_check(addr);
 			std::string ptr0 = emit.arena_offset(addr);
 			std::string ptr1 = emit.arena_offset(addr + " + 8");
 			emit.add_code("  { lasx_reg* vr_ptr = &cpu->vr[" + std::to_string(instr.r3.rd) + "];");

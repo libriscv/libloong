@@ -143,12 +143,16 @@ namespace loongarch
 			return false;
 
 		// Create callback table matching tr_api.cpp structure
+		struct ReturnValues {
+			uint64_t ic;
+			uint64_t max_ic;
+		};
 		static struct CallbackTable {
 			Machine::syscall_t** syscalls;
 			Machine::unknown_syscall_t* unknown_syscall;
 			DecoderData::handler_t* handlers;
 			int  (*syscall)(CPU&, unsigned, uint64_t, address_t);
-			void (*exception) (CPU&, address_t, int);
+			ReturnValues (*exception) (CPU&, address_t, address_t, int);
 			void (*trace) (CPU&, const char*, address_t, uint32_t);
 			void (*log) (CPU&, address_t, const char*);
 			void (*fallback) (CPU&, address_t, uint32_t);
@@ -177,7 +181,16 @@ namespace loongarch
 			}
 		};
 		callback_table.handlers = DecoderData::get_handlers_array();
-		callback_table.exception = nullptr;
+		callback_table.exception = [](CPU& cpu, address_t pc, address_t data, int type) -> ReturnValues {
+			cpu.registers().pc = pc;
+			const char* reason =
+				(type == ExceptionType::PROTECTION_FAULT) ? "Protection fault" : "Exception triggered";
+			cpu.machine().set_current_exception(
+				std::make_exception_ptr(MachineException(static_cast<ExceptionType>(type), reason, data))
+			);
+			cpu.machine().stop();
+			return ReturnValues{ cpu.machine().instruction_counter(), 0u };
+		};
 		callback_table.trace = [](CPU& cpu, const char* desc, address_t pc, uint32_t instr) {
 			char buffer[256];
 			(void)cpu.decode(la_instruction{instr}).printer(buffer, sizeof(buffer), cpu, la_instruction{instr}, pc);

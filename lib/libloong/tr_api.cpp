@@ -131,6 +131,10 @@ typedef struct {
 
 typedef void (*syscall_t) (CPU*);
 typedef void (*handler_t) (CPU*, uint32_t);
+typedef struct {
+	uint64_t ic;
+	uint64_t max_ic;
+} ReturnValues;
 
 // Callback table for interfacing with the emulator
 // MUST match the structure in tr_compiler.cpp
@@ -139,7 +143,7 @@ static struct CallbackTable {
 	void (*unknown_syscall)(CPU*, addr_t);
 	handler_t* handlers;
 	int  (*syscall)(CPU*, unsigned, uint64_t, addr_t);
-	void (*exception) (CPU*, addr_t, int);
+	ReturnValues (*exception) (CPU*, addr_t, addr_t, int);
 	void (*trace) (CPU*, const char*, addr_t, uint32_t);
 	void (*log) (CPU*, addr_t, const char*);
 	void (*fallback) (CPU*, addr_t, uint32_t);
@@ -231,10 +235,5 @@ void init(struct CallbackTable* table, int32_t arena_off, int32_t ins_counter_of
 	arena_offset = arena_off;
 	ic_offset = ins_counter_off;
 }
-
-typedef struct {
-	uint64_t ic;
-	uint64_t max_ic;
-} ReturnValues;
 )EOF";
 }

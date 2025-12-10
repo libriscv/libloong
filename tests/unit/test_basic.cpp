@@ -118,22 +118,32 @@ TEST_CASE("Control flow", "[basic][control]") {
 		REQUIRE(result.exit_code == 42);
 	}
 
-	SECTION("While loop") {
+	SECTION("Out of bounds exception") {
 		auto binary = builder.build(R"(
-			int main() {
-				int i = 0;
-				int sum = 0;
-				while (i < 10) {
-					sum += i;
-					i++;
-				}
-				return sum - 3;
-			}
-		)", "while_loop");
+			int main() {}
+			static const char* constant_string = "Hello, LoongArch!";
 
-		auto result = run_binary(binary, 42);
-		REQUIRE(result.success);
-		REQUIRE(result.exit_code == 42);
+			void trigger_oob() {
+				volatile int *ptr = (int *)0xF;
+				int val = *ptr;  // Should trigger OOB exception
+			}
+			char read_string() {
+				volatile char c = constant_string[0];
+				return c;
+			}
+			void write_string() {
+				volatile char *ptr = (char *)constant_string;
+				ptr[0] = 'h';  // Should trigger OOB exception
+			}
+		)", "oob_exception");
+
+		TestMachine machine(binary);
+		machine.setup_linux();
+
+		// Test out-of-bounds accesses
+		REQUIRE_THROWS_AS(machine.vmcall("trigger_oob"), MachineException);
+		REQUIRE_NOTHROW(machine.vmcall("read_string"));
+		REQUIRE_THROWS_AS(machine.vmcall("write_string"), MachineException);
 	}
 }
 

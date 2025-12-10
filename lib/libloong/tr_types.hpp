@@ -52,9 +52,10 @@ namespace loongarch
 		std::vector<TransInfo>* blocks = nullptr;
 		std::unordered_set<address_t>& global_jump_locations;
 
-		uintptr_t arena_ptr;     // Pointer to memory arena
-		address_t arena_roend;   // End of read-only region
-		address_t arena_size;    // Total arena size
+		const uintptr_t arena_ptr;       // Pointer to memory arena
+		const address_t arena_rostart;   // Start of read-only region
+		const address_t arena_datastart; // Start of data region
+		const address_t arena_size;      // Total arena size
 	};
 
 	// Output from translation process

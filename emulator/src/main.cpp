@@ -27,7 +27,8 @@ struct EmulatorOptions {
 	bool enable_translation = true;
 	bool trace_translation = false;
 	bool enable_register_caching = true;
-	bool translate_nbit_as = true;
+	bool translate_nbit_as = false;
+	bool translate_unsafe = false;
 	std::string translate_output_file; // Output file for generated C code
 };
 
@@ -141,6 +142,7 @@ static int run_program(const std::vector<uint8_t>& binary, const EmulatorOptions
 			.translate_ignore_instruction_limit = opts.max_instructions == 0,
 			.translate_use_register_caching = opts.enable_register_caching,
 			.translate_automatic_nbit_address_space = opts.translate_nbit_as,
+			.translate_unchecked_memory_accesses = opts.translate_unsafe,
 			.translate_verbose_fallbacks = opts.verbose,
 			.translate_output_file = opts.translate_output_file,
 #endif
@@ -265,6 +267,7 @@ static void print_help(const char* progname)
 	printf("  -m, --memory <size>     Maximum memory in MiB (default: 512)\n");
 	printf("  -n, --no-translate      Disable binary translation (interpret only)\n");
 	printf("      --no-regcache       Disable register caching in translated code\n");
+	printf("      --fast              Enable fastest binary translation (unsafe)\n");
 	printf("  -T, --trace             Trace binary translation execution\n");
 	printf("  -O, --output <file>     Write generated translation code to file\n\n");
 	printf("The emulator automatically detects LA32/LA64 architecture from the ELF binary.\n\n");
@@ -293,6 +296,7 @@ static EmulatorOptions parse_arguments(int argc, char* argv[])
 		{"memory",  required_argument, 0, 'm'},
 		{"no-translate", no_argument, 0,  'n'},
 		{"no-regcache",  no_argument, 0,  '\x04'},
+		{"fast",    no_argument,       0, '\x05'},
 		{"trace",   no_argument,       0, 'T'},
 		{"output",  required_argument, 0, 'O'},
 		{0, 0, 0, 0}
@@ -340,6 +344,9 @@ static EmulatorOptions parse_arguments(int argc, char* argv[])
 			break;
 		case '\x04':
 			opts.enable_register_caching = false;
+			break;
+		case '\x05':
+			opts.translate_unsafe = true;
 			break;
 		default:
 			print_help(argv[0]);

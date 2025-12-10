@@ -27,7 +27,7 @@ struct EmulatorOptions {
 	bool enable_translation = true;
 	bool trace_translation = false;
 	bool enable_register_caching = true;
-	bool translate_nbit_as = false;
+	bool translate_nbit_as = true;
 	std::string translate_output_file; // Output file for generated C code
 };
 

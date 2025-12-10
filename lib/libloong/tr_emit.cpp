@@ -216,11 +216,14 @@ struct Emitter
 	}
 
 	std::string arena_offset(const std::string& offset) const {
+		//if (this->nbit_mask == 0xFFFFFFFF) { // 32-bit slower??
+		//	return "((char*)" + hex_address(tinfo.arena_ptr) + " + (uint32_t)(" + offset + "))";
+		//} else
 		if (this->nbit_mask != 0) {
-			return "(((char*)" + hex_address(tinfo.arena_ptr) + ") + (" + offset + " & " +
+			return "((char*)" + hex_address(tinfo.arena_ptr) + " + (" + offset + " & " +
 				hex_address(this->nbit_mask) + "))";
 		} else {
-			return "(((char*)" + hex_address(tinfo.arena_ptr) + ") + " + offset + ")";
+			return "((char*)" + hex_address(tinfo.arena_ptr) + " + " + offset + ")";
 		}
 	}
 

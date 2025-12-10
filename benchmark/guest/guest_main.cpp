@@ -45,16 +45,15 @@ void test_args_8(int a, int b, int c, int d, int e, int f, int g, int h) {
 }
 
 void test_syscall_0() {
-	register int a7 asm("a7") = 1; // our custom syscall
-
-	asm ("syscall 0" :: "r"(a7));
+	static constexpr int syscall_number = 1;
+	asm ("syscall %0" :: "I"(syscall_number));
 }
 
 void test_syscall_1(int a) {
-	register int a7 asm("a7") = 1; // our custom syscall
+	static constexpr int syscall_number = 1;
 	register int a0 asm("a0") = a;
 
-	asm ("syscall 0" :: "r"(a7), "r"(a0));
+	asm ("syscall %0" :: "I"(syscall_number), "r"(a0));
 }
 
 // Simple computation - for testing actual work overhead

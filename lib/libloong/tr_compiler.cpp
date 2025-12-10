@@ -147,7 +147,7 @@ namespace loongarch
 			Machine::syscall_t** syscalls;
 			Machine::unknown_syscall_t* unknown_syscall;
 			DecoderData::handler_t* handlers;
-			int  (*syscall)(CPU&, uint64_t, uint64_t, address_t);
+			int  (*syscall)(CPU&, unsigned, uint64_t, address_t);
 			void (*exception) (CPU&, address_t, int);
 			void (*trace) (CPU&, const char*, address_t, uint32_t);
 			void (*log) (CPU&, address_t, const char*);
@@ -164,11 +164,11 @@ namespace loongarch
 
 		callback_table.syscalls = machine.get_syscall_handlers();
 		callback_table.unknown_syscall = machine.get_unknown_syscall_handler();
-		callback_table.syscall = [](CPU& cpu, uint64_t ic, uint64_t max_ic, address_t pc) -> int {
+		callback_table.syscall = [](CPU& cpu, unsigned sysnum, uint64_t max_ic, address_t pc) -> int {
 			try {
 				cpu.registers().pc = pc;
 				cpu.machine().set_max_instructions(max_ic);
-				cpu.machine().system_call(cpu.reg(REG_A7));
+				cpu.machine().system_call(sysnum);
 				return cpu.machine().stopped() || (cpu.pc() != pc);
 			} catch (...) {
 				cpu.machine().set_current_exception(std::current_exception());

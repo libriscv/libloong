@@ -445,9 +445,9 @@ namespace loongarch
 		uint32_t op22 = instr.whole & 0xFFC00000;
 		uint32_t op17 = instr.whole & 0xFFFF8000;
 
-		// System instructions (checked first for exact match)
-		if (instr.whole == Opcode::SYSCALL) return DECODED_INSTR(SYSCALL);
-		if (instr.whole == Opcode::BREAK) return DECODED_INSTR(BREAK);
+		// System instructions (Ud15)
+		if ((instr.whole & 0xFFFFFC00) == Opcode::BREAK) return DECODED_INSTR(BREAK);
+		if ((instr.whole & 0xFFFFFC00) == Opcode::SYSCALL) return DECODED_INSTR(SYSCALL);
 		if ((instr.whole & 0xFFFFFC00) == Opcode::RDTIME_D) return DECODED_INSTR(RDTIME_D);
 		if ((instr.whole & 0xFFFFFC00) == Opcode::CPUCFG) return DECODED_INSTR(CPUCFG);
 

@@ -131,6 +131,11 @@ struct Emitter
 			add_code("LOAD_REGS_" + func_name + "();");
 	}
 
+	void store_syscall_registers() {
+		if (tinfo.options.translate_use_register_caching) {
+			add_code("STORE_SYSREGS_" + func_name + "();");
+		}
+	}
 	void reload_syscall_results() {
 		if (tinfo.options.translate_use_register_caching) {
 			add_code("LOAD_SYSREGS_" + func_name + "();");
@@ -671,11 +676,17 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 		}
 
 		// System instructions
-		case InstrId::SYSCALL:
+		case InstrId::SYSCALL: {
 			emit.flush_instruction_counter();
+			const uint32_t code = instr.whole & 0x3FF;
 			// Store cached registers before syscall
-			emit.store_all_registers();
-			emit.add_code("  if (api.syscall(cpu, ic, max_ic, " + hex_address(emit.pc()) + ")) {");
+			if (code != 0) { // 0 = regular syscall
+				emit.store_syscall_registers();
+				emit.add_code("  if (api.syscall(cpu, " + std::to_string(code) + ", max_ic, " + hex_address(emit.pc()) + ")) {");
+			} else {
+				emit.store_all_registers();
+				emit.add_code("  if (api.syscall(cpu, cpu->r[11], max_ic, " + hex_address(emit.pc()) + ")) {");
+			}
 			if (!tinfo.options.translate_ignore_instruction_limit) {
 				emit.add_code("    cpu->pc += 4; return (ReturnValues){ic, MAX_COUNTER(cpu)}; }");
 				emit.add_code("  max_ic = MAX_COUNTER(cpu);");
@@ -685,6 +696,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			// Reload cached registers after syscall
 			emit.reload_syscall_results();
 			break;
+		}
 
 		// Load upper immediate
 		case InstrId::LU12I_W:
@@ -1797,6 +1809,17 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			}
 		}
 		// FP registers are pointers, so no need to reload them
+		code += "  ;\n";
+
+		// Most system calls (especially with code) only need A0-A7 loaded
+		code += "#define STORE_SYSREGS_" + emit.func_name + "() \\\n";
+		const int sysreg_begin = std::max(int(REG_A0), Emitter::CACHE_START);
+		const int sysreg_end = std::min(int(REG_A7) + 1, Emitter::CACHE_END);
+		for (int reg = sysreg_begin; reg < sysreg_end; reg++) {
+			if (emit.gpr_used[reg]) {
+				code += "  cpu->r[" + std::to_string(reg) + "] = " + emit.cached_regname(reg) + "; \\\n";
+			}
+		}
 		code += "  ;\n";
 		// We allow returning integers in A0-A1 from system calls
 		// unless PC changed (in which case we reload all registers anyway)

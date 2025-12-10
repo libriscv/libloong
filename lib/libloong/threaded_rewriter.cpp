@@ -21,6 +21,15 @@ uint32_t DecodedExecuteSegment::optimize_bytecode(uint8_t& bytecode, address_t p
 
 	switch (bytecode) {
 		// Bytecodes with optimized field access
+		case LA64_BC_SYSCALL: {
+			const auto syscall_num = original.whole & 0x3FF;
+			if (syscall_num != 0) {
+				bytecode = LA64_BC_SYSCALLIMM;
+				return syscall_num;
+			}
+			// Regular syscall with number in A7
+			return instruction_bits;
+		}
 		case LA64_BC_B:
 		case LA64_BC_BL: {
 			const auto offset = InstructionHelpers::sign_extend_26(original.i26.offs()) << 2;

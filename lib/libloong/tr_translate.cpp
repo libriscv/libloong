@@ -48,12 +48,12 @@ namespace loongarch
 		}
 
 		// SYSCALL is a stopping instruction
-		if ((instr.opcode() & 0xFFFFFFFF) == 0x002B0000) {
+		if ((instr.opcode() & 0xFFFFFC00) == 0x002B0000) {
 			return true;
 		}
 
 		// BREAK is a stopping instruction
-		if ((instr.opcode() & 0xFFFFFFFF) == 0x002A0000) {
+		if ((instr.opcode() & 0xFFFFFC00) == 0x002A0000) {
 			return true;
 		}
 

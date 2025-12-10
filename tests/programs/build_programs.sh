@@ -5,6 +5,13 @@ build_program() {
 	EXTRA_ARGS="-mlsx -mmax-inline-memcpy-size=16"
 	loongarch64-linux-gnu-gcc-14 -O2 -gdwarf-4 -static  "$src_file" $LINKER_ARGS $EXTRA_ARGS -o "$output_file"
 }
+build_luajit() {
+	local src_file="$1"
+	local output_file="$2"
+	LINKER_ARGS="-Wl,-Ttext-segment=0x200000"
+	EXTRA_ARGS="-L. -l:libluajit.a -mmax-inline-memcpy-size=16"
+	loongarch64-linux-gnu-g++-14 -O2 -static  "$src_file" $LINKER_ARGS $EXTRA_ARGS -o "$output_file"
+}
 build_freestanding_program() {
 	local src_file="$1"
 	local output_file="$2"
@@ -21,6 +28,13 @@ build_freestanding_program return_42_bare.c return_42_bare.elf
 build_program stream.c stream.elf
 build_program dhrystone.c dhrystone.elf
 build_program signal_test.c signal_test.elf
+
+# If libluajit.a is not present, get it from
+if [ ! -f libluajit.a ]; then
+	echo "libluajit.a not found! wget https://github.com/libriscv/libloong/releases/download/v0.2/libluajit.a"
+	exit 1
+fi
+build_luajit luajit.cpp luajit.elf
 
 loongarch64-linux-gnu-g++-14 -O2 -gdwarf-4 -static -Wl,-Ttext-segment=0x200000 cxx_test.cpp -o cxx_test.elf
 

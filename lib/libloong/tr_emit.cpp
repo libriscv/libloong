@@ -17,6 +17,37 @@ static std::string hex_address(uint64_t addr) {
 	return std::string(buf);
 }
 
+static bool instruction_exclusively_vr(InstrId id) {
+	switch (id) {
+	case InstrId::VINSGR2VR_B:
+	case InstrId::VINSGR2VR_D:
+	case InstrId::VINSGR2VR_H:
+	case InstrId::VINSGR2VR_W:
+	case InstrId::VPICKVE2GR_B:
+	case InstrId::VPICKVE2GR_BU:
+	case InstrId::VPICKVE2GR_D:
+	case InstrId::VPICKVE2GR_DU:
+	case InstrId::VPICKVE2GR_H:
+	case InstrId::VPICKVE2GR_HU:
+	case InstrId::VPICKVE2GR_W:
+	case InstrId::VPICKVE2GR_WU:
+	case InstrId::VREPLGR2VR_B:
+	case InstrId::VREPLGR2VR_D:
+	case InstrId::VREPLGR2VR_H:
+	case InstrId::VREPLGR2VR_W:
+	case InstrId::XVPICKVE2GR_W:
+	case InstrId::XVREPLGR2VR_B:
+	case InstrId::XVREPLVE_D:
+	case InstrId::XVLD:
+	case InstrId::XVST:
+	case InstrId::XVLDX:
+	case InstrId::XVSTX:
+		return false; // Uses one or more GPR
+	default:
+		return id >= InstrId::VADD_B && id <= InstrId::XVXOR_V;
+	}
+}
+
 // Minimal instruction emitter for LoongArch binary translation
 // This is a simplified version focusing on the most common instructions
 struct Emitter
@@ -98,6 +129,12 @@ struct Emitter
 	void reload_all_registers() {
 		if (tinfo.options.translate_use_register_caching)
 			add_code("LOAD_REGS_" + func_name + "();");
+	}
+
+	void reload_syscall_results() {
+		if (tinfo.options.translate_use_register_caching) {
+			add_code("LOAD_SYSREGS_" + func_name + "();");
+		}
 	}
 
 	// Flush the instruction counter to generated code
@@ -285,15 +322,18 @@ struct Emitter
 	// Fallback to slow-path handler
 	void emit_fallback(const Instruction& instr, uint32_t instr_bits) {
 		// For unimplemented instructions, call the slow-path handler
+		const bool vr_only = instruction_exclusively_vr(instr.id);
 		// Store cached registers before calling handler
-		store_all_registers();
+		if (!vr_only)
+			store_all_registers();
 		if (tinfo.options.translate_verbose_fallbacks) {
 			add_code("  api.fallback(cpu, " + hex_address(pc()) + "ULL, " + hex_address(instr_bits) + ");");
 		}
 		const uintptr_t handler_func = reinterpret_cast<uintptr_t>(instr.handler);
 		add_code("  ((handler_t)" + hex_address(handler_func) + ")(cpu, " + hex_address(instr_bits) + ");");
 		// Reload cached registers after handler returns
-		reload_all_registers();
+		if (!vr_only)
+			reload_all_registers();
 	}
 
 	void emit_return() {
@@ -643,7 +683,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 				emit.add_code("    cpu->pc += 4; return (ReturnValues){0, MAX_COUNTER(cpu)}; }");
 			}
 			// Reload cached registers after syscall
-			emit.reload_all_registers();
+			emit.reload_syscall_results();
 			break;
 
 		// Load upper immediate
@@ -1757,6 +1797,15 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			}
 		}
 		// FP registers are pointers, so no need to reload them
+		code += "  ;\n";
+		// We allow returning integers in A0-A1 from system calls
+		// unless PC changed (in which case we reload all registers anyway)
+		code += "#define LOAD_SYSREGS_" + emit.func_name + "() \\\n";
+		for (unsigned reg = REG_A0; reg < REG_A2; reg++) {
+			if (emit.gpr_used[reg]) {
+				code += "  " + emit.cached_regname(reg) + " = cpu->r[" + std::to_string(reg) + "]; \\\n";
+			}
+		}
 		code += "  ;\n";
 	}
 

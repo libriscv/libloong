@@ -87,11 +87,10 @@
 // LSX (SIMD) instructions
 [LA64_BC_VLD]       = la64_vld,
 [LA64_BC_VST]       = la64_vst,
-[LA64_BC_VFADD_D]   = la64_vfadd_d,
 [LA64_BC_VLDX]      = la64_vldx,
 [LA64_BC_VSTX]      = la64_vstx,
+[LA64_BC_VFADD_D]   = la64_vfadd_d,
 [LA64_BC_VFMADD_D]  = la64_vfmadd_d,
-[LA64_BC_VFNMADD_D] = la64_vfnmadd_d,
 [LA64_BC_VHADDW_D_W] = la64_vhaddw_d_w,
 
 // LASX (256-bit) instructions

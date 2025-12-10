@@ -95,11 +95,10 @@ namespace loongarch
 		// LSX (SIMD) instructions
 		LA64_BC_VLD,               // Vector load 128-bit (293 in stream)
 		LA64_BC_VST,               // Vector store 128-bit (234 in stream)
-		LA64_BC_VFADD_D,           // Vector floating-point add double (11 in stream)
 		LA64_BC_VLDX,              // Vector indexed load 128-bit (4 in stream)
 		LA64_BC_VSTX,              // Vector indexed store 128-bit (2 in stream)
+		LA64_BC_VFADD_D,           // Vector floating-point add double (11 in stream)
 		LA64_BC_VFMADD_D,          // Vector fused multiply-add double
-		LA64_BC_VFNMADD_D,         // Vector fused negative multiply-add double
 		LA64_BC_VHADDW_D_W,        // Vector horizontal add with widening (word to doubleword)
 
 		// LASX (256-bit) instructions
@@ -236,7 +235,6 @@ namespace loongarch
 		case LA64_BC_VLDX: return "VLDX";
 		case LA64_BC_VSTX: return "VSTX";
 		case LA64_BC_VFMADD_D: return "VFMADD.D";
-		case LA64_BC_VFNMADD_D: return "VFNMADD.D";
 		case LA64_BC_VHADDW_D_W: return "VHADDW.D.W";
 		case LA64_BC_XVLD: return "XVLD";
 		case LA64_BC_XVST: return "XVST";

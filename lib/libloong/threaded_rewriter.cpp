@@ -530,15 +530,6 @@ uint32_t DecodedExecuteSegment::optimize_bytecode(uint8_t& bytecode, address_t p
 			fi.ra = original.r4.ra;
 			return fi.whole;
 		} break;
-		case LA64_BC_VFNMADD_D: {
-			// VFNMADD.D vd, vj, vk, va - 4R-type format
-			auto fi = *(FasterLA64_4R *)&instruction_bits;
-			fi.rd = original.r4.rd;
-			fi.rj = original.r4.rj;
-			fi.rk = original.r4.rk;
-			fi.ra = original.r4.ra;
-			return fi.whole;
-		} break;
 		case LA64_BC_VHADDW_D_W: {
 			// VHADDW.D.W vd, vj, vk - uses R3 format
 			auto fi = *(FasterLA64_R3 *)&instruction_bits;

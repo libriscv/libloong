@@ -620,21 +620,6 @@ INSTRUCTION(LA64_BC_VFMADD_D, la64_vfmadd_d)
 	NEXT_INSTR();
 }
 
-// LA64_BC_VFNMADD_D: Vector fused negative multiply-add double
-INSTRUCTION(LA64_BC_VFNMADD_D, la64_vfnmadd_d)
-{
-	// 4R-type format: vd = -(vj * vk) + va = va - vj * vk
-	auto fi = *(FasterLA64_4R *)&DECODER().instr;
-	auto& dst = REGISTERS().getvr(fi.rd);
-	const auto& src_j = REGISTERS().getvr(fi.rj);
-	const auto& src_k = REGISTERS().getvr(fi.rk);
-	const auto& src_a = REGISTERS().getvr(fi.ra);
-
-	dst.df[0] = src_a.df[0] - src_j.df[0] * src_k.df[0];
-	dst.df[1] = src_a.df[1] - src_j.df[1] * src_k.df[1];
-	NEXT_INSTR();
-}
-
 // LA64_BC_VHADDW_D_W: Vector horizontal add with widening (word to doubleword)
 INSTRUCTION(LA64_BC_VHADDW_D_W, la64_vhaddw_d_w)
 {

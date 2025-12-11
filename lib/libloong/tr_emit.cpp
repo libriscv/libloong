@@ -739,15 +739,29 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 		// Arithmetic immediate
 		case InstrId::ADDI_D: {
 			if (instr.ri12.rd != 0) {
-				emit.add_code("  " + emit.reg(instr.ri12.rd) + " = " +
-					emit.reg(instr.ri12.rj) + " + " + std::to_string(InstructionHelpers::sign_extend_12(instr.ri12.imm)) + ";");
+				if (instr.ri12.rj == 0) {
+					// Optimize ADDI_D rd, r0, imm to rd = imm_se
+					int32_t imm_se = InstructionHelpers::sign_extend_12(instr.ri12.imm);
+					emit.add_code("  " + emit.reg(instr.ri12.rd) + " = (saddr_t)" +
+						std::to_string(imm_se) + "LL;");
+				} else {
+					emit.add_code("  " + emit.reg(instr.ri12.rd) + " = " +
+						emit.reg(instr.ri12.rj) + " + " + std::to_string(InstructionHelpers::sign_extend_12(instr.ri12.imm)) + ";");
+				}
 			}
 			break;
 		}
 		case InstrId::ADDI_W: {
 			if (instr.ri12.rd != 0) {
-				emit.add_code("  " + emit.reg(instr.ri12.rd) + " = (int32_t)" +
-					emit.reg(instr.ri12.rj) + " + " + std::to_string(InstructionHelpers::sign_extend_12(instr.ri12.imm)) + ";");
+				if (instr.ri12.rj == 0) {
+					// Optimize ADDI_W rd, r0, imm to rd = imm_se
+					int32_t imm_se = InstructionHelpers::sign_extend_12(instr.ri12.imm);
+					emit.add_code("  " + emit.reg(instr.ri12.rd) + " = (int32_t)" +
+						std::to_string(imm_se) + ";");
+				} else {
+					emit.add_code("  " + emit.reg(instr.ri12.rd) + " = (int32_t)" +
+						emit.reg(instr.ri12.rj) + " + " + std::to_string(InstructionHelpers::sign_extend_12(instr.ri12.imm)) + ";");
+				}
 			}
 			break;
 		}
@@ -1027,6 +1041,12 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 		case InstrId::ORI:
 			if (instr.ri12.rd != 0) {
 				const uint32_t imm12 = instr.ri12.imm;
+				if (instr.ri12.rj == 0) {
+					// Optimize ORI rd, r0, imm to rd = imm_se
+					emit.add_code("  " + emit.reg(instr.ri12.rd) + " = " +
+						std::to_string((int32_t)imm12) + ";");
+					break;
+				}
 				emit.add_code("  " + emit.reg(instr.ri12.rd) + " = " +
 					emit.reg(instr.ri12.rj) + " | " + std::to_string(imm12) + ";");
 			}
@@ -1213,6 +1233,11 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 		case InstrId::LU32I_D:
 			if (instr.ri20.rd != 0) {
 				int64_t si20 = InstructionHelpers::sign_extend_20(instr.ri20.imm);
+				if (si20 == 0) {
+					emit.add_code("  " + emit.reg(instr.ri20.rd) + " = (uint32_t)" +
+						emit.reg(instr.ri20.rd) + ";");
+					break;
+				}
 				emit.add_code("  " + emit.reg(instr.ri20.rd) + " = " +
 					"(uint32_t)(" + emit.reg(instr.ri20.rd) + ") | " +
 					std::to_string(si20 << 32) + "ull;");

@@ -50,14 +50,15 @@ namespace GameEngine {
 		screen_buffer[SCREEN_HEIGHT - 1][SCREEN_WIDTH - 1] = '+';
 	}
 
-	void render(double t, uint64_t cycles) {
+	void render(double t, uint64_t cycles, bool is_jit) {
 		clear_screen();
 		for (int y = 0; y < SCREEN_HEIGHT; y += 2) {
 			fmt::print("{}\n{}\n", screen_buffer[y+0], screen_buffer[y+1]);
 		}
 		// One line up, display stats
 		fmt::print("\033[{}A", 1);
-		fmt::print("+= Time: {:.2f}us  Instr: {}  MI/s: {:.2f} ==\n",
+		fmt::print("+= LoongScript {}  Time: {:.2f}us  Instr: {}  MI/s: {:.2f} ==\n",
+			is_jit ? "JIT" : "Interp",
 			t * 1e6,
 			cycles,
 			(cycles / 1e6) / t);
@@ -306,7 +307,8 @@ int main(int argc, char* argv[]) {
 			// Render
 			GameEngine::render(
 				std::chrono::duration<double>(end_time - start_time).count(),
-				cycles);
+				cycles,
+				game_script.machine().is_binary_translation_enabled());
 
 			// Target 30 FPS
 			std::this_thread::sleep_for(std::chrono::milliseconds(32));

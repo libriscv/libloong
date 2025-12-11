@@ -7,6 +7,7 @@ mod libloong_api;
 use libloong_api::*;
 
 use std::ffi::c_int;
+use std::sync::{LazyLock, Mutex};
 
 // Game constants
 const SCREEN_WIDTH: i32 = 80;
@@ -224,7 +225,7 @@ impl Particle {
 }
 
 // Global game state
-static mut GAME: Option<Game> = None;
+static GAME: LazyLock<Mutex<Game>> = LazyLock::new(|| Mutex::new(Game::new()));
 
 struct Game {
     player: Player,
@@ -365,21 +366,17 @@ impl Game {
 
 #[no_mangle]
 pub extern "C" fn game_init() {
-    unsafe {
-        GAME = Some(Game::new());
-    }
+    // LazyLock initializes on first access, so we just touch it here
+    let _ = &*GAME;
     //log(&String::from("Game initialized"));
 }
 
 #[no_mangle]
 pub extern "C" fn game_update() {
-    unsafe {
-        if let Some(game) = &mut GAME {
-            let delta_time = get_delta_time();
-            game.update(delta_time);
-            game.draw();
-        }
-    }
+    let mut game = GAME.lock().unwrap();
+    let delta_time = get_delta_time();
+    game.update(delta_time);
+    game.draw();
 }
 
 // Main function

@@ -1,6 +1,7 @@
 #pragma once
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <stdexcept>
 #include <string>
 #include <libloong_settings.h>
@@ -24,6 +25,13 @@ namespace loongarch
 		bool translate_ignore_instruction_limit = false;
 		bool use_shared_execute_segments = false;
 		bool translate_use_register_caching = true;
+		/// @brief A callback that is invoked to perform the binary translation and
+		/// compilation step in the background.
+		/// @details This callback will be called by the emulator when it
+		/// a binary translation is ready to be compiled. The user may (should)
+		/// call this callback in a separate thread to perform the compilation
+		/// step without blocking the main emulation thread.
+		std::function<void(std::function<void()>& compilation_step)> translate_background_callback = nullptr;
 		/// @brief Enable automatic n-bit address space for the binary translator by rounding down to the nearest power of 2.
 		/// @details This will allow the binary translator to use and-masked addresses
 		/// for all memory accesses, which can drastically improve performance.

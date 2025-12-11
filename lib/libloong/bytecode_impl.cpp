@@ -1103,3 +1103,35 @@ INSTRUCTION(LA64_BC_FUNCTION2, execute_function_extended)
 }
 
 // LA64_BC_TRANSLATOR is implemented in each dispatch file separately
+
+INSTRUCTION(LA64_BC_LIVEPATCH, execute_livepatch) {
+	switch (DECODER().handler_idx) {
+	case 0: { // Live-patch binary translation
+#ifdef RISCV_BINARY_TRANSLATION
+		// Special bytecode that does not read any decoder data
+		// 1. Wind back PC to the current decoder position
+		pc = pc - DECODER().block_bytes();
+#  ifdef DISPATCH_MODE_TAILCALL
+		// 2. Find the correct decoder pointer in the patched decoder cache
+		auto* patched = &exec->patched_decoder_cache()[pc >> DecoderCache<W>::SHIFT];
+		d = patched;
+#  else
+		// 2. Find the correct decoder pointer in the patched decoder cache
+		exec_decoder = exec->patched_decoder_cache();
+		decoder = &exec_decoder[pc >> DecoderCache<W>::SHIFT];
+#  endif
+		// 3. Execute the instruction
+		EXECUTE_INSTR();
+#else
+		// Invalid handler
+		DECODER().set_bytecode(LA64_BC_INVALID);
+		DECODER().handler_idx = 0;
+#endif
+	}	break;
+	default:
+		// Invalid handler
+		DECODER().set_bytecode(LA64_BC_INVALID);
+		DECODER().handler_idx = 0;
+	}
+	EXECUTE_INSTR();
+}

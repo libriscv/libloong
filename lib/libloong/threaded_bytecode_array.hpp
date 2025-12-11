@@ -128,4 +128,5 @@ static constexpr void *computed_opcode[] = {
 #ifdef LA_BINARY_TRANSLATION
 	[LA64_BC_TRANSLATOR]= &&execute_translated_block,
 #endif
+	[LA64_BC_LIVEPATCH] = &&execute_livepatch,
 };

@@ -138,6 +138,7 @@ namespace loongarch
 #ifdef LA_BINARY_TRANSLATION
 		LA64_BC_TRANSLATOR,        // Binary translated block entry point
 #endif
+		LA64_BC_LIVEPATCH,         // Live patch entry point
 		BYTECODES_MAX
 	};
 	static_assert(BYTECODES_MAX <= 256, "A bytecode must fit in a byte");
@@ -265,6 +266,7 @@ namespace loongarch
 #ifdef LA_BINARY_TRANSLATION
 		case LA64_BC_TRANSLATOR: return "TRANSLATOR";
 #endif
+		case LA64_BC_LIVEPATCH: return "LIVEPATCH";
 		default: return "UNKNOWN";
 		}
 	}

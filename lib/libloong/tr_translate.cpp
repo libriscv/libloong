@@ -57,6 +57,11 @@ namespace loongarch
 			return true;
 		}
 
+		// MOVE $zero, $zero is a special STOP instruction
+		if (instr.whole == 0x00150000) {
+			return true;
+		}
+
 		return false;
 	}
 
@@ -170,6 +175,8 @@ namespace loongarch
 			std::vector<uint32_t> block_instructions;
 			block_instructions.reserve(block_insns);
 			bool nop_seen = false;
+			bool ret_seen = false;
+			static constexpr uint32_t RET_INSTR = 0x4c000020; // JIRL rd=0, rj=1, imm=0
 
 			// Find jump locations inside block
 			for (pc = block; pc < block_end; ) {
@@ -181,6 +188,7 @@ namespace loongarch
 				// Check for direct jumps (B, BL)
 				if (is_direct_jump(instruction, location, pc, is_call)) {
 					nop_seen = false;
+					ret_seen = false;
 					// If jump target is within current block, record as local jump
 					if (location >= block && location < block_end)
 						jump_locations.insert(location);
@@ -195,19 +203,36 @@ namespace loongarch
 				// Check for conditional branches
 				else if (is_branch_instruction(instruction, location, pc)) {
 					nop_seen = false;
+					ret_seen = false;
 					// Only accept branches relative to current block
 					if (location >= block && location < block_end)
 						jump_locations.insert(location);
 					else
 						global_jump_locations.insert(location);
 				}
-				else if (instruction.is_nop()) {
+				else if (instruction.whole == RET_INSTR) {
+					if (nop_seen) {
+						nop_seen = false;
+						// Speculative jump target after NOP + RET
+						jump_locations.insert(pc);
+					} else {
+						// Record that we have seen a return instruction
+						ret_seen = true;
+						nop_seen = false;
+					}
+				} else if (instruction.is_nop()) {
 					nop_seen = true;
+					ret_seen = false;
 				} else if (nop_seen) {
 					nop_seen = false;
 					// Once we have seen a NOP, any non-NOP ends the block
 					// at which point we speculate a jump target
 					jump_locations.insert(pc);
+				} else if (ret_seen) {
+					// After a return instruction, any non-NOP instruction is
+					// a potential jump target
+					jump_locations.insert(pc);
+					ret_seen = false;
 				}
 
 				// Add instruction to block

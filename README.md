@@ -1,20 +1,25 @@
 # libloong
 
-A LoongArch userspace emulator library, based on the design and architecture of [libriscv](https://github.com/libriscv/libriscv).
+A high-performance LoongArch userspace emulator library designed for embedding and scripting applications.
 
-It's currently a work in progress, but is able to boot into main() for full Linux glibc guest programs. Hurray!
+Built on the proven architecture of [libriscv](https://github.com/libriscv/libriscv), libloong has competitive interpreter performance while maintaining a compact ~17k line codebase.
 
 For discussions & help, [visit Discord](https://discord.gg/n4GcXr66X5).
 
 ## Features
 
-- Fast LoongArch interpreter with decoder cache
+- Fast LoongArch interpreter with optional JIT
+- Ultra-low latency call overheads
 - Support for 64-bit LoongArch (LA64)
 - Support for vector LSX and LASX instructions
 - C and C++ API
 - Zero dependencies
-- Execution timeout
+- Execution timeout and memory safety
 - First-class pause/resume support
+
+## Design
+
+Game engine scripting is where libloong excels. Traditional games expose modding through shared libraries (full system access), embedded VMs like Lua (~150ns call overhead), or Java run-times. _libloong_ has ~4ns call overhead.
 
 ## Building
 
@@ -86,7 +91,7 @@ Triad:          13502.2     0.021949     0.017775     0.024309
 
 Register machines still stand strongest at the end of 2025. _libloong_ is currently the fastest 64-bit interpreter, reliably reaching 3000+ CoreMark score.
 
-With basic just-in-time binary translation enabled. About ~38% of native:
+The optional lightweight JIT reaches 38% of native performance (15.5k vs 41k CoreMark) with full feature parity to the interpreter:
 
 > CoreMark 1.0 : 15580.375613 / GCC14.2.0 -O3 -DPERFORMANCE_RUN=1   / Static
 

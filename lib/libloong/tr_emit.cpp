@@ -454,8 +454,14 @@ struct Emitter
 		}
 
 		// Jump to target
-		add_code("cpu->pc = " + hex_address(target) + "ULL;");
-		this->emit_return();
+		if (target >= tinfo.basepc && target < tinfo.endpc) {
+			char label[64];
+			snprintf(label, sizeof(label), "label_%" PRIx64 ";", (uint64_t)target);
+			add_code("  goto " + std::string(label));
+		} else {
+			add_code("cpu->pc = " + hex_address(target) + "ULL;");
+			this->emit_return();
+		}
 	}
 
 	// Emit indirect jump (JIRL)

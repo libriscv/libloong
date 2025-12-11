@@ -6,6 +6,7 @@
 #include <fstream>
 #include <inttypes.h>
 #include <memory>
+#include <thread>
 
 #ifndef _WIN32
 #include <getopt.h>
@@ -141,6 +142,10 @@ static int run_program(const std::vector<uint8_t>& binary, const EmulatorOptions
 			.translate_trace = opts.trace_translation,
 			.translate_ignore_instruction_limit = opts.max_instructions == 0,
 			.translate_use_register_caching = opts.enable_register_caching,
+			.translate_background_callback = [](const std::function<void()>& step) {
+				// Simple background compilation using a detached thread
+				std::thread(step).detach();
+			},
 			.translate_automatic_nbit_address_space = opts.translate_nbit_as,
 			.translate_unchecked_memory_accesses = opts.translate_unsafe,
 			.translate_verbose_fallbacks = opts.verbose,

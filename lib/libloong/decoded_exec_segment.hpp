@@ -3,6 +3,8 @@
 #include "decoder_cache.hpp"
 #include "tr_types.hpp"
 #include <vector>
+#include <mutex>
+#include <condition_variable>
 
 namespace loongarch
 {
@@ -10,11 +12,7 @@ namespace loongarch
 		DecodedExecuteSegment(address_t begin, address_t end)
 			: m_exec_begin(begin), m_exec_end(end) {}
 
-		~DecodedExecuteSegment() {
-			if (m_decoder_cache.cache) {
-				delete[] m_decoder_cache.cache;
-			}
-		}
+		~DecodedExecuteSegment();
 
 		bool is_within(address_t addr, size_t len = 4) const noexcept {
 			address_t addr_end;
@@ -68,6 +66,23 @@ namespace loongarch
 		void set_mapping(unsigned i, bintr_block_func handler) { m_translator_mappings.at(i) = handler; }
 		bintr_block_func mapping_at(unsigned i) const { return m_translator_mappings.at(i); }
 		bintr_block_func unchecked_mapping_at(unsigned i) const { return m_translator_mappings[i]; }
+
+		// Patched decoder cache (for live-patching)
+		auto* patched_decoder_cache() noexcept { return m_patched_decoder_cache.cache; }
+		auto* patched_decoder_cache() const noexcept { return m_patched_decoder_cache.cache; }
+		void set_patched_decoder_cache(DecoderData* cache, size_t size) noexcept {
+			m_patched_decoder_cache.cache = cache;
+			m_patched_decoder_cache.size = size;
+		}
+
+		// Background compilation state
+		bool is_background_compiling() const noexcept;
+		void set_background_compiling(bool is_bg);
+		void wait_for_compilation_complete();
+
+		// Dynamic library handle
+		void* bintr_dylib() const noexcept { return m_bintr_dl; }
+		void set_bintr_dylib(void* dylib) noexcept { m_bintr_dl = dylib; }
 #else
 		bool is_binary_translated() const noexcept { return false; }
 #endif
@@ -81,6 +96,11 @@ namespace loongarch
 #ifdef LA_BINARY_TRANSLATION
 		bool m_is_libtcc = false;
 		std::vector<bintr_block_func> m_translator_mappings;
+		DecoderCache m_patched_decoder_cache;
+		void* m_bintr_dl = nullptr;
+		mutable std::mutex m_background_compilation_mutex;
+		mutable std::condition_variable m_background_compilation_cv;
+		bool m_is_background_compiling = false;
 #endif
 	};
 

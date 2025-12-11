@@ -168,7 +168,7 @@ namespace loongarch
 		MultiThreading& threads();
 		int gettid();
 		void setup_posix_threads();
-		intptr_t counter_offset() const noexcept;
+		static intptr_t counter_offset() noexcept;
 
 		// Current machine exception (used to avoid unwinding)
 		void set_current_exception(std::exception_ptr&& ptr) noexcept { m_current_exception = std::move(ptr); }

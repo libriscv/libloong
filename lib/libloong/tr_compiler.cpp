@@ -3,6 +3,8 @@
 #include "threaded_bytecodes.hpp"
 #include "tr_types.hpp"
 #include <cstring>
+#include <atomic>
+#include <mutex>
 
 #ifdef ENABLE_LIBTCC
 #include <libtcc.h>
@@ -111,7 +113,7 @@ namespace loongarch
 		return nullptr;
 	}
 
-	static inline void dylib_close(void* dylib, bool is_libtcc)
+	void dylib_close(void* dylib, bool is_libtcc)
 	{
 #ifdef ENABLE_LIBTCC
 		if (is_libtcc) {
@@ -131,8 +133,15 @@ namespace loongarch
 		unsigned mapping_index;
 	};
 
+	// Arena information for background compilation
+	struct ArenaInfo {
+		const uint8_t* arena_ptr;
+		int32_t arena_offset;
+		int32_t ic_offset;
+	};
+
 	// Initialize the translated segment with callbacks
-	static bool initialize_translated_segment(DecodedExecuteSegment& exec, void* dylib, const Machine& machine, bool is_libtcc)
+	static bool initialize_translated_segment(DecodedExecuteSegment& exec, void* dylib, const ArenaInfo& arena_info, bool is_libtcc)
 	{
 		if (dylib == nullptr)
 			return false;
@@ -166,8 +175,8 @@ namespace loongarch
 			int (*cpopl) (uint64_t);
 		} callback_table;
 
-		callback_table.syscalls = machine.get_syscall_handlers();
-		callback_table.unknown_syscall = machine.get_unknown_syscall_handler();
+		callback_table.syscalls = Machine::get_syscall_handlers();
+		callback_table.unknown_syscall = Machine::get_unknown_syscall_handler();
 		callback_table.syscall = [](CPU& cpu, unsigned sysnum, uint64_t max_ic, address_t pc) -> int {
 			try {
 				cpu.registers().pc = pc;
@@ -214,24 +223,43 @@ namespace loongarch
 		callback_table.cpop = [](uint32_t x) { return __builtin_popcount(x); };
 		callback_table.cpopl = [](uint64_t x) { return __builtin_popcountl(x); };
 
-		// Calculate offsets for arena pointer and instruction counter
-		// Since libloong uses a flat arena model and the binary translated code
-		// will receive callbacks, we pass placeholder offsets.
-		// The actual arena access will be done through direct pointer access
-		// in the generated code, not through offset calculation.
-		// These offsets are not used in the libloong flat arena model.
-		auto* arena_ptr = machine.memory.arena_ref();
-		const int32_t arena_offset = reinterpret_cast<intptr_t>((intptr_t)arena_ptr - (intptr_t)&machine);
-		const int32_t ic_offset = machine.counter_offset();
-
 		// Initialize the translated segment
-		init_func(&callback_table, arena_offset, ic_offset);
+		init_func(&callback_table, arena_info.arena_offset, arena_info.ic_offset);
 
 		return true;
 	}
 
+	// Apply live-patching: atomically swap decoder cache entries
+	static void apply_live_patch(const MachineOptions& options, DecodedExecuteSegment& exec,
+		const Mapping* mappings, unsigned nmappings)
+	{
+		// Issue memory fence to ensure patched decoder is visible
+		std::atomic_thread_fence(std::memory_order_seq_cst);
+
+		// Apply livepatch bytecode to all translated locations
+		// This will cause execution to swap to the patched decoder cache
+		for (unsigned i = 0; i < nmappings; i++)
+		{
+			const auto addr = mappings[i].addr;
+
+			if (exec.is_within(addr)) {
+				auto& entry = *exec.pc_relative_decoder_cache(addr);
+				/// XXX: Set the livepatch bytecode atomically
+				/// NOTE: handler_idx=0 means binary translation livepatch
+				entry.set_bytecode(LA64_BC_LIVEPATCH);
+				entry.handler_idx = 0;
+			}
+		}
+
+		if (options.verbose_loader) {
+			printf("libloong: Live-patching applied to %u locations\n", nmappings);
+		}
+	}
+
 	// Activate the dylib by mapping handlers to decoder cache
-	void activate_dylib(const MachineOptions& options, DecodedExecuteSegment& exec, void* dylib, const Machine& machine, bool is_libtcc)
+	// live_patch=true will apply to patched decoder cache and use livepatch bytecode
+	void activate_dylib(MachineOptions options, DecodedExecuteSegment& exec, void* dylib,
+		const ArenaInfo& arena_info, bool is_libtcc, bool live_patch = false)
 	{
 		// Map all the functions to instruction handlers
 		const uint32_t* no_mappings = (const uint32_t*)dylib_lookup(dylib, "no_mappings", is_libtcc);
@@ -247,7 +275,7 @@ namespace loongarch
 		if (*no_mappings == 0)
 			return;
 
-		if (!initialize_translated_segment(exec, dylib, machine, is_libtcc))
+		if (!initialize_translated_segment(exec, dylib, arena_info, is_libtcc))
 		{
 #ifdef ENABLE_LIBTCC
 			if (options.verbose_loader) {
@@ -283,33 +311,56 @@ namespace loongarch
 			}
 		}
 
-		// Apply mappings to decoder cache
+		// Choose which decoder cache to apply mappings to
+		DecoderData* target_decoder = live_patch
+			? exec.patched_decoder_cache()
+			: exec.decoder_cache();
+
+		if (live_patch) {
+			// For live-patching, we need to copy the entire decoder cache first
+			const size_t cache_size = exec.decoder_cache_size();
+			if (!exec.patched_decoder_cache()) {
+				auto* patched = new DecoderData[cache_size];
+				std::copy(exec.decoder_cache(), exec.decoder_cache() + cache_size, patched);
+				exec.set_patched_decoder_cache(patched, cache_size);
+				target_decoder = patched;
+			}
+		}
+		// Make decoder PC-relative
+		target_decoder -= exec.exec_begin() >> DecoderCache::SHIFT;
+
+		// Apply mappings to the target decoder cache
 		for (unsigned i = 0; i < nmappings; i++)
 		{
 			const unsigned mapping_index = mappings[i].mapping_index;
 			const auto addr = mappings[i].addr;
-			//printf("  Mapping[%u] addr=0x%lx to index=%u\n",
-			//	i, (unsigned long)addr, mapping_index);
 
 			if (exec.is_within(addr)) {
-				auto& entry = *exec.pc_relative_decoder_cache(addr);
-				entry.set_bytecode(LA64_BC_TRANSLATOR);
-				entry.instr = mapping_index;
-				entry.handler_idx = 0xFF; // Invalid handler index
-			} else if (true || options.verbose_loader) {
+				// Calculate the decoder entry for this address
+				auto* entry = target_decoder + (addr >> DecoderCache::SHIFT);
+				entry->set_bytecode(LA64_BC_TRANSLATOR);
+				entry->instr = mapping_index;
+				entry->handler_idx = 0xFF; // Invalid handler index
+			} else if (options.verbose_loader) {
 				fprintf(stderr, "libloong: Mapping address 0x%lx outside execute area\n",
 					(unsigned long)addr);
 			}
 		}
 
 		if (options.verbose_loader) {
-			printf("libloong: Binary translation activated with %u mappings and %u handlers\n",
+			printf("libloong: Binary translation %s with %u mappings and %u handlers\n",
+				live_patch ? "prepared for live-patching" : "activated",
 				nmappings, unique_mappings);
 		}
 
-		// Keep the dylib open - we'll need it for the function pointers
-		// In a production implementation, we would store the dylib handle
-		// for cleanup on DecodedExecuteSegment destruction
+		// Store the dylib handle for cleanup
+		if (live_patch) {
+			// For live-patching, we'll apply the patch after this function returns
+			// Don't store the dylib yet - caller will do it
+		} else {
+			// For synchronous translation, store the dylib immediately
+			exec.set_bintr_dylib(dylib);
+		}
 	}
 
 	// Try to compile and activate binary translation
@@ -342,17 +393,79 @@ namespace loongarch
 			*output.code += output.footer;
 
 #ifdef ENABLE_LIBTCC
-			// Compile with libtcc
-			void* dylib = libtcc_compile(*output.code, {}, "");
-			if (dylib == nullptr) {
-				if (options.verbose_loader) {
-					fprintf(stderr, "libloong: libtcc compilation failed\n");
+			// Determine if we should use live-patching
+			const bool use_live_patch = (options.translate_background_callback != nullptr);
+
+			// Prepare arena information for background compilation
+			ArenaInfo arena_info;
+			auto* arena_ptr = machine.memory.arena_ref();
+			arena_info.arena_ptr = (const uint8_t*)arena_ptr;
+			arena_info.arena_offset = reinterpret_cast<intptr_t>((intptr_t)arena_ptr - (intptr_t)&machine);
+			arena_info.ic_offset = Machine::counter_offset();
+
+			// Create the compilation step as a lambda
+			// Capture by value to ensure thread safety
+			auto compilation_step = [options, &exec, output = std::move(output), use_live_patch, arena_info]() mutable -> void {
+				// Protect libtcc_compile with a mutex
+				static std::mutex libtcc_mutex;
+				std::lock_guard<std::mutex> lock(libtcc_mutex);
+
+				// Mark that we're compiling in the background
+				if (use_live_patch) {
+					exec.set_background_compiling(true);
 				}
-				return false;
+
+				try {
+					// Compile with libtcc
+					void* dylib = libtcc_compile(*output.code, {}, "");
+					if (dylib == nullptr) {
+						if (options.verbose_loader) {
+							fprintf(stderr, "libloong: libtcc compilation failed\n");
+						}
+						if (use_live_patch) {
+							exec.set_background_compiling(false);
+						}
+						return;
+					}
+
+					// Activate the compiled code
+					activate_dylib(options, exec, dylib, arena_info, true, use_live_patch);
+
+					if (use_live_patch) {
+						// Store the dylib handle
+						exec.set_bintr_dylib(dylib);
+
+						// Get mappings for live-patching
+						const uint32_t* no_mappings = (const uint32_t*)dylib_lookup(dylib, "no_mappings", true);
+						const auto* mappings = (const Mapping*)dylib_lookup(dylib, "mappings", true);
+
+						if (no_mappings && mappings) {
+							// Apply the live-patch
+							apply_live_patch(options, exec, mappings, *no_mappings);
+						}
+
+						// Mark compilation as complete
+						exec.set_background_compiling(false);
+					}
+				} catch (const std::exception& e) {
+					if (options.verbose_loader) {
+						fprintf(stderr, "libloong: Binary translation compilation failed: %s\n", e.what());
+					}
+					if (use_live_patch) {
+						exec.set_background_compiling(false);
+					}
+				}
+			};
+
+			// Execute the compilation step
+			if (use_live_patch) {
+				// Call the user-provided background callback
+				options.translate_background_callback(compilation_step);
+			} else {
+				// Execute synchronously in the same thread
+				compilation_step();
 			}
 
-			// Activate the compiled code
-			activate_dylib(options, exec, dylib, machine, true);
 			return true;
 #else
 			if (options.verbose_loader) {

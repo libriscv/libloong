@@ -233,7 +233,7 @@ namespace loongarch
 		return cpu.current_execute_segment().is_binary_translated();
 	}
 
-	intptr_t Machine::counter_offset() const noexcept
+	intptr_t Machine::counter_offset() noexcept
 	{
 		return offsetof(Machine, m_counter);
 	}

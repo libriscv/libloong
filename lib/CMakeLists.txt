@@ -29,6 +29,7 @@ set(SOURCES
 	libloong/memory.cpp
 	libloong/memory_rw.cpp
 	libloong/decoder_cache.cpp
+	libloong/decoded_exec_segment.cpp
 	libloong/debug.cpp
 	libloong/serialize.cpp
 	libloong/threaded_rewriter.cpp

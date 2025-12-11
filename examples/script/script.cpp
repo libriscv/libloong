@@ -1,12 +1,13 @@
 #include "script.hpp"
-#include <libloong/decoder_cache.hpp>
-#include <libloong/threaded_bytecodes.hpp>
+#include <array>
+#include <cstdlib>
 #include <fmt/core.h>
 #include <fstream>
+#include <libloong/decoder_cache.hpp>
+#include <libloong/threaded_bytecodes.hpp>
 #include <sstream>
-#include <cstdlib>
+#include <thread>
 #include <unistd.h>
-#include <array>
 
 namespace loongarch::script {
 
@@ -224,6 +225,12 @@ void Script::initialize_machine() {
 		.brk_size = m_options.brk_size,
 		.verbose_loader = m_options.verbose,
 		.verbose_syscalls = m_options.verbose,
+#ifdef LA_BINARY_TRANSLATION
+		.translate_background_callback = [](const std::function<void()>& step) {
+			// Simple background compilation in a detached thread
+			std::thread(step).detach();
+		},
+#endif
 	};
 
 	try {

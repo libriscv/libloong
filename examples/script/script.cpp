@@ -48,10 +48,17 @@ Script::Script(std::vector<uint8_t> binary, const ScriptOptions& options)
 	initialize_machine();
 }
 
-// Destructor
 Script::~Script() {
 	if (!m_temp_file.empty() && !m_options.keep_temp_files) {
 		std::filesystem::remove(m_temp_file);
+	}
+	// Time Machine destruction
+	auto t0 = std::chrono::high_resolution_clock::now();
+	m_machine.reset();
+	if (m_options.verbose) {
+		auto t1 = std::chrono::high_resolution_clock::now();
+		auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count();
+		fmt::print("Machine destroyed in {} ms\n", duration);
 	}
 }
 

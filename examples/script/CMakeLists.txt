@@ -44,6 +44,9 @@ add_library(libloong_script STATIC
     api_generator.hpp
 )
 
+#target_compile_options(loong PUBLIC -fsanitize=address,undefined)
+#target_link_libraries(loong PUBLIC -fsanitize=address,undefined)
+
 # Create an alias for consistency with FetchContent usage
 add_library(libloong::script ALIAS libloong_script)
 

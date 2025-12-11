@@ -34,7 +34,25 @@ Memory::Memory(Machine& machine, const Machine& other, const MachineOptions& opt
 
 Memory::~Memory()
 {
+	machine().cpu.set_execute_segment(*CPU::empty_execute_segment());
+#ifdef LA_BINARY_TRANSLATION
+	// If the main execute segment is currently background compiling,
+	// wait for it to finish in asynchronously
+	if (m_main_exec_segment && m_main_exec_segment->is_background_compiling()) {
+		// Delay freeing the arena until after compilation is done
+		// as the binary translator may be reading from it.
+		auto* arena_ptr = m_arena;
+		const auto arena_size = m_arena_size;
+		std::thread([seg = m_main_exec_segment, arena_ptr, arena_size]() {
+			seg->wait_for_compilation_complete();
+			free_arena_internal(arena_ptr, arena_size);
+		}).detach();
+	} else {
+		free_arena();
+	}
+#else
 	free_arena();
+#endif
 }
 
 void Memory::allocate_arena(size_t size)
@@ -83,17 +101,22 @@ void Memory::allocate_custom_arena(size_t size, address_t rodata_start, address_
 	this->m_arena_end_sub_data = this->m_arena_size - this->m_data_start;
 }
 
+void Memory::free_arena_internal(uint8_t* arena, size_t size)
+{
+	if (!arena) return;
+#ifdef __unix__
+	munmap(arena, size + OVER_ALLOCATE_SIZE);
+#else
+	delete[] arena;
+#endif
+}
 void Memory::free_arena()
 {
-	if (!this->m_arena) return;
-#ifdef __unix__
-	munmap(this->m_arena, this->m_arena_size + OVER_ALLOCATE_SIZE);
-#else
-	delete[] this->m_arena;
-#endif
+	free_arena_internal(this->m_arena, this->m_arena_size);
 	this->m_arena = nullptr;
 	this->m_arena_size = 0;
 }
+
 
 void Memory::parse_symbols(const Elf::Header* ehdr, const MachineOptions& options)
 {
@@ -277,8 +300,8 @@ DecodedExecuteSegment& Memory::create_execute_segment(
 #ifdef LA_BINARY_TRANSLATION
 	// Try to activate binary translation if enabled
 	if (is_initial && options.translate_enabled) {
-		extern bool try_translate(const Machine& machine, const MachineOptions& options, DecodedExecuteSegment& exec);
-		try_translate(m_machine, options, *segment);
+		extern bool try_translate(const Machine& machine, const MachineOptions& options, std::shared_ptr<DecodedExecuteSegment>& exec);
+		try_translate(m_machine, options, segment);
 	}
 #endif
 

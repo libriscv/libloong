@@ -13,7 +13,8 @@ cd "$BUILD_DIR"
 echo "Configuring CMake..."
 cmake "$SCRIPT_DIR" \
     -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_CXX_STANDARD=20
+    -DCMAKE_CXX_STANDARD=20 \
+	-DLA_BINARY_TRANSLATION=ON
 
 echo "Building..."
 cmake --build . -j$(nproc)

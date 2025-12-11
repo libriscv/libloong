@@ -364,7 +364,8 @@ namespace loongarch
 	}
 
 	// Try to compile and activate binary translation
-	bool try_translate(const Machine& machine, const MachineOptions& options, DecodedExecuteSegment& exec)
+	bool try_translate(const Machine& machine, const MachineOptions& options,
+		std::shared_ptr<DecodedExecuteSegment>& exec)
 	{
 #ifdef LA_BINARY_TRANSLATION
 		if (!options.translate_enabled)
@@ -374,7 +375,7 @@ namespace loongarch
 
 		try {
 			// Generate C code for binary translation
-			binary_translate(machine, options, exec, output);
+			binary_translate(machine, options, *exec, output);
 
 			if (!output.code || output.code->empty()) {
 				if (options.verbose_loader) {
@@ -405,14 +406,14 @@ namespace loongarch
 
 			// Create the compilation step as a lambda
 			// Capture by value to ensure thread safety
-			auto compilation_step = [options, &exec, output = std::move(output), use_live_patch, arena_info]() mutable -> void {
+			auto compilation_step = [options, exec_ptr = exec, output = std::move(output), use_live_patch, arena_info]() mutable -> void {
 				// Protect libtcc_compile with a mutex
 				static std::mutex libtcc_mutex;
 				std::lock_guard<std::mutex> lock(libtcc_mutex);
 
 				// Mark that we're compiling in the background
 				if (use_live_patch) {
-					exec.set_background_compiling(true);
+					exec_ptr->set_background_compiling(true);
 				}
 
 				try {
@@ -423,36 +424,35 @@ namespace loongarch
 							fprintf(stderr, "libloong: libtcc compilation failed\n");
 						}
 						if (use_live_patch) {
-							exec.set_background_compiling(false);
+							exec_ptr->set_background_compiling(false);
 						}
 						return;
 					}
 
 					// Activate the compiled code
-					activate_dylib(options, exec, dylib, arena_info, true, use_live_patch);
+					activate_dylib(options, *exec_ptr, dylib, arena_info, true, use_live_patch);
 
 					if (use_live_patch) {
 						// Store the dylib handle
-						exec.set_bintr_dylib(dylib);
-
+						exec_ptr->set_bintr_dylib(dylib);
 						// Get mappings for live-patching
 						const uint32_t* no_mappings = (const uint32_t*)dylib_lookup(dylib, "no_mappings", true);
 						const auto* mappings = (const Mapping*)dylib_lookup(dylib, "mappings", true);
 
 						if (no_mappings && mappings) {
 							// Apply the live-patch
-							apply_live_patch(options, exec, mappings, *no_mappings);
+							apply_live_patch(options, *exec_ptr, mappings, *no_mappings);
 						}
 
 						// Mark compilation as complete
-						exec.set_background_compiling(false);
+						exec_ptr->set_background_compiling(false);
 					}
 				} catch (const std::exception& e) {
 					if (options.verbose_loader) {
 						fprintf(stderr, "libloong: Binary translation compilation failed: %s\n", e.what());
 					}
 					if (use_live_patch) {
-						exec.set_background_compiling(false);
+						exec_ptr->set_background_compiling(false);
 					}
 				}
 			};

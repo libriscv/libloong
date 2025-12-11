@@ -24,6 +24,7 @@ set(SOURCES
 	libloong/la64.cpp
 	libloong/machine.cpp
 	libloong/machine_accelerate.cpp
+	libloong/machine_backtrace.cpp
 	libloong/machine_bytecode_stats.cpp
 	libloong/memory.cpp
 	libloong/memory_rw.cpp

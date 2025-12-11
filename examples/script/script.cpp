@@ -279,13 +279,53 @@ void Script::initialize_machine() {
 	}
 }
 
-void Script::handle_exception(const MachineException& e) const
+void Script::handle_exception(
+	const address_t call_addr, const std::exception& e) const
 {
-	fmt::print(stderr, "Machine exception: {} Data 0x{:x}\n",
-		e.what(), e.data());
+	fmt::print(stderr, "Script exception at {} (0x{:x}): {}\n",
+		machine().lookup_demangled_symbol(call_addr), call_addr, e.what());
+	// Print backtrace information
+	fmt::print(stderr, "Backtrace (most recent call last):\n{}",
+		machine().backtrace(call_addr));
+	try {
+		std::rethrow_exception(std::current_exception());
+	} catch (const MachineException& me) {
+		throw ScriptException(
+			"Machine exception (" + std::to_string(static_cast<int>(me.type())) +
+			"): " + me.what() + " Data 0x" + fmt::format("{:x}", me.data()) +
+			" at " + machine().lookup_demangled_symbol(call_addr)
+		);
+	} catch (...) {
+		throw;
+	}
+}
+
+void Script::handle_timeout(
+	const address_t call_addr, const MachineTimeoutException& me) const
+{
+	fmt::print(stderr, "Script timeout at {} (0x{:x}): {}\n",
+		machine().lookup_demangled_symbol(call_addr), call_addr, me.what());
+	// Print backtrace information
+	fmt::print(stderr, "Backtrace (most recent call last):\n{}",
+		machine().backtrace(call_addr));
+
 	throw ScriptException(
-		"Machine exception (" + std::to_string(static_cast<int>(e.type())) +
-		"): " + e.what()
+		"Machine timeout: " + std::string(me.what()) +
+		" at " + machine().lookup_demangled_symbol(call_addr)
+	);
+}
+
+void Script::max_depth_exceeded(const address_t call_addr) const
+{
+	fmt::print(stderr, "Script maximum call depth exceeded at {} (0x{:x})\n",
+		machine().lookup_demangled_symbol(call_addr), call_addr);
+	// Print backtrace information
+	fmt::print(stderr, "Backtrace (most recent call last):\n{}",
+		machine().backtrace(call_addr));
+
+	throw ScriptException(
+		"Maximum script call depth exceeded at " +
+		machine().lookup_demangled_symbol(call_addr)
 	);
 }
 

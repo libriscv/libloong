@@ -125,6 +125,8 @@ namespace loongarch
 		// Symbol lookup (delegates to memory)
 		address_t address_of(const std::string& name) const;
 		const Symbol* lookup_symbol(address_t addr) const;
+		std::string lookup_demangled_symbol(address_t addr, bool with_offset = true) const;
+		std::string backtrace(address_t initial = 0) const;
 
 		// Components
 		CPU cpu;

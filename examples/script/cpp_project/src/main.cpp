@@ -13,6 +13,10 @@ int compute(int a, int b) {
 	return sum;
 }
 
+float fadd(float x) {
+	return x + 1.0f;
+}
+
 float calculate_area(float radius) {
 	const float r2 = radius * radius;
 	return 3.14159f * r2;

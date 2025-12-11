@@ -179,7 +179,7 @@ namespace loongarch
 			static constexpr uint32_t RET_INSTR = 0x4c000020; // JIRL rd=0, rj=1, imm=0
 
 			// Find jump locations inside block
-			for (pc = block; pc < block_end; ) {
+			for (pc = block; pc < block_end; pc += 4) {
 				const la_instruction instruction = read_instruction(machine.memory, pc, endbasepc);
 
 				address_t location = 0;
@@ -237,7 +237,6 @@ namespace loongarch
 
 				// Add instruction to block
 				block_instructions.push_back(instruction.whole);
-				pc += 4;
 			}
 
 			// Process block and add it for emission
@@ -273,6 +272,12 @@ namespace loongarch
 				// the compiler will never finish code generation
 				if (blocks.size() >= options.translate_blocks_max)
 					break;
+			} else if (icounter + length >= options.translate_instr_max) {
+				if (verbose) {
+					printf("libloong: Instruction limit reached during block detection (%zu instructions)\n",
+						icounter);
+				}
+				break;
 			}
 
 			pc = block_end;

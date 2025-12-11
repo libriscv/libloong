@@ -88,22 +88,9 @@ void initialize(const std::string& binary_path) {
 		throw std::runtime_error("test_args_0 not found in guest binary");
 	}
 
-	// Run initialization to resolve any IFUNCs
 	auto saved_regs = g_machine->cpu.registers();
 	g_machine->simulate(1'000'000ull);
 	g_machine->cpu.registers() = saved_regs;
-	g_machine->set_instruction_counter(0);
-
-	// Set reasonable instruction limit for vmcalls
-	g_machine->set_max_instructions(10'000'000ull);
-}
-
-// Get the machine instance
-static Machine& get_machine() {
-	if (g_machine == nullptr) {
-		throw std::runtime_error("Machine not initialized. Call initialize() first.");
-	}
-	return *g_machine;
 }
 
 static void reset_counter() {

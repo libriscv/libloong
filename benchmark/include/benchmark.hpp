@@ -33,7 +33,7 @@ inline int64_t time_diff_ns(time_point start, time_point end) {
 	return std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
 }
 
-// Run a single iteration of the test
+// Run a single test enough times to get statistical significance
 template <int Iterations = 1000>
 inline int64_t perform_test(test_func func) {
 	// Warmup
@@ -41,9 +41,7 @@ inline int64_t perform_test(test_func func) {
 
 	// Memory barrier to prevent reordering
 	asm volatile("" ::: "memory");
-
 	auto start = time_now();
-
 	asm volatile("" ::: "memory");
 
 	for (int i = 0; i < Iterations; i++) {
@@ -51,9 +49,7 @@ inline int64_t perform_test(test_func func) {
 	}
 
 	asm volatile("" ::: "memory");
-
 	auto end = time_now();
-
 	asm volatile("" ::: "memory");
 
 	return time_diff_ns(start, end);
@@ -116,11 +112,14 @@ inline int64_t measure_overhead(int samples) {
 
 	for (int i = 0; i < samples; i++) {
 		auto start = time_now();
+		asm volatile("" ::: "memory");
 
 		for (int j = 0; j < Iterations; j++) {
-			asm volatile("" ::: "memory");
+			volatile int dummy = j;
+			asm volatile("" :: "m"(dummy) : "memory");
 		}
 
+		asm volatile("" ::: "memory");
 		auto end = time_now();
 
 		results.push_back(time_diff_ns(start, end) / Iterations);

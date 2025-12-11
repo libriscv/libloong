@@ -265,26 +265,26 @@ struct Emitter
 		} else if (size == 32) {
 			if (is_signed) {
 				// Sign-extend 32-bit to 64-bit
-				add_code("  " + reg(rd) + " = (int64_t)*(int32_t*)" + ptr + ";");
+				add_code("  " + reg(rd) + " = *(int32_t*)" + ptr + ";");
 			} else {
 				// Zero-extend 32-bit to 64-bit
-				add_code("  " + reg(rd) + " = (uint64_t)*(uint32_t*)" + ptr + ";");
+				add_code("  " + reg(rd) + " = *(uint32_t*)" + ptr + ";");
 			}
 		} else if (size == 16) {
 			if (is_signed) {
 				// Sign-extend 16-bit to 64-bit
-				add_code("  " + reg(rd) + " = (int64_t)*(int16_t*)" + ptr + ";");
+				add_code("  " + reg(rd) + " = *(int16_t*)" + ptr + ";");
 			} else {
 				// Zero-extend 16-bit to 64-bit
-				add_code("  " + reg(rd) + " = (uint64_t)*(uint16_t*)" + ptr + ";");
+				add_code("  " + reg(rd) + " = *(uint16_t*)" + ptr + ";");
 			}
 		} else if (size == 8) {
 			if (is_signed) {
 				// Sign-extend 8-bit to 64-bit
-				add_code("  " + reg(rd) + " = (int64_t)*(int8_t*)" + ptr + ";");
+				add_code("  " + reg(rd) + " = *(int8_t*)" + ptr + ";");
 			} else {
 				// Zero-extend 8-bit to 64-bit
-				add_code("  " + reg(rd) + " = (uint64_t)*(uint8_t*)" + ptr + ";");
+				add_code("  " + reg(rd) + " = *(uint8_t*)" + ptr + ";");
 			}
 		}
 	}
@@ -318,21 +318,21 @@ struct Emitter
 			add_code("  " + reg(rd) + " = *(uint64_t*)" + ptr + ";");
 		} else if (size == 32) {
 			if (is_signed) {
-				add_code("  " + reg(rd) + " = (int64_t)*(int32_t*)" + ptr + ";");
+				add_code("  " + reg(rd) + " = *(int32_t*)" + ptr + ";");
 			} else {
-				add_code("  " + reg(rd) + " = (uint64_t)*(uint32_t*)" + ptr + ";");
+				add_code("  " + reg(rd) + " = *(uint32_t*)" + ptr + ";");
 			}
 		} else if (size == 16) {
 			if (is_signed) {
-				add_code("  " + reg(rd) + " = (int64_t)*(int16_t*)" + ptr + ";");
+				add_code("  " + reg(rd) + " = *(int16_t*)" + ptr + ";");
 			} else {
-				add_code("  " + reg(rd) + " = (uint64_t)*(uint16_t*)" + ptr + ";");
+				add_code("  " + reg(rd) + " = *(uint16_t*)" + ptr + ";");
 			}
 		} else if (size == 8) {
 			if (is_signed) {
-				add_code("  " + reg(rd) + " = (int64_t)*(int8_t*)" + ptr + ";");
+				add_code("  " + reg(rd) + " = *(int8_t*)" + ptr + ";");
 			} else {
-				add_code("  " + reg(rd) + " = (uint64_t)*(uint8_t*)" + ptr + ";");
+				add_code("  " + reg(rd) + " = *(uint8_t*)" + ptr + ";");
 			}
 		}
 	}
@@ -463,7 +463,7 @@ struct Emitter
 		flush_instruction_counter();
 
 		// Indirect jump (avoid clobbering rj before computing target)
-		add_code("cpu->pc = " + reg(rj) + " + " + std::to_string(offset) + ";");
+		add_code("  pc = " + reg(rj) + " + " + std::to_string(offset) + ";");
 
 		// Store return address
 		if (rd != 0) {
@@ -472,7 +472,6 @@ struct Emitter
 		}
 
 		//this->emit_return();
-		add_code("  pc = cpu->pc;");
 		add_code("  goto jump_table;"); // Jump table will handle indirect jump
 	}
 
@@ -689,7 +688,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 		case InstrId::PCALAU12I: {
 			if (instr.ri20.rd != 0) {
 				address_t pc_aligned = emit.pc() & ~((address_t)0xFFF);
-				int64_t offset = (int64_t)(int32_t)(instr.ri20.imm << 12);
+				int64_t offset = (int32_t)(instr.ri20.imm << 12);
 				emit.add_code("  " + emit.reg(instr.ri20.rd) + " = " +
 					hex_address(pc_aligned + offset) + "ULL;");
 			}
@@ -854,7 +853,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 		// Arithmetic register instructions
 		case InstrId::ADD_W:
 			if (instr.r3.rd != 0) {
-				emit.add_code("  " + emit.reg(instr.r3.rd) + " = (int64_t)(int32_t)(" +
+				emit.add_code("  " + emit.reg(instr.r3.rd) + " = (int32_t)(" +
 					emit.reg(instr.r3.rj) + " + " + emit.reg(instr.r3.rk) + ");");
 			}
 			break;
@@ -866,7 +865,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			break;
 		case InstrId::SUB_W:
 			if (instr.r3.rd != 0) {
-				emit.add_code("  " + emit.reg(instr.r3.rd) + " = (int64_t)(int32_t)(" +
+				emit.add_code("  " + emit.reg(instr.r3.rd) + " = (int32_t)(" +
 					emit.reg(instr.r3.rj) + " - " + emit.reg(instr.r3.rk) + ");");
 			}
 			break;
@@ -906,7 +905,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 		// Multiply instructions
 		case InstrId::MUL_W:
 			if (instr.r3.rd != 0) {
-				emit.add_code("  " + emit.reg(instr.r3.rd) + " = (int64_t)(int32_t)(" +
+				emit.add_code("  " + emit.reg(instr.r3.rd) + " = (int32_t)(" +
 					"(int32_t)" + emit.reg(instr.r3.rj) + " * (int32_t)" + emit.reg(instr.r3.rk) + ");");
 			}
 			break;
@@ -920,14 +919,14 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			if (instr.r3.rd != 0) {
 				emit.add_code("  { int64_t a = (int32_t)" + emit.reg(instr.r3.rj) +
 					", b = (int32_t)" + emit.reg(instr.r3.rk) + ";");
-				emit.add_code("    " + emit.reg(instr.r3.rd) + " = (int64_t)(int32_t)((a * b) >> 32); }");
+				emit.add_code("    " + emit.reg(instr.r3.rd) + " = (int32_t)((a * b) >> 32); }");
 			}
 			break;
 		case InstrId::MULH_WU:
 			if (instr.r3.rd != 0) {
 				emit.add_code("  { uint64_t a = (uint32_t)" + emit.reg(instr.r3.rj) +
 					", b = (uint32_t)" + emit.reg(instr.r3.rk) + ";");
-				emit.add_code("    " + emit.reg(instr.r3.rd) + " = (int64_t)(int32_t)((a * b) >> 32); }");
+				emit.add_code("    " + emit.reg(instr.r3.rd) + " = (int32_t)((a * b) >> 32); }");
 			}
 			break;
 		case InstrId::MULH_D:
@@ -954,14 +953,14 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			if (instr.r3.rd != 0) {
 				emit.add_code("  { uint32_t a = (uint32_t)" + emit.reg(instr.r3.rj) +
 					", b = (uint32_t)" + emit.reg(instr.r3.rk) + ";");
-				emit.add_code("    " + emit.reg(instr.r3.rd) + " = (b != 0) ? (int64_t)(int32_t)(a / b) : 0; }");
+				emit.add_code("    " + emit.reg(instr.r3.rd) + " = (b != 0) ? (int32_t)(a / b) : 0; }");
 			}
 			break;
 		case InstrId::MOD_WU:
 			if (instr.r3.rd != 0) {
 				emit.add_code("  { uint32_t a = (uint32_t)" + emit.reg(instr.r3.rj) +
 					", b = (uint32_t)" + emit.reg(instr.r3.rk) + ";");
-				emit.add_code("    " + emit.reg(instr.r3.rd) + " = (b != 0) ? (int64_t)(int32_t)(a % b) : 0; }");
+				emit.add_code("    " + emit.reg(instr.r3.rd) + " = (b != 0) ? (int32_t)(a % b) : 0; }");
 			}
 			break;
 		case InstrId::DIV_D:
@@ -1084,13 +1083,13 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 		// Shift instructions
 		case InstrId::SLL_W:
 			if (instr.r3.rd != 0) {
-				emit.add_code("  " + emit.reg(instr.r3.rd) + " = (int64_t)(int32_t)(" +
+				emit.add_code("  " + emit.reg(instr.r3.rd) + " = (int32_t)(" +
 					"(uint32_t)" + emit.reg(instr.r3.rj) + " << (" + emit.reg(instr.r3.rk) + " & 0x1F));");
 			}
 			break;
 		case InstrId::SRL_W:
 			if (instr.r3.rd != 0) {
-				emit.add_code("  " + emit.reg(instr.r3.rd) + " = (int64_t)(int32_t)(" +
+				emit.add_code("  " + emit.reg(instr.r3.rd) + " = (int32_t)(" +
 					"(uint32_t)" + emit.reg(instr.r3.rj) + " >> (" + emit.reg(instr.r3.rk) + " & 0x1F));");
 			}
 			break;
@@ -1122,61 +1121,69 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 		// Shift immediate instructions
 		case InstrId::SLLI_W:
 			if (instr.r3.rd != 0) {
-				uint32_t ui5 = (instr.whole >> 10) & 0x1F;
-				emit.add_code("  " + emit.reg(instr.r3.rd) + " = (int64_t)(int32_t)(" +
+				const uint32_t ui5 = (instr.whole >> 10) & 0x1F;
+				if (ui5 == 0) {
+					emit.add_code("  " + emit.reg(instr.r3.rd) + " = (int32_t)" + emit.reg(instr.r3.rj) + ";");
+					break;
+				}
+				emit.add_code("  " + emit.reg(instr.r3.rd) + " = (int32_t)(" +
 					"(uint32_t)" + emit.reg(instr.r3.rj) + " << " + std::to_string(ui5) + ");");
 			}
 			break;
 		case InstrId::SRLI_W:
 			if (instr.r3.rd != 0) {
-				uint32_t ui5 = (instr.whole >> 10) & 0x1F;
-				emit.add_code("  " + emit.reg(instr.r3.rd) + " = (int64_t)(int32_t)(" +
+				const uint32_t ui5 = (instr.whole >> 10) & 0x1F;
+				emit.add_code("  " + emit.reg(instr.r3.rd) + " = (int32_t)(" +
 					"(uint32_t)" + emit.reg(instr.r3.rj) + " >> " + std::to_string(ui5) + ");");
 			}
 			break;
 		case InstrId::SRAI_W:
 			if (instr.r3.rd != 0) {
-				uint32_t ui5 = (instr.whole >> 10) & 0x1F;
+				const uint32_t ui5 = (instr.whole >> 10) & 0x1F;
 				emit.add_code("  " + emit.reg(instr.r3.rd) + " = (int64_t)(" +
 					"(int32_t)" + emit.reg(instr.r3.rj) + " >> " + std::to_string(ui5) + ");");
 			}
 			break;
 		case InstrId::SLLI_D:
 			if (instr.r3.rd != 0) {
-				uint32_t ui6 = (instr.whole >> 10) & 0x3F;
+				const uint32_t ui6 = (instr.whole >> 10) & 0x3F;
+				if (ui6 == 0) {
+					emit.add_code("  " + emit.reg(instr.r3.rd) + " = " + emit.reg(instr.r3.rj) + ";");
+					break;
+				}
 				emit.add_code("  " + emit.reg(instr.r3.rd) + " = " +
 					emit.reg(instr.r3.rj) + " << " + std::to_string(ui6) + ";");
 			}
 			break;
 		case InstrId::SRLI_D:
 			if (instr.r3.rd != 0) {
-				uint32_t ui6 = (instr.whole >> 10) & 0x3F;
+				const uint32_t ui6 = (instr.whole >> 10) & 0x3F;
 				emit.add_code("  " + emit.reg(instr.r3.rd) + " = (uint64_t)" +
 					emit.reg(instr.r3.rj) + " >> " + std::to_string(ui6) + ";");
 			}
 			break;
 		case InstrId::SRAI_D:
 			if (instr.r3.rd != 0) {
-				uint32_t ui6 = (instr.whole >> 10) & 0x3F;
+				const uint32_t ui6 = (instr.whole >> 10) & 0x3F;
 				emit.add_code("  " + emit.reg(instr.r3.rd) + " = (int64_t)" +
 					emit.reg(instr.r3.rj) + " >> " + std::to_string(ui6) + ";");
 			}
 			break;
 		case InstrId::ROTRI_W:
 			if (instr.r3.rd != 0) {
-				uint32_t ui5 = (instr.whole >> 10) & 0x1F;
+				const uint32_t ui5 = (instr.whole >> 10) & 0x1F;
 				if (ui5 == 0) {
-					emit.add_code("  " + emit.reg(instr.r3.rd) + " = (int64_t)(int32_t)" + emit.reg(instr.r3.rj) + ";");
+					emit.add_code("  " + emit.reg(instr.r3.rd) + " = (int32_t)" + emit.reg(instr.r3.rj) + ";");
 				} else {
 					emit.add_code("  { uint32_t val = (uint32_t)" + emit.reg(instr.r3.rj) + ";");
-					emit.add_code("    " + emit.reg(instr.r3.rd) + " = (int64_t)(int32_t)(" +
+					emit.add_code("    " + emit.reg(instr.r3.rd) + " = (int32_t)(" +
 						"(val >> " + std::to_string(ui5) + ") | (val << " + std::to_string(32 - ui5) + ")); }");
 				}
 			}
 			break;
 		case InstrId::ROTRI_D:
 			if (instr.r3.rd != 0) {
-				uint32_t ui6 = (instr.whole >> 10) & 0x3F;
+				const uint32_t ui6 = (instr.whole >> 10) & 0x3F;
 				if (ui6 == 0) {
 					emit.add_code("  " + emit.reg(instr.r3.rd) + " = " + emit.reg(instr.r3.rj) + ";");
 				} else {
@@ -1191,7 +1198,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 				emit.add_code("  { uint32_t val = (uint32_t)" + emit.reg(instr.r3.rj) +
 					", shift = " + emit.reg(instr.r3.rk) + " & 0x1F;");
 				emit.add_code("    uint32_t result = (shift == 0) ? val : ((val >> shift) | (val << (32 - shift)));");
-				emit.add_code("    " + emit.reg(instr.r3.rd) + " = (int64_t)(int32_t)result; }");
+				emit.add_code("    " + emit.reg(instr.r3.rd) + " = (int32_t)result; }");
 			}
 			break;
 		case InstrId::ROTR_D:
@@ -1230,7 +1237,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 		case InstrId::ALSL_W:
 			if (instr.r3sa2.rd != 0) {
 				uint32_t shift = instr.r3sa2.sa2 + 1;
-				emit.add_code("  " + emit.reg(instr.r3sa2.rd) + " = (int64_t)(int32_t)((" +
+				emit.add_code("  " + emit.reg(instr.r3sa2.rd) + " = (int32_t)((" +
 					emit.reg(instr.r3sa2.rj) + " << " + std::to_string(shift) + ") + " +
 					emit.reg(instr.r3sa2.rk) + ");");
 			}
@@ -1268,7 +1275,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 					uint32_t width = msbw - lsbw + 1;
 					uint32_t mask = ((1U << width) - 1) << lsbw;  // Precomputed at translation time
 					uint32_t inv_mask = ~mask;  // Precomputed at translation time
-					emit.add_code("  " + emit.reg(instr.ri16.rd) + " = (int64_t)(int32_t)(((uint32_t)" +
+					emit.add_code("  " + emit.reg(instr.ri16.rd) + " = (int32_t)(((uint32_t)" +
 						emit.reg(instr.ri16.rd) + " & " + std::to_string(inv_mask) + "U) | (((uint32_t)" +
 						emit.reg(instr.ri16.rj) + " << " + std::to_string(lsbw) + ") & " +
 						std::to_string(mask) + "U));");

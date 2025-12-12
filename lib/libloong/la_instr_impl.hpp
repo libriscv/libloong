@@ -1048,7 +1048,7 @@ struct InstrImpl {
 					if (std::isnan(val1) || std::isnan(val2)) {
 						dst.du[i] = 0;
 					} else {
-						dst.du[i] = (val1 <= val2) ? 0xFFFFFFFFFFFFFFFF : 0;
+						dst.du[i] = (val1 <= val2) ? 0xFFFFFFFFFFFFFFFFULL : 0;
 					}
 					break;
 				case 0x0E: // CULE - (Quiet) Unordered or Less or Equal
@@ -1056,7 +1056,7 @@ struct InstrImpl {
 					if (std::isnan(val1) || std::isnan(val2)) {
 						dst.du[i] = 0xFFFFFFFFFFFFFFFFULL;
 					} else {
-						dst.du[i] = (val1 <= val2) ? 0xFFFFFFFFFFFFFFFF : 0;
+						dst.du[i] = (val1 <= val2) ? 0xFFFFFFFFFFFFFFFFULL : 0;
 					}
 					break;
 				case 0x14: // COR - (Quiet) Ordered
@@ -1071,7 +1071,7 @@ struct InstrImpl {
 					if (std::isnan(val1) || std::isnan(val2)) {
 						dst.du[i] = 0xFFFFFFFFFFFFFFFFULL;
 					} else {
-						dst.du[i] = (val1 != val2) ? 0xFFFFFFFFFFFFFFFF : 0;
+						dst.du[i] = (val1 != val2) ? 0xFFFFFFFFFFFFFFFFULL : 0;
 					}
 					break;
 				default:
@@ -2369,7 +2369,7 @@ struct InstrImpl {
 					if (std::isnan(val1) || std::isnan(val2)) {
 						dst.du[i] = 0;
 					} else {
-						dst.du[i] = (val1 <= val2) ? 0xFFFFFFFFFFFFFFFF : 0;
+						dst.du[i] = (val1 <= val2) ? 0xFFFFFFFFFFFFFFFFULL : 0;
 					}
 					break;
 				case 0x0E: // CULE - (Quiet) Unordered or Less or Equal
@@ -2377,7 +2377,7 @@ struct InstrImpl {
 					if (std::isnan(val1) || std::isnan(val2)) {
 						dst.du[i] = 0xFFFFFFFFFFFFFFFFULL;
 					} else {
-						dst.du[i] = (val1 <= val2) ? 0xFFFFFFFFFFFFFFFF : 0;
+						dst.du[i] = (val1 <= val2) ? 0xFFFFFFFFFFFFFFFFULL : 0;
 					}
 					break;
 				case 0x14: // COR - (Quiet) Ordered
@@ -2392,7 +2392,7 @@ struct InstrImpl {
 					if (std::isnan(val1) || std::isnan(val2)) {
 						dst.du[i] = 0xFFFFFFFFFFFFFFFFULL;
 					} else {
-						dst.du[i] = (val1 != val2) ? 0xFFFFFFFFFFFFFFFF : 0;
+						dst.du[i] = (val1 != val2) ? 0xFFFFFFFFFFFFFFFFULL : 0;
 					}
 					break;
 				default:
@@ -2414,8 +2414,8 @@ struct InstrImpl {
 
 		// Read all inputs first to handle register aliasing
 		// Takes all 4 doublewords from xj: pairs (0,1), (2,3) → 2 quadwords
-		__int128 q0 = (__int128)(int64_t)src1.d[0] + (__int128)(int64_t)src1.d[1];
-		__int128 q1 = (__int128)(int64_t)src1.d[2] + (__int128)(int64_t)src1.d[3];
+		__int128 q0 = (__int128)src1.d[0] + (__int128)src1.d[1];
+		__int128 q1 = (__int128)src1.d[2] + (__int128)src1.d[3];
 
 		// Store quadwords as pairs of doublewords
 		auto& dst = cpu.registers().getvr(xd);

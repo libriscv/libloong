@@ -1425,7 +1425,7 @@ struct InstrImpl {
 		const auto& vr_j = cpu.registers().getvr(fj);
 		const auto& vr_k = cpu.registers().getvr(fk);
 		auto& vr_d = cpu.registers().getvr(fd);
-		vr_d.d[0] = std::fmax(vr_j.d[0], vr_k.d[0]);
+		vr_d.df[0] = std::fmax(vr_j.df[0], vr_k.df[0]);
 	}
 
 	static void FMIN_D(cpu_t& cpu, la_instruction instr) {
@@ -1437,7 +1437,7 @@ struct InstrImpl {
 		const auto& vr_j = cpu.registers().getvr(fj);
 		const auto& vr_k = cpu.registers().getvr(fk);
 		auto& vr_d = cpu.registers().getvr(fd);
-		vr_d.d[0] = std::fmin(vr_j.d[0], vr_k.d[0]);
+		vr_d.df[0] = std::fmin(vr_j.df[0], vr_k.df[0]);
 	}
 
 	static void FABS_S(cpu_t& cpu, la_instruction instr) {

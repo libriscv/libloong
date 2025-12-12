@@ -55,13 +55,9 @@ namespace loongarch
 		LA64_BC_LDX_BU,            // Load byte unsigned indexed (132 in stream)
 		LA64_BC_BSTRINS_D,         // Bit string insert doubleword (115 in stream)
 		LA64_BC_LU32I_D,           // Load upper 32-bit immediate doubleword (93 in stream)
-		LA64_BC_CLO_W,             // Count leading ones word (374 in stream)
-		LA64_BC_CLZ_W,             // Count leading zeros word (297 in stream)
-		LA64_BC_CLZ_D,             // Count leading zeros doubleword (228 in stream)
 		LA64_BC_REVB_2H,           // Reverse bytes in 2 halfwords (214 in stream)
 		LA64_BC_BYTEPICK_D,        // Byte pick doubleword (198 in stream)
 		LA64_BC_SLTI,              // Set if less than immediate (196 in stream)
-		LA64_BC_CLO_D,             // Count leading ones doubleword (184 in stream)
 		LA64_BC_ST_H,              // Store halfword (140 in stream)
 		LA64_BC_FLD_D,             // Floating-point load doubleword (137 in stream)
 		LA64_BC_FADD_D,            // Floating-point add doubleword
@@ -79,13 +75,10 @@ namespace loongarch
 		LA64_BC_PCADDU18I,         // PC-aligned add upper 18 immediate
 		LA64_BC_ANDN,              // AND NOT (68 in coremark)
 		LA64_BC_STX_B,             // Store byte indexed (66 in coremark)
-		LA64_BC_CTZ_D,             // Count trailing zeros doubleword (65 in coremark)
-		LA64_BC_CTO_W,             // Count trailing ones word (63 in coremark)
 		LA64_BC_EXT_W_H,           // Extend halfword to word (55 in coremark)
 		LA64_BC_LDX_B,             // Load byte signed indexed (53 in coremark)
 		LA64_BC_SLT,               // Set if less than (52 in coremark)
 		LA64_BC_ORN,               // OR NOT (50 in coremark)
-		LA64_BC_CTO_D,             // Count trailing ones doubleword (50 in coremark)
 		LA64_BC_MUL_W,             // Multiply word (38 in coremark)
 		LA64_BC_MOD_DU,            // Modulo doubleword unsigned (35 in coremark)
 		LA64_BC_REVB_4H,           // Reverse bytes in 4 halfwords (27 in coremark)
@@ -194,13 +187,9 @@ namespace loongarch
 		case LA64_BC_LDX_BU: return "LDX.BU";
 		case LA64_BC_BSTRINS_D: return "BSTRINS.D";
 		case LA64_BC_LU32I_D: return "LU32I.D";
-		case LA64_BC_CLO_W: return "CLO.W";
-		case LA64_BC_CLZ_W: return "CLZ.W";
-		case LA64_BC_CLZ_D: return "CLZ.D";
 		case LA64_BC_REVB_2H: return "REVB.2H";
 		case LA64_BC_BYTEPICK_D: return "BYTEPICK.D";
 		case LA64_BC_SLTI: return "SLTI";
-		case LA64_BC_CLO_D: return "CLO.D";
 		case LA64_BC_ST_H: return "ST.H";
 		case LA64_BC_FLD_D: return "FLD.D";
 		case LA64_BC_FADD_D: return "FADD.D";
@@ -220,13 +209,10 @@ namespace loongarch
 		case LA64_BC_PCADDU18I: return "PCADDU18I";
 		case LA64_BC_ANDN: return "ANDN";
 		case LA64_BC_STX_B: return "STX.B";
-		case LA64_BC_CTZ_D: return "CTZ.D";
-		case LA64_BC_CTO_W: return "CTO.W";
 		case LA64_BC_EXT_W_H: return "EXT.W.H";
 		case LA64_BC_LDX_B: return "LDX.B";
 		case LA64_BC_SLT: return "SLT";
 		case LA64_BC_ORN: return "ORN";
-		case LA64_BC_CTO_D: return "CTO.D";
 		case LA64_BC_MUL_W: return "MUL.W";
 		case LA64_BC_MOD_DU: return "MOD.DU";
 		case LA64_BC_REVB_4H: return "REVB.4H";

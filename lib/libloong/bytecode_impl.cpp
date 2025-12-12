@@ -733,43 +733,6 @@ INSTRUCTION(LA64_BC_BCNEZ, la64_bcnez)
 	NEXT_BLOCK_UNCHECKED(4);
 }
 
-// LA64_BC_CLO_W: Count leading ones word
-INSTRUCTION(LA64_BC_CLO_W, la64_clo_w)
-{
-	auto fi = *(FasterLA64_R2 *)&DECODER().instr;
-	uint32_t val = static_cast<uint32_t>(REG(fi.rj));
-	uint32_t count = ~val ? __builtin_clz(~val) : 32;
-	REG(fi.rd) = count;
-	NEXT_INSTR();
-}
-
-// LA64_BC_CLO_D: Count leading ones doubleword
-INSTRUCTION(LA64_BC_CLO_D, la64_clo_d)
-{
-	auto fi = *(FasterLA64_R2 *)&DECODER().instr;
-	const uint64_t val = REG(fi.rj);
-	REG(fi.rd) = ~val ? __builtin_clzll(~val) : 64;
-	NEXT_INSTR();
-}
-
-// LA64_BC_CLZ_W: Count leading zeros word
-INSTRUCTION(LA64_BC_CLZ_W, la64_clz_w)
-{
-	auto fi = *(FasterLA64_R2 *)&DECODER().instr;
-	uint32_t val = static_cast<uint32_t>(REG(fi.rj));
-	REG(fi.rd) = val ? __builtin_clz(val) : 32;
-	NEXT_INSTR();
-}
-
-// LA64_BC_CLZ_D: Count leading zeros doubleword
-INSTRUCTION(LA64_BC_CLZ_D, la64_clz_d)
-{
-	auto fi = *(FasterLA64_R2 *)&DECODER().instr;
-	uint64_t val = REG(fi.rj);
-	REG(fi.rd) = val ? __builtin_clzll(val) : 64;
-	NEXT_INSTR();
-}
-
 // LA64_BC_REVB_2H: Reverse bytes in 2 halfwords
 INSTRUCTION(LA64_BC_REVB_2H, la64_revb_2h)
 {
@@ -971,24 +934,6 @@ INSTRUCTION(LA64_BC_STX_B, la64_stx_b)
 	NEXT_INSTR();
 }
 
-// LA64_BC_CTZ_D: Count trailing zeros doubleword
-INSTRUCTION(LA64_BC_CTZ_D, la64_ctz_d)
-{
-	auto fi = *(FasterLA64_R2 *)&DECODER().instr;
-	uint64_t val = REG(fi.rj);
-	REG(fi.rd) = (val == 0) ? 64 : __builtin_ctzll(val);
-	NEXT_INSTR();
-}
-
-// LA64_BC_CTO_W: Count trailing ones word
-INSTRUCTION(LA64_BC_CTO_W, la64_cto_w)
-{
-	auto fi = *(FasterLA64_R2 *)&DECODER().instr;
-	uint32_t val = static_cast<uint32_t>(REG(fi.rj));
-	REG(fi.rd) = (val == 0xFFFFFFFF) ? 32 : __builtin_ctz(~val);
-	NEXT_INSTR();
-}
-
 // LA64_BC_EXT_W_H: Extend halfword to word
 INSTRUCTION(LA64_BC_EXT_W_H, la64_ext_w_h)
 {
@@ -1021,15 +966,6 @@ INSTRUCTION(LA64_BC_ORN, la64_orn)
 {
 	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
 	REG(fi.rd) = REG(fi.rj) | ~REG(fi.rk);
-	NEXT_INSTR();
-}
-
-// LA64_BC_CTO_D: Count trailing ones doubleword
-INSTRUCTION(LA64_BC_CTO_D, la64_cto_d)
-{
-	auto fi = *(FasterLA64_R2 *)&DECODER().instr;
-	uint64_t val = REG(fi.rj);
-	REG(fi.rd) = (val == 0xFFFFFFFFFFFFFFFFull) ? 64 : __builtin_ctzll(~val);
 	NEXT_INSTR();
 }
 
@@ -1091,6 +1027,7 @@ INSTRUCTION(LA64_BC_FUNCTION, execute_decoded_function)
 {
 	// Call the cached handler for this instruction
 	const auto handler = DECODER().get_handler();
+	//printf("Slow-path pc=0x%lx for instr %08X\n", RECONSTRUCT_PC(), DECODER().instr);
 	handler(CPU(), la_instruction{DECODER().instr});
 	NEXT_INSTR();
 }

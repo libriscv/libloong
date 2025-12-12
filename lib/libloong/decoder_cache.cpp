@@ -48,6 +48,8 @@ namespace loongarch
 			return LA64_BC_SYSCALL;
 		case InstrId::BREAK:
 			return LA64_BC_FUNCTION;
+		case InstrId::NOP:
+			return LA64_BC_NOP;
 
 		// Special handling for MOVE pseudo-instruction
 		case InstrId::OR:
@@ -112,13 +114,9 @@ namespace loongarch
 		case InstrId::LDX_BU: return LA64_BC_LDX_BU;
 		case InstrId::BSTRINS_D: return LA64_BC_BSTRINS_D;
 		case InstrId::LU32I_D: return LA64_BC_LU32I_D;
-		case InstrId::CLO_W: return LA64_BC_CLO_W;
-		case InstrId::CLZ_W: return LA64_BC_CLZ_W;
-		case InstrId::CLZ_D: return LA64_BC_CLZ_D;
 		case InstrId::REVB_2H: return LA64_BC_REVB_2H;
 		case InstrId::BYTEPICK_D: return LA64_BC_BYTEPICK_D;
 		case InstrId::SLTI: return LA64_BC_SLTI;
-		case InstrId::CLO_D: return LA64_BC_CLO_D;
 		case InstrId::ST_H: return LA64_BC_ST_H;
 		case InstrId::FLD_D: return LA64_BC_FLD_D;
 		case InstrId::FST_D: return LA64_BC_FST_D;
@@ -141,9 +139,6 @@ namespace loongarch
 		case InstrId::LD_WU: return LA64_BC_LD_WU;
 		case InstrId::ANDN: return LA64_BC_ANDN;
 		case InstrId::STX_B: return LA64_BC_STX_B;
-		case InstrId::CTZ_D: return LA64_BC_CTZ_D;
-		case InstrId::CTO_W: return LA64_BC_CTO_W;
-		case InstrId::CTO_D: return LA64_BC_CTO_D;
 		case InstrId::EXT_W_H: return LA64_BC_EXT_W_H;
 		case InstrId::REVB_4H: return LA64_BC_REVB_4H;
 		case InstrId::LDX_B: return LA64_BC_LDX_B;

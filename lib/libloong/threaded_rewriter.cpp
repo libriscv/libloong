@@ -432,10 +432,6 @@ uint32_t DecodedExecuteSegment::optimize_bytecode(uint8_t& bytecode, address_t p
 			NOP_IF_RD_ZERO(fi.rd, bytecode);
 			return fi.whole;
 		} break;
-		case LA64_BC_CLO_W:
-		case LA64_BC_CLZ_W:
-		case LA64_BC_CLO_D:
-		case LA64_BC_CLZ_D:
 		case LA64_BC_REVB_2H: {
 			auto fi = *(FasterLA64_R2 *)&instruction_bits;
 			fi.rd = original.r2.rd;
@@ -702,22 +698,6 @@ uint32_t DecodedExecuteSegment::optimize_bytecode(uint8_t& bytecode, address_t p
 			NOP_IF_RD_ZERO(fi.rd, bytecode);
 			return fi.whole;
 		} break;
-		case LA64_BC_CTZ_D: {
-			// CTZ.D rd, rj - uses R2 format
-			auto fi = *(FasterLA64_R2 *)&instruction_bits;
-			fi.rd = original.r2.rd;
-			fi.rj = original.r2.rj;
-			NOP_IF_RD_ZERO(fi.rd, bytecode);
-			return fi.whole;
-		} break;
-		case LA64_BC_CTO_W: {
-			// CTO.W rd, rj - uses R2 format
-			auto fi = *(FasterLA64_R2 *)&instruction_bits;
-			fi.rd = original.r2.rd;
-			fi.rj = original.r2.rj;
-			NOP_IF_RD_ZERO(fi.rd, bytecode);
-			return fi.whole;
-		} break;
 		case LA64_BC_EXT_W_H: {
 			// EXT.W.H rd, rj - uses R2 format
 			auto fi = *(FasterLA64_R2 *)&instruction_bits;
@@ -750,14 +730,6 @@ uint32_t DecodedExecuteSegment::optimize_bytecode(uint8_t& bytecode, address_t p
 			fi.rd = original.r3.rd;
 			fi.rj = original.r3.rj;
 			fi.rk = original.r3.rk;
-			NOP_IF_RD_ZERO(fi.rd, bytecode);
-			return fi.whole;
-		} break;
-		case LA64_BC_CTO_D: {
-			// CTO.D rd, rj - uses R2 format
-			auto fi = *(FasterLA64_R2 *)&instruction_bits;
-			fi.rd = original.r2.rd;
-			fi.rj = original.r2.rj;
 			NOP_IF_RD_ZERO(fi.rd, bytecode);
 			return fi.whole;
 		} break;

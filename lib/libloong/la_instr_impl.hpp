@@ -1032,7 +1032,7 @@ struct InstrImpl {
 					if (std::isnan(val1) || std::isnan(val2)) {
 						dst.du[i] = 0;
 					} else {
-						dst.du[i] = (val1 < val2) ? 0xFFFFFFFFFFFFFFFFULL : 0;
+						dst.du[i] = (val1 < val2) ? UINT64_MAX : 0;
 					}
 					break;
 				case 0x04: // CEQ - Equal (ordered)
@@ -1040,7 +1040,7 @@ struct InstrImpl {
 					if (std::isnan(val1) || std::isnan(val2)) {
 						dst.du[i] = 0;
 					} else {
-						dst.du[i] = (val1 == val2) ? 0xFFFFFFFFFFFFFFFFULL : 0;
+						dst.du[i] = (val1 == val2) ? UINT64_MAX : 0;
 					}
 					break;
 				case 0x06: // CLE - (Quiet) Less or Equal (ordered)
@@ -1048,36 +1048,35 @@ struct InstrImpl {
 					if (std::isnan(val1) || std::isnan(val2)) {
 						dst.du[i] = 0;
 					} else {
-						dst.du[i] = (val1 <= val2) ? 0xFFFFFFFFFFFFFFFFULL : 0;
+						dst.du[i] = (val1 <= val2) ? UINT64_MAX : 0;
 					}
 					break;
 				case 0x0E: // CULE - (Quiet) Unordered or Less or Equal
 				case 0x0F: // SULE - Signaling Unordered or Less or Equal
 					if (std::isnan(val1) || std::isnan(val2)) {
-						dst.du[i] = 0xFFFFFFFFFFFFFFFFULL;
+						dst.du[i] = UINT64_MAX;
 					} else {
-						dst.du[i] = (val1 <= val2) ? 0xFFFFFFFFFFFFFFFFULL : 0;
+						dst.du[i] = (val1 <= val2) ? UINT64_MAX : 0;
 					}
 					break;
 				case 0x14: // COR - (Quiet) Ordered
 					if (std::isnan(val1) || std::isnan(val2)) {
 						dst.du[i] = 0;
 					} else {
-						dst.du[i] = 0xFFFFFFFFFFFFFFFFULL;
+						dst.du[i] = UINT64_MAX;
 					}
 					break;
 				case 0x18: // CUNE - (Quiet) Unordered or Not Equal
 				case 0x19: // SUNE - Signaling Unordered or Not Equal
 					if (std::isnan(val1) || std::isnan(val2)) {
-						dst.du[i] = 0xFFFFFFFFFFFFFFFFULL;
+						dst.du[i] = UINT64_MAX;
 					} else {
-						dst.du[i] = (val1 != val2) ? 0xFFFFFFFFFFFFFFFFULL : 0;
+						dst.du[i] = (val1 != val2) ? UINT64_MAX : 0;
 					}
 					break;
 				default:
-					// For simplicity, only implement less-than condition here
-					dst.du[i] = 0;
-					break;
+					throw MachineException(ILLEGAL_OPCODE,
+						"VFCMP.COND.D: Unsupported condition code", instr.whole);
 			}
 		}
 		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
@@ -2353,7 +2352,7 @@ struct InstrImpl {
 					if (std::isnan(val1) || std::isnan(val2)) {
 						dst.du[i] = 0;
 					} else {
-						dst.du[i] = (val1 < val2) ? 0xFFFFFFFFFFFFFFFFULL : 0;
+						dst.du[i] = (val1 < val2) ? UINT64_MAX : 0;
 					}
 					break;
 				case 0x04: // CEQ - Equal (ordered)
@@ -2361,7 +2360,7 @@ struct InstrImpl {
 					if (std::isnan(val1) || std::isnan(val2)) {
 						dst.du[i] = 0;
 					} else {
-						dst.du[i] = (val1 == val2) ? 0xFFFFFFFFFFFFFFFFULL : 0;
+						dst.du[i] = (val1 == val2) ? UINT64_MAX : 0;
 					}
 					break;
 				case 0x06: // CLE - (Quiet) Less or Equal (ordered)
@@ -2369,30 +2368,30 @@ struct InstrImpl {
 					if (std::isnan(val1) || std::isnan(val2)) {
 						dst.du[i] = 0;
 					} else {
-						dst.du[i] = (val1 <= val2) ? 0xFFFFFFFFFFFFFFFFULL : 0;
+						dst.du[i] = (val1 <= val2) ? UINT64_MAX : 0;
 					}
 					break;
 				case 0x0E: // CULE - (Quiet) Unordered or Less or Equal
 				case 0x0F: // SULE - Signaling Unordered or Less or Equal
 					if (std::isnan(val1) || std::isnan(val2)) {
-						dst.du[i] = 0xFFFFFFFFFFFFFFFFULL;
+						dst.du[i] = UINT64_MAX;
 					} else {
-						dst.du[i] = (val1 <= val2) ? 0xFFFFFFFFFFFFFFFFULL : 0;
+						dst.du[i] = (val1 <= val2) ? UINT64_MAX : 0;
 					}
 					break;
 				case 0x14: // COR - (Quiet) Ordered
 					if (std::isnan(val1) || std::isnan(val2)) {
 						dst.du[i] = 0;
 					} else {
-						dst.du[i] = 0xFFFFFFFFFFFFFFFFULL;
+						dst.du[i] = UINT64_MAX;
 					}
 					break;
 				case 0x18: // CUNE - (Quiet) Unordered or Not Equal
 				case 0x19: // SUNE - Signaling Unordered or Not Equal
 					if (std::isnan(val1) || std::isnan(val2)) {
-						dst.du[i] = 0xFFFFFFFFFFFFFFFFULL;
+						dst.du[i] = UINT64_MAX;
 					} else {
-						dst.du[i] = (val1 != val2) ? 0xFFFFFFFFFFFFFFFFULL : 0;
+						dst.du[i] = (val1 != val2) ? UINT64_MAX : 0;
 					}
 					break;
 				default:
@@ -2510,8 +2509,8 @@ struct InstrImpl {
 		const auto& src2 = cpu.registers().getvr(vk);
 		auto& dst = cpu.registers().getvr(vd);
 
-		dst.du[0] = ((int64_t)src1.d[0] < (int64_t)src2.d[0]) ? 0xFFFFFFFFFFFFFFFFULL : 0x0000000000000000ULL;
-		dst.du[1] = ((int64_t)src1.d[1] < (int64_t)src2.d[1]) ? 0xFFFFFFFFFFFFFFFFULL : 0x0000000000000000ULL;
+		dst.du[0] = ((int64_t)src1.d[0] < (int64_t)src2.d[0]) ? UINT64_MAX : 0ULL;
+		dst.du[1] = ((int64_t)src1.d[1] < (int64_t)src2.d[1]) ? UINT64_MAX : 0ULL;
 		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
 		dst.du[2] = 0;
 		dst.du[3] = 0;
@@ -2975,7 +2974,7 @@ struct InstrImpl {
 		// VORI.B: Vector OR immediate (operate on each byte)
 		uint32_t vd = instr.whole & 0x1F;
 		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t imm8 = (instr.whole >> 10) & 0xFF;
+		const uint8_t imm8 = (instr.whole >> 10) & 0xFF;
 
 		const auto& src = cpu.registers().getvr(vj);
 		auto& dst = cpu.registers().getvr(vd);
@@ -3145,8 +3144,7 @@ struct InstrImpl {
 		uint32_t vd = instr.whole & 0x1F;
 		uint32_t vj = (instr.whole >> 5) & 0x1F;
 		int32_t si5 = (instr.whole >> 10) & 0x1F;
-		// Sign extend from 5 bits
-		if (si5 & 0x10) si5 |= 0xFFFFFFE0;
+		si5 = (si5 << 27) >> 27; // Sign extend from 5 bits
 
 		const auto& src = cpu.registers().getvr(vj);
 		auto& dst = cpu.registers().getvr(vd);
@@ -3168,8 +3166,7 @@ struct InstrImpl {
 		uint32_t vd = instr.whole & 0x1F;
 		uint32_t vj = (instr.whole >> 5) & 0x1F;
 		int32_t si5 = (instr.whole >> 10) & 0x1F;
-		// Sign extend from 5 bits
-		if (si5 & 0x10) si5 |= 0xFFFFFFE0;
+		si5 = (si5 << 27) >> 27; // Sign extend from 5 bits
 
 		const auto& src = cpu.registers().getvr(vj);
 		auto& dst = cpu.registers().getvr(vd);
@@ -3191,8 +3188,7 @@ struct InstrImpl {
 		uint32_t vd = instr.whole & 0x1F;
 		uint32_t vj = (instr.whole >> 5) & 0x1F;
 		int32_t si5 = (instr.whole >> 10) & 0x1F;
-		// Sign extend from 5 bits
-		if (si5 & 0x10) si5 |= 0xFFFFFFE0;
+		si5 = (si5 << 27) >> 27; // Sign extend from 5 bits
 
 		const auto& src = cpu.registers().getvr(vj);
 		auto& dst = cpu.registers().getvr(vd);
@@ -3214,14 +3210,13 @@ struct InstrImpl {
 		uint32_t vd = instr.whole & 0x1F;
 		uint32_t vj = (instr.whole >> 5) & 0x1F;
 		int32_t si5 = (instr.whole >> 10) & 0x1F;
-		// Sign extend from 5 bits
-		if (si5 & 0x10) si5 |= 0xFFFFFFE0;
+		si5 = (si5 << 27) >> 27; // Sign extend from 5 bits
 
 		const auto& src = cpu.registers().getvr(vj);
 		auto& dst = cpu.registers().getvr(vd);
 
-		dst.du[0] = ((int64_t)src.du[0] == (int64_t)si5) ? 0xFFFFFFFFFFFFFFFFULL : 0ULL;
-		dst.du[1] = ((int64_t)src.du[1] == (int64_t)si5) ? 0xFFFFFFFFFFFFFFFFULL : 0ULL;
+		dst.du[0] = ((int64_t)src.du[0] == (int64_t)si5) ? UINT64_MAX : 0ULL;
+		dst.du[1] = ((int64_t)src.du[1] == (int64_t)si5) ? UINT64_MAX : 0ULL;
 	}
 
 	static void VFRSTPI_B(cpu_t& cpu, la_instruction instr) {

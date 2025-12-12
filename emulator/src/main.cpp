@@ -11,6 +11,7 @@
 #ifndef _WIN32
 #include <getopt.h>
 #define HAVE_GETOPT_LONG
+#include <sys/mman.h>
 #endif
 
 using namespace loongarch;
@@ -131,7 +132,11 @@ static void print_bytecode_statistics(const Machine& machine)
 static int run_program(const std::vector<uint8_t>& binary, const EmulatorOptions& opts)
 {
 	const auto custom_arena = MachineOptions::estimate_cpu_relative_arena_size_for(opts.memory_max);
-	void* arena_ptr = std::aligned_alloc(4096u, custom_arena.total_size);
+#ifdef _WIN32
+	void* arena_ptr = _aligned_malloc(custom_arena.total_size, 4096u);
+#else
+	void* arena_ptr = mmap(nullptr, custom_arena.total_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+#endif
 	if (!arena_ptr) {
 		throw std::runtime_error("Failed to allocate custom arena with aligned_alloc");
 	}

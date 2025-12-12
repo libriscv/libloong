@@ -130,7 +130,12 @@ static void print_bytecode_statistics(const Machine& machine)
 
 static int run_program(const std::vector<uint8_t>& binary, const EmulatorOptions& opts)
 {
-	std::unique_ptr<Machine> machine;
+	const auto custom_arena = MachineOptions::estimate_cpu_relative_arena_size_for(opts.memory_max);
+	void* arena_ptr = std::aligned_alloc(4096u, custom_arena.total_size);
+	if (!arena_ptr) {
+		throw std::runtime_error("Failed to allocate custom arena with aligned_alloc");
+	}
+	Machine* machine = nullptr;
 	try {
 		// Create machine
 		auto options = std::make_shared<MachineOptions>(MachineOptions{
@@ -138,6 +143,8 @@ static int run_program(const std::vector<uint8_t>& binary, const EmulatorOptions
 			.verbose_loader = opts.verbose,
 			.verbose_syscalls = opts.verbose,
 			.use_shared_execute_segments = false,
+			.custom_arena_pointer = &((char*)arena_ptr)[custom_arena.arena_offset],
+			.custom_arena_size = custom_arena.arena_size,
 #ifdef LA_BINARY_TRANSLATION
 			.translate_enabled = opts.enable_translation,
 			.translate_trace = opts.trace_translation,
@@ -153,7 +160,7 @@ static int run_program(const std::vector<uint8_t>& binary, const EmulatorOptions
 			.translate_output_file = opts.translate_output_file,
 #endif
 		});
-		machine = std::make_unique<Machine>(binary, *options);
+		machine = new (arena_ptr) Machine(binary, *options);
 		machine->set_options(options);
 
 		// Setup Linux syscalls

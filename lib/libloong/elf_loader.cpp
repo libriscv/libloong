@@ -175,7 +175,12 @@ void Memory::binary_loader(const MachineOptions& options)
 			static_cast<uint64_t>(options.memory_max));
 	}
 
-	allocate_arena(options.memory_max);
+	if (options.custom_arena_pointer != nullptr &&
+		options.custom_arena_size >= options.memory_max) {
+		this->use_custom_arena(options.custom_arena_pointer, options.custom_arena_size);
+	} else {
+		this->allocate_arena(options.memory_max);
+	}
 
 	if (options.verbose_loader) {
 		const size_t arena_size = options.memory_max - this->m_heap_address;

@@ -47,6 +47,7 @@ namespace loongarch
 		address_t segment_endpc;             // Segment end PC
 		bool is_libtcc;                      // Using libtcc (vs system compiler)
 		const MachineOptions& options;       // Translation options
+		intptr_t cpu_relative_offset;        // CPU-relative offset for arena
 		std::unordered_set<address_t> jump_locations;  // Jump targets within block
 		// Pointer to all blocks (including current)
 		std::vector<TransInfo>* blocks = nullptr;

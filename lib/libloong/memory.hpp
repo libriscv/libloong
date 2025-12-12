@@ -142,6 +142,7 @@ namespace loongarch
 
 		// Arena helpers
 		void allocate_arena(size_t size);
+		void use_custom_arena(void* ptr, size_t size);
 		void free_arena();
 		static void free_arena_internal(uint8_t* arena, size_t size);
 		inline bool is_readable(address_t addr, size_t size = sizeof(address_t)) const noexcept {

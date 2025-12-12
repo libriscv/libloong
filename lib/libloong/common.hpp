@@ -9,6 +9,7 @@
 namespace loongarch
 {
 	#define LA_SYSCALLS_MAX  512
+	#define LA_OVER_ALLOCATE_SIZE 64 /* Avoid SIMD bounds-check */
 
 	struct MachineOptions {
 		size_t memory_max = 256 * 1024 * 1024; // 256 MB default
@@ -23,6 +24,27 @@ namespace loongarch
 		/// When binary translation is enabled, this will also share the dynamically
 		/// translated code between machines. (Prevents some optimizations)
 		bool use_shared_execute_segments = true;
+
+		/// @brief Donate a custom arena for the machine to use.
+		/// @details If this pointer is non-null, the machine will use the provided
+		/// arena pointer and size instead of allocating its own. If the pointer is
+		/// relative to the machine itself, the CPU* pointer avoids a
+		/// double indirection for memory accesses in binary translation.
+		/// The size should be over-allocated by LA_OVER_ALLOCATE_SIZE bytes to avoid
+		/// SIMD bounds-check issues, although this does not have to be deducted by
+		/// the user. Example: In order to make use of (uint32_t)-masked memory
+		/// accesses, the arena size should be 4GB + LA_OVER_ALLOCATE_SIZE bytes.
+		void* custom_arena_pointer = nullptr;
+		size_t custom_arena_size = 0;
+		/// @brief If using a custom arena, specify the CPU-relative offset
+		/// @param memory_max The maximum size of the machines internal memory
+		/// @return A pair of (total_arena_size, arena_offset / cpu_relative_offset)
+		struct CustomArenaInfo {
+			size_t total_size;
+			size_t arena_offset;
+			size_t arena_size;
+		};
+		static CustomArenaInfo estimate_cpu_relative_arena_size_for(size_t memory_max);
 
 #ifdef LA_BINARY_TRANSLATION
 		// Binary translation options

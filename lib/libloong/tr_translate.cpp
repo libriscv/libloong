@@ -138,6 +138,22 @@ namespace loongarch
 		const address_t arena_size = machine.memory.arena_size();
 		const address_t arena_rostart = (address_t)machine.memory.rodata_start();
 		const address_t arena_datastart = (address_t)machine.memory.data_start();
+		// Calculate CPU-relative offset, and see if it's within a certain range
+		// an efficient range varies between architectures. Since memory
+		// ops also add their own offsets, we constrain to 64kB.
+		intptr_t cpu_relative_offset = (intptr_t)((uint8_t*)arena_ptr - (uint8_t*)&machine);
+		if (cpu_relative_offset < 0 || cpu_relative_offset > 65536) {
+			cpu_relative_offset = 0;
+		}
+		if (verbose) {
+			printf("Starting binary translation of execute segment [%#lx - %#lx)\n",
+				(long)basepc, (long)endbasepc);
+			printf("  Arena ptr:       %#lx\n", (long)arena_ptr);
+			printf("  Arena size:      %#lx\n", (long)arena_size);
+			printf("  RO data start:   %#lx\n", (long)arena_rostart);
+			printf("  Data start:      %#lx\n", (long)arena_datastart);
+			printf("  CPU relative offset: %#lx\n", (long)cpu_relative_offset);
+		}
 
 		// Code block detection
 		const size_t ITS_TIME_TO_SPLIT = is_libtcc ? 5'000 : 1'250;
@@ -258,6 +274,7 @@ namespace loongarch
 					basepc, endbasepc,
 					is_libtcc,
 					options,
+					cpu_relative_offset,
 					std::move(jump_locations),
 					nullptr, // blocks pointer (set below)
 					global_jump_locations,

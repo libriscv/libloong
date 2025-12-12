@@ -140,4 +140,12 @@ namespace loongarch
 		return resolve_args<Args...>(std::index_sequence_for<Args...>{});
 	}
 
+	inline MachineOptions::CustomArenaInfo MachineOptions::estimate_cpu_relative_arena_size_for(size_t memory_max)
+	{
+		// Bake the over-allocation size into the Machine-side
+		const size_t aligned_msize = (sizeof(Machine) + LA_OVER_ALLOCATE_SIZE + 4095ull) & ~4095ull;
+		// 1. The whole arena, 2. The machine arena starting offset
+		return CustomArenaInfo{aligned_msize + memory_max, aligned_msize - LA_OVER_ALLOCATE_SIZE, memory_max + LA_OVER_ALLOCATE_SIZE};
+	}
+
 } // loongarch

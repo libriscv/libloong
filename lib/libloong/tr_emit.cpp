@@ -217,6 +217,20 @@ struct Emitter
 
 	std::string arena_offset(const std::string& offset) const {
 		if (tinfo.options.use_shared_execute_segments) {
+			if (tinfo.cpu_relative_offset != 0) {
+				// The arena is relative to the CPU pointer, which
+				// is faster than double indirection through ARENA_AT(cpu, ...)
+				// XXX: Most loads/stores have partial constant offsets,
+				// which we could optimize further by folding into the offset here.
+				if (this->nbit_mask != 0) {
+					return "((char*)cpu + " +
+						std::to_string(tinfo.cpu_relative_offset) + " + ((" + offset + ") & " +
+						hex_address(this->nbit_mask) + "))";
+				} else {
+					return "((char*)cpu + " +
+						std::to_string(tinfo.cpu_relative_offset) + " + (" + offset + "))";
+				}
+			}
 			// Shared execute segments need to access arena through the
 			// CPU pointer, as multiple machines *have* different arenas
 			if (this->nbit_mask != 0) {

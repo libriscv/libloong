@@ -298,11 +298,7 @@ namespace loongarch
 		const unsigned unique_mappings = *no_handlers;
 
 		// Create N+1 mappings, where the last one is a catch-all for invalid mappings
-		auto& exec_mappings = exec.create_mappings(unique_mappings + 1);
-		std::copy(handlers, handlers + unique_mappings, exec_mappings.begin());
-		exec.set_mapping(unique_mappings, [](CPU&, uint64_t, uint64_t, address_t) -> bintr_block_returns {
-			throw MachineException(INVALID_PROGRAM, "Translation mapping outside execute area");
-		});
+		exec.set_mappings_base_address((const char*)handlers[0]);
 
 		// Debug: print the function pointers we're using
 		if (options.verbose_loader) {
@@ -339,7 +335,13 @@ namespace loongarch
 				// Calculate the decoder entry for this address
 				auto* entry = target_decoder + (addr >> DecoderCache::SHIFT);
 				entry->set_bytecode(LA64_BC_TRANSLATOR);
-				entry->instr = mapping_index;
+				const intptr_t diff =
+					(intptr_t)handlers[mapping_index] -
+					(intptr_t)exec.mappings_base_address();
+				if (diff < 0 || diff > UINT32_MAX) {
+					throw MachineException(INVALID_PROGRAM, "Invalid handler offset in binary translation");
+				}
+				entry->instr = (uint32_t)diff;
 				entry->handler_idx = 0xFF; // Invalid handler index
 			} else if (options.verbose_loader) {
 				fprintf(stderr, "libloong: Mapping address 0x%lx outside execute area\n",

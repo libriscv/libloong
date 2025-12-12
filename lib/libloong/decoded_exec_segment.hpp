@@ -55,17 +55,16 @@ namespace loongarch
 
 #ifdef LA_BINARY_TRANSLATION
 		// Binary translation support
-		bool is_binary_translated() const noexcept { return !m_translator_mappings.empty(); }
+		bool is_binary_translated() const noexcept { return m_mappings_base_address != nullptr; }
 		bool is_libtcc() const noexcept { return m_is_libtcc; }
 		void set_libtcc(bool value) noexcept { m_is_libtcc = value; }
 
-		auto& create_mappings(size_t n) {
-			m_translator_mappings.resize(n);
-			return m_translator_mappings;
+		void set_mappings_base_address(const char* addr) noexcept { m_mappings_base_address = addr; }
+		const char* mappings_base_address() const noexcept { return m_mappings_base_address; }
+		bintr_block_func build_mapping(uint32_t instr_field) const {
+			const uintptr_t addr = (uintptr_t)m_mappings_base_address + (uintptr_t)instr_field;
+			return reinterpret_cast<bintr_block_func>(addr);
 		}
-		void set_mapping(unsigned i, bintr_block_func handler) { m_translator_mappings.at(i) = handler; }
-		bintr_block_func mapping_at(unsigned i) const { return m_translator_mappings.at(i); }
-		bintr_block_func unchecked_mapping_at(unsigned i) const { return m_translator_mappings[i]; }
 
 		// Patched decoder cache (for live-patching)
 		auto* patched_decoder_cache() noexcept { return m_patched_decoder_cache.cache; }
@@ -95,7 +94,7 @@ namespace loongarch
 		bool m_execute_only = false;
 #ifdef LA_BINARY_TRANSLATION
 		bool m_is_libtcc = false;
-		std::vector<bintr_block_func> m_translator_mappings;
+		const char* m_mappings_base_address = nullptr;
 		DecoderCache m_patched_decoder_cache;
 		void* m_bintr_dl = nullptr;
 		mutable std::mutex m_background_compilation_mutex;

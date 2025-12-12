@@ -109,8 +109,7 @@ INSTRUCTION(LA64_BC_SYSCALLIMM, la64_syscall_imm)
 INSTRUCTION(LA64_BC_TRANSLATOR, execute_translated_block)
 {
 	// The instr field contains the index into the translator mappings array
-	const auto mapping_idx = DECODER().instr;
-	const auto handler = exec->unchecked_mapping_at(mapping_idx);
+	const auto handler = exec->build_mapping(DECODER().instr);
 
 	// Save PC for binary translated function
 	REGISTERS().pc = pc;

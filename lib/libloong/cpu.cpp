@@ -81,6 +81,10 @@ namespace loongarch
 	DecodedExecuteSegment& CPU::init_execute_area(
 		const void* data, address_t begin, address_t length)
 	{
+		if (!machine().has_options()) {
+			throw MachineException(FEATURE_DISABLED,
+				"Execute segment creation requires MachineOptions (Machine::set_options)");
+		}
 		auto& segment = machine().memory.create_execute_segment(
 			machine().options(), data, begin, length, true);
 		this->m_exec = &segment;

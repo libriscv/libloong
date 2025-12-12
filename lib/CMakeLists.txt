@@ -30,6 +30,8 @@ set(SOURCES
 	libloong/memory_rw.cpp
 	libloong/decoder_cache.cpp
 	libloong/decoded_exec_segment.cpp
+	libloong/shared_exec_segment.cpp
+	libloong/util/crc32c.cpp
 	libloong/debug.cpp
 	libloong/serialize.cpp
 	libloong/threaded_rewriter.cpp
@@ -195,6 +197,8 @@ install(FILES
 	libloong/registers.hpp
 	libloong/decoder_cache.hpp
 	libloong/decoded_exec_segment.hpp
+	libloong/shared_exec_segment.hpp
+	libloong/util/crc32.hpp
 	libloong/elf.hpp
 	libloong/types.hpp
 	libloong/page.hpp

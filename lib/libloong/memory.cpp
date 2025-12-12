@@ -2,6 +2,8 @@
 
 #include "machine.hpp"
 #include "elf.hpp"
+#include "shared_exec_segment.hpp"
+#include "util/crc32.hpp"
 #include <cstring>
 #include <algorithm>
 #define OVER_ALLOCATE_SIZE 64 /* Avoid SIMD bounds-check */
@@ -11,9 +13,8 @@
 #include <unistd.h>
 #endif
 
-namespace loongarch
-{
-extern void populate_decoder_cache(DecodedExecuteSegment& segment, address_t exec_begin, const uint8_t* code, size_t code_size);
+namespace loongarch {
+extern void populate_decoder_cache(Machine&, const MachineOptions&, std::shared_ptr<DecodedExecuteSegment>&, address_t exec_begin, const uint8_t* code, size_t code_size, bool is_initial);
 
 Memory::Memory(Machine& machine,
 	std::string_view binary, const MachineOptions& options)
@@ -293,17 +294,41 @@ DecodedExecuteSegment& Memory::create_execute_segment(
 		throw MachineException(INVALID_PROGRAM, "Execute segment length is not 4-byte aligned");
 	}
 
-	auto segment = std::make_shared<DecodedExecuteSegment>(addr, addr + len);
+	std::shared_ptr<DecodedExecuteSegment> segment;
 
-	populate_decoder_cache(*segment, addr, static_cast<const uint8_t*>(data), len);
+	// Check if we should use shared execute segments
+	if (options.use_shared_execute_segments) {
+		// Compute CRC32-C hash of the segment data
+		uint32_t crc32c = util::crc32c(static_cast<const uint8_t*>(data), len);
 
-#ifdef LA_BINARY_TRANSLATION
-	// Try to activate binary translation if enabled
-	if (is_initial && options.translate_enabled) {
-		extern bool try_translate(const Machine& machine, const MachineOptions& options, std::shared_ptr<DecodedExecuteSegment>& exec);
-		try_translate(m_machine, options, segment);
+		// Create segment key
+		SegmentKey key = SegmentKey::from(addr, crc32c, m_arena_size);
+
+		// Try to get existing shared segment
+		auto& shared_cache = get_shared_execute_segments();
+		auto& entry = shared_cache.get_segment(key);
+
+		// Lock the segment entry and check if it exists
+		std::shared_ptr<DecodedExecuteSegment> existing = entry.get();
+
+		if (existing) {
+			// Reuse existing shared segment
+			segment = existing;
+		} else {
+			// No existing segment, use the one we just created
+			std::lock_guard<std::mutex> lock(entry.mutex);
+			// Double-check in case another thread created it
+			if (!entry.segment) {
+				entry.segment = std::make_shared<DecodedExecuteSegment>(addr, addr + len);
+				populate_decoder_cache(m_machine, options, entry.segment, addr, static_cast<const uint8_t*>(data), len, is_initial);
+			}
+			segment = entry.segment;
+		}
+	} else {
+		// Not using shared segments, create a new one
+		segment = std::make_shared<DecodedExecuteSegment>(addr, addr + len);
+		populate_decoder_cache(m_machine, options, segment, addr, static_cast<const uint8_t*>(data), len, is_initial);
 	}
-#endif
 
 	if (is_initial) {
 		m_main_exec_segment = segment;
@@ -328,6 +353,26 @@ std::shared_ptr<DecodedExecuteSegment> Memory::exec_segment_for(address_t pc) co
 void Memory::evict_execute_segments()
 {
 	machine().cpu.set_execute_segment(*CPU::empty_execute_segment());
+
+	// If using shared segments, notify the cache before releasing our references
+	if (machine().has_options() && machine().options().use_shared_execute_segments) {
+		auto& shared_cache = get_shared_execute_segments();
+
+		// Remove main segment if unique
+		if (m_main_exec_segment) {
+			SegmentKey key = SegmentKey::from(*m_main_exec_segment, m_arena_size);
+			shared_cache.remove_if_unique(key);
+		}
+
+		// Remove other segments if unique
+		for (auto& seg : m_exec) {
+			if (seg) {
+				SegmentKey key = SegmentKey::from(*seg, m_arena_size);
+				shared_cache.remove_if_unique(key);
+			}
+		}
+	}
+
 	m_exec.clear();
 	m_main_exec_segment.reset();
 }

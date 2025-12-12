@@ -2,10 +2,12 @@
 #include "cpu.hpp"
 #include "la_instr.hpp"
 #include "threaded_bytecodes.hpp"
+#include "util/crc32.hpp"
 #include <cstring>
 
-namespace loongarch
-{
+namespace loongarch {
+extern bool try_translate(const Machine&, const MachineOptions&, std::shared_ptr<DecodedExecuteSegment>&);
+
 	// Check if an instruction is diverging (changes control flow)
 	// Note: PC-reading instructions (PCADDI, PCALAU12I, PCADDU12I) are NOT diverging
 	// because they only read PC, they don't modify it
@@ -182,15 +184,19 @@ namespace loongarch
 	}
 
 	// Populate decoder cache for an execute segment
-	void populate_decoder_cache(DecodedExecuteSegment& segment,
-		address_t exec_begin, const uint8_t* code, size_t code_size)
+	void populate_decoder_cache(Machine& machine, const MachineOptions& options, std::shared_ptr<DecodedExecuteSegment>& segment,
+		address_t exec_begin, const uint8_t* code, size_t code_size, bool is_initial)
 	{
+		// Compute and store CRC32-C hash for shared segment identification
+		const uint32_t crc = util::crc32c(code, code_size);
+		segment->set_crc32c_hash(crc);
+
 		// Round down to nearest instruction boundary (4 bytes)
 		// This safely handles segments where .text + .rodata are merged
 		const size_t aligned_size = code_size & ~size_t(3);
 		if (aligned_size < 4) {
 			// No complete instructions to cache
-			segment.set_decoder_cache(nullptr, 0);
+			segment->set_decoder_cache(nullptr, 0);
 			return;
 		}
 
@@ -233,7 +239,7 @@ namespace loongarch
 			// typically to rewrite cases where rd == zero register.
 			// This avoids a check in the hot-path for rd != 0.
 			const address_t pc = exec_begin + (i * sizeof(la_instruction));
-			cache[i].instr = segment.optimize_bytecode(cache[i].bytecode, pc, instr);
+			cache[i].instr = segment->optimize_bytecode(cache[i].bytecode, pc, instr);
 
 			if (is_diverging_instruction(instr)) {
 				// Diverging instruction: block_bytes = 0
@@ -253,7 +259,15 @@ namespace loongarch
 		cache[num_instructions].handler_idx = 0;
 
 		// Store the cache in the segment
-		segment.set_decoder_cache(cache, num_instructions);
+		segment->set_decoder_cache(cache, num_instructions);
+
+#ifdef LA_BINARY_TRANSLATION
+		// Try to activate binary translation if enabled
+		// Note: Binary translation with shared segments requires compatible arena sizes
+		if (is_initial && options.translate_enabled) {
+			try_translate(machine, options, segment);
+		}
+#endif
 	}
 
 	uint16_t DecoderData::compute_handler_for(handler_t handler)

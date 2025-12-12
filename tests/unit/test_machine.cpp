@@ -27,18 +27,48 @@ TEST_CASE("Machine instantiation", "[machine]") {
 			}
 		)", "multi_machine");
 
-		TestMachine machine1(binary);
-		TestMachine machine2(binary);
+		{
+			TestMachine machine1(binary);
+			TestMachine machine2(binary);
 
-		machine1.setup_linux();
-		machine2.setup_linux();
+			machine1.setup_linux();
+			machine2.setup_linux();
 
-		// Both should work independently
-		auto result1 = machine1.execute();
-		auto result2 = machine2.execute();
+			// Both should work independently
+			auto result1 = machine1.execute();
+			auto result2 = machine2.execute();
 
-		REQUIRE(result1.success);
-		REQUIRE(result2.success);
+			REQUIRE(result1.success);
+			REQUIRE(result2.success);
+		}
+		TestMachine machine3(binary);
+		machine3.setup_linux();
+		auto result3 = machine3.execute();
+		REQUIRE(result3.success);
+	}
+
+	SECTION("Dead execute segment originator") {
+		auto binary = builder.build(R"(
+			int main() {
+				return 0;
+			}
+		)", "multi_machine");
+
+		std::unique_ptr<TestMachine> machine1(new TestMachine(binary));
+		{
+			TestMachine machine2(binary);
+
+			machine1->setup_linux();
+			machine2.setup_linux();
+
+			// Both should work independently
+			auto result1 = machine1->execute();
+			machine1.reset(); // Destroy machine1 before executing machine2
+			auto result2 = machine2.execute();
+
+			REQUIRE(result1.success);
+			REQUIRE(result2.success);
+		}
 	}
 }
 
@@ -109,32 +139,6 @@ TEST_CASE("Register access", "[machine][registers]") {
 		uint64_t a0 = machine.get_reg(REG_A0);
 		REQUIRE(a0 == 42);
 	}
-
-	// TODO: Re-enable when vmcall is implemented
-	/*
-	SECTION("Modify registers") {
-		auto binary = builder.build(R"(
-			int get_a0_value() {
-				register int a0_val asm("a0");
-				return a0_val;
-			}
-
-			int main() {
-				return 0;
-			}
-		)", "reg_modify");
-
-		TestMachine machine(binary);
-		machine.setup_linux();
-
-		// Set A0 to a value
-		machine.set_reg(REG_A0, 42);
-
-		// Call function that reads A0
-		int result = machine.vmcall("get_a0_value");
-		REQUIRE(result == 42);
-	}
-	*/
 }
 
 TEST_CASE("Instruction counting", "[machine][performance]") {

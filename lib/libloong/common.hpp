@@ -17,13 +17,21 @@ namespace loongarch
 		bool verbose_loader = false;
 		bool ignore_text_section = false;
 		bool verbose_syscalls = false;
+		/// @brief Enable sharing of execute segments between machines.
+		/// @details This will allow multiple machines to share the same execute
+		/// segment, reducing memory usage and increasing performance.
+		/// When binary translation is enabled, this will also share the dynamically
+		/// translated code between machines. (Prevents some optimizations)
+		bool use_shared_execute_segments = true;
 
 #ifdef LA_BINARY_TRANSLATION
 		// Binary translation options
 		bool translate_enabled = true;
 		bool translate_trace = false;
 		bool translate_ignore_instruction_limit = false;
-		bool use_shared_execute_segments = false;
+		/// @brief Enable register caching in the binary translator.
+		/// @details This will cache frequently used registers in real CPU registers,
+		/// improving performance at the cost of higher entry/exit overheads.
 		bool translate_use_register_caching = true;
 		/// @brief A callback that is invoked to perform the binary translation and
 		/// compilation step in the background.

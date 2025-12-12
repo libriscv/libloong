@@ -137,6 +137,7 @@ static int run_program(const std::vector<uint8_t>& binary, const EmulatorOptions
 			.memory_max = opts.memory_max,
 			.verbose_loader = opts.verbose,
 			.verbose_syscalls = opts.verbose,
+			.use_shared_execute_segments = false,
 #ifdef LA_BINARY_TRANSLATION
 			.translate_enabled = opts.enable_translation,
 			.translate_trace = opts.trace_translation,

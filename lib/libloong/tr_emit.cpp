@@ -216,9 +216,16 @@ struct Emitter
 	}
 
 	std::string arena_offset(const std::string& offset) const {
-		//if (this->nbit_mask == 0xFFFFFFFF) { // 32-bit slower??
-		//	return "((char*)" + hex_address(tinfo.arena_ptr) + " + (uint32_t)(" + offset + "))";
-		//} else
+		if (tinfo.options.use_shared_execute_segments) {
+			// Shared execute segments need to access arena through the
+			// CPU pointer, as multiple machines *have* different arenas
+			if (this->nbit_mask != 0) {
+				return "((char*)ARENA_AT(cpu, (" + offset + ") & " +
+					hex_address(this->nbit_mask) + "))";
+			} else {
+				return "((char*)ARENA_AT(cpu, " + offset + "))";
+			}
+		}
 		if (this->nbit_mask != 0) {
 			return "((char*)" + hex_address(tinfo.arena_ptr) + " + ((" + offset + ") & " +
 				hex_address(this->nbit_mask) + "))";

@@ -14,6 +14,10 @@ namespace loongarch
 
 		~DecodedExecuteSegment();
 
+		// CRC32-C hash for shared segment identification
+		uint32_t crc32c_hash() const noexcept { return m_crc32c_hash; }
+		void set_crc32c_hash(uint32_t hash) noexcept { m_crc32c_hash = hash; }
+
 		bool is_within(address_t addr, size_t len = 4) const noexcept {
 			address_t addr_end;
 #ifdef _MSC_VER
@@ -92,6 +96,7 @@ namespace loongarch
 		DecoderCache m_decoder_cache;
 		bool m_stale = false;
 		bool m_execute_only = false;
+		uint32_t m_crc32c_hash = 0;
 #ifdef LA_BINARY_TRANSLATION
 		bool m_is_libtcc = false;
 		const char* m_mappings_base_address = nullptr;

@@ -53,7 +53,7 @@ namespace loongarch
 			uint64_t du[4];
 			float    f[8];
 			double   df[4];
-			std::array<uint64_t, 2> lsx_low;  // Low 128 bits for LSX compatibility
+			alignas(16) std::array<uint64_t, 2> lsx_low;
 		};
 
 		// Floating-point condition flags (FCC)

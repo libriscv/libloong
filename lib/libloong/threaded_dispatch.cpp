@@ -63,9 +63,9 @@ continue_segment:
 		counter += decoder->instruction_count();
 
 		if constexpr (TRACE_DISPATCH) {
-			fprintf(stderr, "[accurate] PC=0x%lx block_bytes=%u num_instrs=%u counter=%lu->%lu max=%lu\n",
+			fprintf(stderr, "[accurate] PC=0x%lx block_bytes=%u num_instrs=%u counter=%lu max=%lu\n",
 				(unsigned long)(pc - decoder->block_bytes), decoder->block_bytes, decoder->instruction_count(),
-				counter, counter + decoder->instruction_count(), max_counter);
+				(unsigned long)counter, (unsigned long)max_counter);
 			fflush(stderr);
 		}
 
@@ -178,7 +178,7 @@ stop_execution:
 check_jump:
 		if constexpr (TRACE_DISPATCH) {
 			fprintf(stderr, "[check_jump] PC=0x%lx counter=%lu max=%lu\n",
-				(unsigned long)pc, counter, max_counter);
+				(unsigned long)pc, (unsigned long)counter, (unsigned long)max_counter);
 			fflush(stderr);
 		}
 		if (counter >= max_counter) {

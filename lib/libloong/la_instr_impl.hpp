@@ -435,8 +435,7 @@ struct InstrImpl {
 		// Vector indexed load (LSX 128-bit)
 		auto addr = cpu.reg(instr.r3.rj) + cpu.reg(instr.r3.rk);
 		auto& vr = cpu.registers().getvr(instr.r3.rd);
-		vr.du[0] = cpu.memory().template read<uint64_t, true>(addr);
-		vr.du[1] = cpu.memory().template read<uint64_t, true>(addr + 8);
+		vr.lsx_low = cpu.memory().template read<remove_cvref_t<decltype(vr.lsx_low)>, true>(addr);
 		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
 		vr.du[2] = 0;
 		vr.du[3] = 0;
@@ -446,8 +445,7 @@ struct InstrImpl {
 		// Vector indexed store (LSX 128-bit)
 		auto addr = cpu.reg(instr.r3.rj) + cpu.reg(instr.r3.rk);
 		const auto& vr = cpu.registers().getvr(instr.r3.rd);
-		cpu.memory().template write<uint64_t, true>(addr, vr.du[0]);
-		cpu.memory().template write<uint64_t, true>(addr + 8, vr.du[1]);
+		cpu.memory().template write<remove_cvref_t<decltype(vr.lsx_low)>, true>(addr, vr.lsx_low);
 	}
 
 	// === Branch Instructions ===
@@ -1752,8 +1750,7 @@ struct InstrImpl {
 		// Load 128-bit vector from memory
 		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		auto& vr = cpu.registers().getvr(instr.ri12.rd);
-		vr.du[0] = cpu.memory().template read<uint64_t, true>(addr);
-		vr.du[1] = cpu.memory().template read<uint64_t, true>(addr + 8);
+		vr.lsx_low = cpu.memory().template read<remove_cvref_t<decltype(vr.lsx_low)>, true>(addr);
 		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
 		vr.du[2] = 0;
 		vr.du[3] = 0;
@@ -1764,8 +1761,7 @@ struct InstrImpl {
 		// Store 128-bit vector to memory
 		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		const auto& vr = cpu.registers().getvr(instr.ri12.rd);
-		cpu.memory().template write<uint64_t, true>(addr, vr.du[0]);
-		cpu.memory().template write<uint64_t, true>(addr + 8, vr.du[1]);
+		cpu.memory().template write<remove_cvref_t<decltype(vr.lsx_low)>, true>(addr, vr.lsx_low);
 	}
 
 	static void XVLD(cpu_t& cpu, la_instruction instr) {
@@ -1773,10 +1769,7 @@ struct InstrImpl {
 		// Load 256-bit LASX vector from memory
 		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		auto& vr = cpu.registers().getvr(instr.ri12.rd);
-		vr.du[0] = cpu.memory().template read<uint64_t, true>(addr);
-		vr.du[1] = cpu.memory().template read<uint64_t, true>(addr + 8);
-		vr.du[2] = cpu.memory().template read<uint64_t, true>(addr + 16);
-		vr.du[3] = cpu.memory().template read<uint64_t, true>(addr + 24);
+		vr = cpu.memory().template read<remove_cvref_t<decltype(vr)>, true>(addr);
 	}
 
 	static void XVST(cpu_t& cpu, la_instruction instr) {
@@ -1784,10 +1777,7 @@ struct InstrImpl {
 		// Store 256-bit LASX vector to memory
 		auto addr = cpu.reg(instr.ri12.rj) + InstructionHelpers::sign_extend_12(instr.ri12.imm);
 		const auto& vr = cpu.registers().getvr(instr.ri12.rd);
-		cpu.memory().template write<uint64_t, true>(addr, vr.du[0]);
-		cpu.memory().template write<uint64_t, true>(addr + 8, vr.du[1]);
-		cpu.memory().template write<uint64_t, true>(addr + 16, vr.du[2]);
-		cpu.memory().template write<uint64_t, true>(addr + 24, vr.du[3]);
+		cpu.memory().template write<remove_cvref_t<decltype(vr)>, true>(addr, vr);
 	}
 
 	// === Additional LSX Vector Instructions ===
@@ -3988,10 +3978,7 @@ struct InstrImpl {
 		// Vector indexed load (LASX 256-bit)
 		auto addr = cpu.reg(instr.r3.rj) + cpu.reg(instr.r3.rk);
 		auto& vr = cpu.registers().getvr(instr.r3.rd);
-		vr.du[0] = cpu.memory().template read<uint64_t, true>(addr);
-		vr.du[1] = cpu.memory().template read<uint64_t, true>(addr + 8);
-		vr.du[2] = cpu.memory().template read<uint64_t, true>(addr + 16);
-		vr.du[3] = cpu.memory().template read<uint64_t, true>(addr + 24);
+		vr = cpu.memory().template read<remove_cvref_t<decltype(vr)>, true>(addr);
 	}
 
 	static void XVSTX(cpu_t& cpu, la_instruction instr) {
@@ -3999,10 +3986,7 @@ struct InstrImpl {
 		// Vector indexed store (LASX 256-bit)
 		auto addr = cpu.reg(instr.r3.rj) + cpu.reg(instr.r3.rk);
 		const auto& vr = cpu.registers().getvr(instr.r3.rd);
-		cpu.memory().template write<uint64_t, true>(addr, vr.du[0]);
-		cpu.memory().template write<uint64_t, true>(addr + 8, vr.du[1]);
-		cpu.memory().template write<uint64_t, true>(addr + 16, vr.du[2]);
-		cpu.memory().template write<uint64_t, true>(addr + 24, vr.du[3]);
+		cpu.memory().template write<remove_cvref_t<decltype(vr)>, true>(addr, vr);
 	}
 
 	static void XVFADD_D(cpu_t& cpu, la_instruction instr) {

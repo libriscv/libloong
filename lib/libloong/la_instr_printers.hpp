@@ -632,8 +632,8 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 	}
 
 	static int LU32I_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		const int64_t signed_imm = InstructionHelpers::sign_extend_20(instr.ri20.imm);
-		return snprintf(buf, len, "lu32i.d %s, %ld",
+		const int32_t signed_imm = InstructionHelpers::sign_extend_20(instr.ri20.imm);
+		return snprintf(buf, len, "lu32i.d %s, %d",
 			reg_name(instr.ri20.rd), signed_imm);
 	}
 

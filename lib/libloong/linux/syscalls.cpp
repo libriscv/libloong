@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <sys/time.h>
 #include <unistd.h>
+#include <chrono>
 
 namespace loongarch
 {
@@ -253,9 +254,27 @@ namespace loongarch
 		auto [tv_addr] =
 			machine.template sysargs<address_t>();
 		if (tv_addr != 0) {
+			// LoongArch Linux uses int64_t for both fields
+			struct {
+				int64_t tv_sec;
+				int64_t tv_usec;
+			} tv_guest;
+#ifdef _WIN32
+			// On Windows, use std::chrono to avoid gettimeofday issues
+			auto now = std::chrono::system_clock::now();
+			auto duration = now.time_since_epoch();
+			auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration);
+			auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(duration - seconds);
+
+			tv_guest.tv_sec = seconds.count();
+			tv_guest.tv_usec = microseconds.count();
+#else
 			struct timeval tv;
 			gettimeofday(&tv, nullptr);
-			machine.memory.copy_to_guest(tv_addr, &tv, sizeof(tv));
+			tv_guest.tv_sec = tv.tv_sec;
+			tv_guest.tv_usec = tv.tv_usec;
+#endif
+			machine.memory.copy_to_guest(tv_addr, &tv_guest, sizeof(tv_guest));
 		}
 		machine.set_result(0);
 		sysprint(machine, "gettimeofday(tv=0x%llx) = %d\n",

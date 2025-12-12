@@ -2602,14 +2602,15 @@ struct InstrImpl {
 		uint32_t vj = (instr.whole >> 5) & 0x1F;
 		uint32_t vk = (instr.whole >> 10) & 0x1F;
 
-		const auto& src1 = cpu.registers().getvr(vj);
-		const auto& src2 = cpu.registers().getvr(vk);
+		// Make sure to avoid aliasing issues by reading sources first
+		const auto src1_du = cpu.registers().getvr(vj).du[0];
+		const auto src2_du = cpu.registers().getvr(vk).du[0];
 		auto& dst = cpu.registers().getvr(vd);
 
 		// Interleave: dst[0] = src2[0], dst[1] = src1[0]
 		// For double-words (64-bit), we interleave the low element (1 element) from each source
-		dst.du[0] = src2.du[0];
-		dst.du[1] = src1.du[0];
+		dst.du[0] = src2_du;
+		dst.du[1] = src1_du;
 		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
 		dst.du[2] = 0;
 		dst.du[3] = 0;
@@ -2703,7 +2704,7 @@ struct InstrImpl {
 
 		dst.du[0] = src1.du[0] & src2.du[0];
 		dst.du[1] = src1.du[1] & src2.du[1];
-			// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
 		dst.du[2] = 0;
 		dst.du[3] = 0;
 	}
@@ -2722,7 +2723,7 @@ struct InstrImpl {
 		uint64_t mask = 1ULL << imm;
 		dst.du[0] = src.du[0] ^ mask;
 		dst.du[1] = src.du[1] ^ mask;
-			// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
 		dst.du[2] = 0;
 		dst.du[3] = 0;
 	}
@@ -3119,7 +3120,7 @@ struct InstrImpl {
 
 		dst.du[0] = src1.du[0] | src2.du[0];
 		dst.du[1] = src1.du[1] | src2.du[1];
-			// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
+		// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
 		dst.du[2] = 0;
 		dst.du[3] = 0;
 	}

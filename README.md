@@ -21,6 +21,34 @@ For discussions & help, [visit Discord](https://discord.gg/n4GcXr66X5).
 
 Game engine scripting is where libloong excels. Traditional games expose modding through shared libraries (full system access), embedded VMs like Lua (~150ns call overhead), or Java run-times. _libloong_ has ~4ns call overhead.
 
+```sh
++==============================================================================+
+|  Score: 260                                               Difficulty: 1.1    |
+|                                                                              |
+|                                                                              |
+|                         O O                                                  |
+|                                                                              |
+|                                                                              |
+|                                                                              |
+|                                                                              |
+|                                                                              |
+|                                                                              |
+|            .@.                                                               |
+|                                                                              |
+|                                                                              |
+|                                                                              |
+|                                                                              |
+|                                                                              |
+|                                                                              |
+|                                  O                                           |
+|                                                                              |
+|                                                                              |
+|                              /A\                                             |
+|  A/D: Move  Q: Quit                                                          |
++= LoongScript JIT  Time: 49.28us  Instr: 2780  MI/s: 56.41 ===================+
+```
+See the [example Asteroid game](/examples/gamedev).
+
 ## Building
 
 ### Standard Build

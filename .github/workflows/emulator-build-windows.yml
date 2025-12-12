@@ -1,0 +1,57 @@
+name: Emulator Build (Windows)
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-emulator-windows:
+    name: Build Emulator CLI (Windows/MinGW)
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          cmake \
+          ninja-build \
+          g++-mingw-w64-x86-64 \
+          gcc-mingw-w64-x86-64
+
+    - name: Configure emulator for Windows
+      run: |
+        cd emulator
+        mkdir -p .build_mingw
+        cd .build_mingw
+        cmake .. \
+          -G Ninja \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DLA_BINARY_TRANSLATION=ON \
+          -DCMAKE_TOOLCHAIN_FILE=../mingw_toolchain.cmake
+
+    - name: Build emulator for Windows
+      run: |
+        cd emulator/.build_mingw
+        ninja
+
+    - name: Verify emulator binary
+      run: |
+        cd emulator/.build_mingw
+        ls -lh laemu.exe
+        file laemu.exe
+        x86_64-w64-mingw32-objdump -p laemu.exe | grep "DLL Name"
+
+    - name: Upload emulator artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: laemu-windows-x86_64
+        path: emulator/.build_mingw/laemu.exe
+        retention-days: 30

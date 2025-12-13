@@ -286,6 +286,7 @@ static void print_help(const char* progname)
 	printf("  -n, --no-translate      Disable binary translation (interpret only)\n");
 	printf("      --no-regcache       Disable register caching in translated code\n");
 	printf("      --fast              Enable fastest binary translation (unsafe)\n");
+	printf("      --nbit-as           Use automatic N-bit address masking in binary translation\n");
 	printf("  -T, --trace             Trace binary translation execution\n");
 	printf("  -O, --output <file>     Write generated translation code to file\n\n");
 	printf("The emulator automatically detects LA32/LA64 architecture from the ELF binary.\n\n");
@@ -312,9 +313,10 @@ static EmulatorOptions parse_arguments(int argc, char* argv[])
 		{"stats",   no_argument,       0, '\x02'},
 		{"fuel",    required_argument, 0, 'f'},
 		{"memory",  required_argument, 0, 'm'},
-		{"no-translate", no_argument, 0,  'n'},
-		{"no-regcache",  no_argument, 0,  '\x04'},
+		{"no-translate", no_argument,  0, 'n'},
+		{"no-regcache",  no_argument,  0, '\x04'},
 		{"fast",    no_argument,       0, '\x05'},
+		{"nbit-as", no_argument,       0, '\x06'},
 		{"trace",   no_argument,       0, 'T'},
 		{"output",  required_argument, 0, 'O'},
 		{0, 0, 0, 0}
@@ -365,6 +367,9 @@ static EmulatorOptions parse_arguments(int argc, char* argv[])
 			break;
 		case '\x05':
 			opts.translate_unsafe = true;
+			break;
+		case '\x06':
+			opts.translate_nbit_as = true;
 			break;
 		default:
 			print_help(argv[0]);

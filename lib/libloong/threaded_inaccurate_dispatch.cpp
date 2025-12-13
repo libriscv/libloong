@@ -1,9 +1,6 @@
 #include "cpu.hpp"
 #include "machine.hpp"
 #include "threaded_bytecodes.hpp"
-#if defined(__linux__) && defined(__x86_64__) && 0
-#define JUMPTABLE_GS_SUPPORTED
-#endif
 
 #define DECODER()   (*decoder)
 #define CPU()       (*this)
@@ -13,13 +10,8 @@
 #define RECONSTRUCT_PC() (pc - DECODER().block_bytes)
 #define INSTRUCTION(bc, lbl) lbl:
 #define VIEW_INSTR() auto instr = la_instruction{decoder->instr};
-#ifdef JUMPTABLE_GS_SUPPORTED
-#define EXECUTE_INSTR() \
-	goto *jumptable_gs[decoder->get_bytecode()];
-#else
 #define EXECUTE_INSTR() \
 	goto *computed_opcode[decoder->get_bytecode()];
-#endif
 #define NEXT_INSTR() \
 	decoder += 1; \
 	EXECUTE_INSTR();
@@ -38,21 +30,9 @@ namespace loongarch
 {
 	void CPU::simulate_inaccurate(address_t pc)
 	{
-#ifndef NDEBUG
-		constexpr bool TRACE_DISPATCH = false;  // Set to true to enable dispatch tracing
-#else
 		constexpr bool TRACE_DISPATCH = false;
-#endif
 		// Include computed goto table
 		#include "threaded_bytecode_array.hpp"
-#ifdef JUMPTABLE_GS_SUPPORTED
-#  if defined(__clang__)
-		void * __seg_gs *jumptable_gs = nullptr;
-		asm ("wrgsbase %0" :: "r"((uintptr_t)computed_opcode));
-#  elif defined(__GNUC__)
-		void * __attribute__((__seg_gs__)) *jumptable_gs = (void**)computed_opcode;
-#  endif
-#endif
 
 		DecodedExecuteSegment* exec = this->m_exec;
 		address_t current_begin = exec->exec_begin();

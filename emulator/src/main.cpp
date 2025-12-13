@@ -20,7 +20,7 @@ struct EmulatorOptions {
 	std::string binary_path;
 	std::vector<std::string> program_args;
 	uint64_t max_instructions = 0; // unlimited
-	uint64_t memory_max = 2048ull << 20; // 2 GB
+	uint64_t memory_max = 4096ull << 20; // 4 GB
 	bool verbose = false;
 	bool precise = false;
 	bool timing = false;

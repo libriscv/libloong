@@ -641,8 +641,7 @@ struct InstrImpl {
 		uint32_t width = msbw - lsbw + 1;
 		uint32_t mask = (1U << width) - 1;
 		uint32_t result = (src >> lsbw) & mask;
-		// Zero-extend to 64 bits (unsigned)
-		cpu.reg(instr.ri16.rd) = result;
+		cpu.reg(instr.ri16.rd) = (int32_t)result;
 	}
 
 	// === System Instructions ===

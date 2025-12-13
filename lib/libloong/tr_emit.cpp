@@ -53,7 +53,7 @@ static bool instruction_exclusively_vr(InstrId id) {
 struct Emitter
 {
 	static constexpr int CACHE_START = 1; // Start at r1
-	static constexpr int CACHE_END = 24; // End after rx (exclusive)
+	static constexpr int CACHE_END = 25; // End after rx (exclusive)
 	static constexpr int CACHED_REGISTERS = CACHE_END - CACHE_START;
 
 	static constexpr int FPR_CACHE_START = 0; // Start at fa0
@@ -88,6 +88,8 @@ struct Emitter
 			size_t nbit = 1;
 			while (nbit < size) nbit <<= 1;
 			this->nbit_mask = nbit - 1;
+		} else if (LA_MASKED_MEMORY_BITS != 0) {
+			this->nbit_mask = (address_t(1) << LA_MASKED_MEMORY_BITS) - 1;
 		}
 	}
 
@@ -238,9 +240,11 @@ struct Emitter
 			if (tinfo.cpu_relative_offset != 0) {
 				// The arena is relative to the CPU pointer, which
 				// is faster than double indirection through ARENA_AT(cpu, ...)
-				// XXX: Most loads/stores have partial constant offsets,
-				// which we could optimize further by folding into the offset here.
-				if (this->nbit_mask != 0) {
+				if (this->nbit_mask == UINT32_MAX) {
+					// Full 32-bit mask - can use direct cast
+					return "((char*)cpu + " +
+						std::to_string(tinfo.cpu_relative_offset) + " + (uint32_t)(" + offset + "))";
+				} else if (this->nbit_mask != 0) {
 					return "((char*)cpu + " +
 						std::to_string(tinfo.cpu_relative_offset) + " + ((" + offset + ") & " +
 						hex_address(this->nbit_mask) + "))";
@@ -258,7 +262,10 @@ struct Emitter
 				return "((char*)ARENA_AT(cpu, " + offset + "))";
 			}
 		}
-		if (this->nbit_mask != 0) {
+		if (this->nbit_mask == UINT32_MAX) {
+			// Full 32-bit mask - can use direct cast
+			return "((char*)" + hex_address(tinfo.arena_ptr) + " + (uint32_t)(" + offset + "))";
+		} else if (this->nbit_mask != 0) {
 			return "((char*)" + hex_address(tinfo.arena_ptr) + " + ((" + offset + ") & " +
 				hex_address(this->nbit_mask) + "))";
 		} else {
@@ -294,7 +301,9 @@ struct Emitter
 	// is_signed: whether to sign-extend (only matters for sizes < 64)
 	void emit_load(unsigned size, bool is_signed, unsigned rd, unsigned rj, int64_t offset) {
 		if (rd == 0) return;
-		std::string addr = reg(rj) + " + " + std::to_string(offset);
+		std::string addr = reg(rj);
+		if (offset != 0)
+			addr.append(" + " + std::to_string(offset));
 		std::string ptr = arena_offset(addr);
 		this->emit_load_bounds_check(addr);
 
@@ -331,7 +340,9 @@ struct Emitter
 	// Emit memory store - templatized for different sizes
 	// size: 8, 16, 32, or 64 bits
 	void emit_store(unsigned size, unsigned rd, unsigned rj, int64_t offset) {
-		std::string addr = reg(rj) + " + " + std::to_string(offset);
+		std::string addr = reg(rj);
+		if (offset != 0)
+			addr.append(" + " + std::to_string(offset));
 		std::string ptr = arena_offset(addr);
 		this->emit_store_bounds_check(addr);
 
@@ -639,7 +650,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 		case InstrId::BNEZ: {
 			int64_t offs = InstructionHelpers::sign_extend_21(instr.ri21.offs_lo, instr.ri21.offs_hi);
 			address_t target = emit.pc() + (offs << 2);
-			emit.emit_branch_1r("!= 0", instr.ri21.rj, target);
+			emit.emit_branch_1r("", instr.ri21.rj, target);
 			break;
 		}
 		case InstrId::B: {
@@ -798,28 +809,35 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 		// Arithmetic immediate
 		case InstrId::ADDI_D: {
 			if (instr.ri12.rd != 0) {
+				int32_t imm_se = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 				if (instr.ri12.rj == 0) {
 					// Optimize ADDI_D rd, r0, imm to rd = imm_se
-					int32_t imm_se = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 					emit.add_code("  " + emit.reg(instr.ri12.rd) + " = (saddr_t)" +
 						std::to_string(imm_se) + "LL;");
+				} else if (instr.ri12.rd == instr.ri12.rj) {
+					std::string op = (imm_se >= 0) ? " += " : " -= ";
+					emit.add_code("  " + emit.reg(instr.ri12.rd) + op +
+						std::to_string(std::abs(imm_se)) + ";");
 				} else {
 					emit.add_code("  " + emit.reg(instr.ri12.rd) + " = " +
-						emit.reg(instr.ri12.rj) + " + " + std::to_string(InstructionHelpers::sign_extend_12(instr.ri12.imm)) + ";");
+						emit.reg(instr.ri12.rj) + " + " + std::to_string(imm_se) + ";");
 				}
 			}
 			break;
 		}
 		case InstrId::ADDI_W: {
 			if (instr.ri12.rd != 0) {
+				const int32_t imm_se = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 				if (instr.ri12.rj == 0) {
 					// Optimize ADDI_W rd, r0, imm to rd = imm_se
-					int32_t imm_se = InstructionHelpers::sign_extend_12(instr.ri12.imm);
-					emit.add_code("  " + emit.reg(instr.ri12.rd) + " = (int32_t)" +
+					emit.add_code("  " + emit.reg(instr.ri12.rd) + " = " +
+						std::to_string(imm_se) + ";");
+				} else if (instr.ri12.rd == instr.ri12.rj) {
+					emit.add_code("  " + emit.reg(instr.ri12.rd) + " += " +
 						std::to_string(imm_se) + ";");
 				} else {
 					emit.add_code("  " + emit.reg(instr.ri12.rd) + " = (int32_t)" +
-						emit.reg(instr.ri12.rj) + " + " + std::to_string(InstructionHelpers::sign_extend_12(instr.ri12.imm)) + ";");
+						emit.reg(instr.ri12.rj) + " + " + std::to_string(imm_se) + ";");
 				}
 			}
 			break;
@@ -1104,10 +1122,13 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 					// Optimize ORI rd, r0, imm to rd = imm_se
 					emit.add_code("  " + emit.reg(instr.ri12.rd) + " = " +
 						std::to_string((int32_t)imm12) + ";");
-					break;
+				} else if (instr.ri12.rd == instr.ri12.rj) {
+					emit.add_code("  " + emit.reg(instr.ri12.rd) + " |= " +
+						std::to_string(imm12) + ";");
+				} else {
+					emit.add_code("  " + emit.reg(instr.ri12.rd) + " = " +
+						emit.reg(instr.ri12.rj) + " | " + std::to_string(imm12) + ";");
 				}
-				emit.add_code("  " + emit.reg(instr.ri12.rd) + " = " +
-					emit.reg(instr.ri12.rj) + " | " + std::to_string(imm12) + ";");
 			}
 			break;
 		case InstrId::XOR:
@@ -1387,9 +1408,14 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 				uint32_t lsbw = (instr.whole >> 10) & 0x1F;
 				uint32_t width = msbw - lsbw + 1;
 				uint32_t mask = (1U << width) - 1;  // Precomputed at translation time
-				emit.add_code("  " + emit.reg(instr.ri16.rd) + " = ((uint32_t)" +
-					emit.reg(instr.ri16.rj) + " >> " + std::to_string(lsbw) +
-					") & " + std::to_string(mask) + "U;");
+				if (lsbw == 0) {
+					emit.add_code("  " + emit.reg(instr.ri16.rd) + " = (int32_t)(" +
+						emit.reg(instr.ri16.rj) + " & " + std::to_string(mask) + "U);");
+				} else {
+					emit.add_code("  " + emit.reg(instr.ri16.rd) + " = (int32_t)(((uint32_t)" +
+						emit.reg(instr.ri16.rj) + " >> " + std::to_string(lsbw) +
+						") & " + std::to_string(mask) + "U);");
+				}
 			}
 			break;
 		case InstrId::BSTRPICK_D:
@@ -1398,9 +1424,17 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 				uint32_t lsbd = (instr.whole >> 10) & 0x3F;
 				uint32_t width = msbd - lsbd + 1;
 				uint64_t mask = (1ULL << width) - 1;  // Precomputed at translation time
-				emit.add_code("  " + emit.reg(instr.ri16.rd) + " = (" +
-					emit.reg(instr.ri16.rj) + " >> " + std::to_string(lsbd) +
-					") & " + std::to_string(mask) + "ULL;");
+				if (lsbd == 0 && instr.ri16.rd == instr.ri16.rj) {
+					emit.add_code("  " + emit.reg(instr.ri16.rd) + " &= " +
+						std::to_string(mask) + "ULL;");
+				} else if (lsbd == 0) {
+					emit.add_code("  " + emit.reg(instr.ri16.rd) + " = " +
+						emit.reg(instr.ri16.rj) + " & " +  std::to_string(mask) + "ULL;");
+				} else {
+					emit.add_code("  " + emit.reg(instr.ri16.rd) + " = (" +
+						emit.reg(instr.ri16.rj) + " >> " + std::to_string(lsbd) +
+						") & " + std::to_string(mask) + "ULL;");
+				}
 			}
 			break;
 

@@ -68,13 +68,19 @@ struct Emitter
 	bool gpr_used[32] = {}; // Track which registers are actually used
 	bool fpr_used[32] = {}; // Track which FP registers are actually used
 	address_t nbit_mask = 0;
+	address_t last_fallback_pc = 0;
+	std::unordered_set<address_t> static_functions;
+
+	static std::string function_name_from(address_t address) {
+		char buf[64];
+		snprintf(buf, sizeof(buf), "f_%" PRIx64, (uint64_t)address);
+		return std::string(buf);
+	}
 
 	Emitter(const TransInfo& info)
 	  : tinfo(info), current_pc(info.basepc)
 	{
-		char buf[64];
-		snprintf(buf, sizeof(buf), "f_%" PRIx64, (uint64_t)info.basepc);
-		func_name = buf;
+		this->func_name = function_name_from(info.basepc);
 		if (tinfo.options.translate_automatic_nbit_address_space) {
 			// Determine n-bit mask based on arena size
 			// The mask must under-estimate the size to avoid out-of-bounds accesses
@@ -121,14 +127,26 @@ struct Emitter
 		}
 	}
 
+	std::string load_all_registers_string() const {
+		return "LOAD_REGS_" + func_name + "();\n";
+	}
+	std::string store_all_registers_string() const {
+		return "STORE_REGS_" + func_name + "();\n";
+	}
 	void store_all_registers() {
 		if (tinfo.options.translate_use_register_caching)
-			add_code("STORE_REGS_" + func_name + "();");
+			add_code(store_all_registers_string());
+	}
+	void remove_load_all_registers() {
+		size_t pos = this->code.rfind(load_all_registers_string());
+		if (pos != std::string::npos) {
+			this->code.erase(pos, load_all_registers_string().size());
+		}
 	}
 
 	void reload_all_registers() {
 		if (tinfo.options.translate_use_register_caching)
-			add_code("LOAD_REGS_" + func_name + "();");
+			add_code(load_all_registers_string());
 	}
 
 	void store_syscall_registers() {
@@ -380,24 +398,79 @@ struct Emitter
 		// For unimplemented instructions, call the slow-path handler
 		const bool vr_only = instruction_exclusively_vr(instr.id);
 		// Store cached registers before calling handler
-		if (!vr_only)
-			store_all_registers();
+		if (!vr_only) {
+			// If the previous instruction was a fallback,
+			// no registers have changed
+			if (this->last_fallback_pc != pc()-4) {
+				store_all_registers();
+			} else {
+				remove_load_all_registers();
+			}
+		}
 		if (tinfo.options.translate_verbose_fallbacks) {
 			add_code("  api.fallback(cpu, " + hex_address(pc()) + "ULL, " + hex_address(instr_bits) + ");");
 		}
 		const uintptr_t handler_func = reinterpret_cast<uintptr_t>(instr.handler);
 		add_code("  ((handler_t)" + hex_address(handler_func) + ")(cpu, " + hex_address(instr_bits) + ");");
 		// Reload cached registers after handler returns
-		if (!vr_only)
+		if (!vr_only) {
 			reload_all_registers();
+			this->last_fallback_pc = pc();
+		}
 	}
 
-	void emit_return() {
-		store_all_registers();
+	void emit_return(bool store_registers = true) {
+		if (store_registers) {
+			store_all_registers();
+		}
 		if (!tinfo.options.translate_ignore_instruction_limit)
 			add_code("  return (ReturnValues){ic, max_ic};");
 		else
 			add_code("  return (ReturnValues){0, max_ic};");
+	}
+
+	bool is_global_jump_target(address_t target) const {
+		return tinfo.global_jump_locations.find(target) != tinfo.global_jump_locations.end();
+	}
+	const TransInfo* block_for_target(address_t target) const {
+		for (const TransInfo& block : *tinfo.blocks) {
+			if (target >= block.basepc && target < block.endpc)
+				return &block;
+		}
+		return nullptr;
+	}
+
+	void jump_to(address_t target)
+	{
+		// Check if target is within current block
+		if (target >= tinfo.basepc && target < tinfo.endpc) {
+			// Local jump within block
+			char label[64];
+			snprintf(label, sizeof(label), "label_%lx", (unsigned long)target);
+			add_code("  goto " + std::string(label) + ";");
+		} else if (false && target > pc() && this->is_global_jump_target(target)) {
+			//static int counter = 0;
+			//printf("Warning: jump %d to global target 0x%" PRIx64 "\n", ++counter, target);
+			const TransInfo* target_block = this->block_for_target(target);
+			if (LA_UNLIKELY(target_block == nullptr))
+				throw MachineException(ILLEGAL_OPERATION,
+					"jump_to: global jump target has no block", target);
+			// Direct function call to target block
+			this->static_functions.insert(target_block->basepc);
+			this->store_all_registers();
+			if (tinfo.options.translate_ignore_instruction_limit) {
+				add_code("  return " +
+					function_name_from(target_block->basepc) + "(cpu, 0, max_ic, " + hex_address(target) + "ULL);");
+			} else {
+				add_code("  return " +
+					function_name_from(target_block->basepc) + "(cpu, ic, max_ic, " + hex_address(target) + "ULL);");
+			}
+		} else {
+			// External jump - set PC and return
+			add_code("{  cpu->pc = " + hex_address(target) + "ULL;");
+			this->emit_return();
+			add_code("}");
+		}
 	}
 
 	// Emit a conditional branch (1-register format: BEQZ, BNEZ)
@@ -406,19 +479,7 @@ struct Emitter
 
 		std::string cond_str = reg(rj) + " " + cond;
 		add_code("if (" + cond_str + ")");
-
-		// Check if target is within current block
-		if (target >= tinfo.basepc && target < tinfo.endpc) {
-			// Local jump within block
-			char label[64];
-			snprintf(label, sizeof(label), "label_%lx", (unsigned long)target);
-			add_code("  goto " + std::string(label) + ";");
-		} else {
-			// External jump - set PC and return
-			add_code("{  cpu->pc = " + hex_address(target) + "ULL;");
-			this->emit_return();
-			add_code("}");
-		}
+		this->jump_to(target);
 	}
 
 	// Emit a conditional branch (2-register format: BEQ, BNE, BLT, BGE, BLTU, BGEU)
@@ -432,37 +493,15 @@ struct Emitter
 			cond_str = reg(rj) + " " + cond + " " + reg(rd);
 		}
 
-		add_code("if (" + cond_str + ") {");
-
-		// Check if target is within current block
-		if (target >= tinfo.basepc && target < tinfo.endpc) {
-			// Local jump within block
-			char label[64];
-			snprintf(label, sizeof(label), "label_%lx", (unsigned long)target);
-			add_code("  goto " + std::string(label) + ";");
-		} else {
-			// External jump - set PC and return
-			add_code("  cpu->pc = " + hex_address(target) + "ULL;");
-			this->emit_return();
-		}
-		add_code("}");
+		add_code("if (" + cond_str + ")");
+		this->jump_to(target);
 	}
 
 	// Emit unconditional jump (B)
 	void emit_jump(address_t target) {
 		flush_instruction_counter();
 
-		// Check if target is within current block
-		if (target >= tinfo.basepc && target < tinfo.endpc) {
-			// Local jump within block
-			char label[64];
-			snprintf(label, sizeof(label), "goto label_%" PRIx64 ";", (uint64_t)target);
-			add_code(label);
-		} else {
-			// External jump - set PC and return
-			add_code("  cpu->pc = " + hex_address(target) + "ULL;");
-			this->emit_return();
-		}
+		this->jump_to(target);
 	}
 
 	// Emit call (BL - branch and link)
@@ -474,15 +513,7 @@ struct Emitter
 			add_code(reg(rd) + " = " + hex_address(return_addr) + "ULL;");
 		}
 
-		// Jump to target
-		if (target >= tinfo.basepc && target < tinfo.endpc) {
-			char label[64];
-			snprintf(label, sizeof(label), "label_%" PRIx64 ";", (uint64_t)target);
-			add_code("  goto " + std::string(label));
-		} else {
-			add_code("cpu->pc = " + hex_address(target) + "ULL;");
-			this->emit_return();
-		}
+		this->jump_to(target);
 	}
 
 	// Emit indirect jump (JIRL)
@@ -587,6 +618,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			char label[64];
 			snprintf(label, sizeof(label), "label_%" PRIx64 ":", (uint64_t)emit.pc());
 			emit.add_code(label);
+			emit.last_fallback_pc = 0; // Reset fallback tracking
 		}
 
 		// Emit trace call if tracing is enabled
@@ -741,7 +773,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 				emit.add_code("  if (api.syscall(cpu, " + std::to_string(code) + ", max_ic, " + hex_address(emit.pc()) + ")) {");
 			} else {
 				emit.store_all_registers();
-				emit.add_code("  if (api.syscall(cpu, cpu->r[11], max_ic, " + hex_address(emit.pc()) + ")) {");
+				emit.add_code("  if (api.syscall(cpu, " + emit.reg(REG_A7) + ", max_ic, " + hex_address(emit.pc()) + ")) {");
 			}
 			if (!tinfo.options.translate_ignore_instruction_limit) {
 				emit.add_code("    cpu->pc += 4; return (ReturnValues){ic, MAX_COUNTER(cpu)}; }");
@@ -1874,6 +1906,11 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 	emit.add_code("  cpu->pc = " + hex_address(tinfo.endpc) + ";");
 	emit.emit_return();
 	emit.add_code("}");
+
+	// Generate static function definitions
+	for (const address_t address : emit.static_functions) {
+		code += "\nstatic ReturnValues " + Emitter::function_name_from(address) + "(CPU*, uint64_t, uint64_t, addr_t);";
+	}
 
 	// Generate function prologue
 	code += "\nstatic ReturnValues " + emit.func_name + "(CPU* cpu, uint64_t ic, uint64_t max_ic, addr_t pc) {\n";

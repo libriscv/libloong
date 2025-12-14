@@ -65,6 +65,19 @@ public:
 			m_machine->memory.set_exit_address(exit_addr);
 		}
 
+#ifdef LA_BINARY_TRANSLATION
+		// We aren't using background compilation in the unit tests,
+		// so we can see already right now if the code is translated
+		// successfully after initialization. If it failed, we will
+		// just fail the entire test. Translation errors should be
+		// caught as early as possible.
+		const auto pc = m_machine->cpu.pc();
+		const auto seg = m_machine->memory.exec_segment_for(pc);
+		if (!seg->is_binary_translated()) {
+			throw std::runtime_error("Binary translation did not complete successfully");
+		}
+#endif
+
 		// Run program initialization to resolve IFUNCs, then reset to start
 		// This is critical for libc functions like strcmp that use IFUNC
 		// to select optimized implementations (e.g., LSX versions)

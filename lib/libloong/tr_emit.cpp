@@ -832,9 +832,6 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 					// Optimize ADDI_W rd, r0, imm to rd = imm_se
 					emit.add_code("  " + emit.reg(instr.ri12.rd) + " = " +
 						std::to_string(imm_se) + ";");
-				} else if (instr.ri12.rd == instr.ri12.rj) {
-					emit.add_code("  " + emit.reg(instr.ri12.rd) + " += " +
-						std::to_string(imm_se) + ";");
 				} else {
 					emit.add_code("  " + emit.reg(instr.ri12.rd) + " = (int32_t)" +
 						emit.reg(instr.ri12.rj) + " + " + std::to_string(imm_se) + ";");

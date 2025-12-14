@@ -542,7 +542,10 @@ struct Emitter
 		flush_instruction_counter();
 
 		// Indirect jump (avoid clobbering rj before computing target)
-		add_code("  pc = " + reg(rj) + " + " + std::to_string(offset) + ";");
+		if (offset != 0)
+			add_code("  pc = " + reg(rj) + " + " + std::to_string(offset) + ";");
+		else
+			add_code("  pc = " + reg(rj) + ";");
 
 		// Store return address
 		if (rd != 0) {

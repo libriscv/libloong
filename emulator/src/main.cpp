@@ -23,7 +23,6 @@ struct EmulatorOptions {
 	uint64_t memory_max = 4096ull << 20; // 4 GB
 	bool verbose = false;
 	bool precise = false;
-	bool timing = false;
 	bool silent = false;
 	bool show_bytecode_stats = false;
 	bool enable_translation = true;
@@ -233,23 +232,18 @@ static int run_program(const std::vector<uint8_t>& binary, const EmulatorOptions
 							machine->instruction_counter(),
 							elapsed.count(),
 							(machine->instruction_counter() / (elapsed.count() * 1e6)));
-				} else if (opts.timing) {
+				} else {
 					printf("Program exited with code %d (%.3f seconds)\n",
 							exit_code,
 							elapsed.count());
-				} else {
-					printf("Program exited with code %d\n", exit_code);
 				}
 			}
 			return exit_code;
 		} else {
 			if (!opts.silent) {
-				fprintf(stderr, "Execution timeout after %" PRIu64 " instructions",
-						machine->instruction_counter());
-				if (opts.timing) {
-					fprintf(stderr, " (%.6f seconds)", elapsed.count());
-				}
-				fprintf(stderr, "\n");
+				fprintf(stderr, "Execution timeout after %" PRIu64 " instructions (%.6f seconds)\n",
+						machine->instruction_counter(),
+						elapsed.count());
 			}
 			return -1;
 		}
@@ -277,7 +271,6 @@ static void print_help(const char* progname)
 	printf("  -v, --verbose           Enable verbose output (loader & syscalls)\n");
 	printf("  -s, --silent            Suppress all output except errors\n");
 	printf("      --precise           Use precise simulation mode (slower)\n");
-	printf("  -t, --timing            Show execution timing and instruction count\n");
 	printf("      --stats             Show bytecode usage statistics after execution\n");
 	printf("  -f, --fuel <num>        Maximum instructions to execute (default: 2000000000)\n");
 	printf("                          Use 0 for unlimited execution\n");
@@ -291,7 +284,7 @@ static void print_help(const char* progname)
 	printf("The emulator automatically detects LA32/LA64 architecture from the ELF binary.\n\n");
 	printf("Examples:\n");
 	printf("  %s program.elf\n", progname);
-	printf("  %s --verbose --timing program.elf arg1 arg2\n", progname);
+	printf("  %s --verbose program.elf arg1 arg2\n", progname);
 	printf("  %s --stats --fuel 1000000 program.elf\n", progname);
 	printf("  %s --fuel 1000000 --memory 256 program.elf\n\n", progname);
 	printf("Check if fast-path differs from slow-path (precise):\n");
@@ -308,7 +301,6 @@ static EmulatorOptions parse_arguments(int argc, char* argv[])
 		{"verbose", no_argument,       0, 'v'},
 		{"precise", no_argument,       0, '\x03'},
 		{"silent",  no_argument,       0, 's'},
-		{"timing",  no_argument,       0, 't'},
 		{"stats",   no_argument,       0, '\x02'},
 		{"fuel",    required_argument, 0, 'f'},
 		{"memory",  required_argument, 0, 'm'},
@@ -322,7 +314,7 @@ static EmulatorOptions parse_arguments(int argc, char* argv[])
 	};
 
 	int opt;
-	while ((opt = getopt_long(argc, argv, "hvstf:m:nTO:", long_options, nullptr)) != -1) {
+	while ((opt = getopt_long(argc, argv, "hvsf:m:nTO:", long_options, nullptr)) != -1) {
 		switch (opt) {
 		case 'h':
 			print_help(argv[0]);
@@ -332,9 +324,6 @@ static EmulatorOptions parse_arguments(int argc, char* argv[])
 			break;
 		case 's':
 			opts.silent = true;
-			break;
-		case 't':
-			opts.timing = true;
 			break;
 		case 'f':
 			if (strcasecmp(optarg, "max") == 0) {
@@ -394,8 +383,6 @@ static EmulatorOptions parse_arguments(int argc, char* argv[])
 		opts.verbose = true;
 	if (getenv("SILENT") != nullptr)
 		opts.silent = true;
-	if (getenv("TIMING") != nullptr)
-		opts.timing = true;
 	if (getenv("STATS") != nullptr)
 		opts.show_bytecode_stats = true;
 	if (getenv("FUEL") != nullptr) {
@@ -418,9 +405,6 @@ static EmulatorOptions parse_arguments(int argc, char* argv[])
 			first_non_option++;
 		} else if (strcmp(argv[i], "-s") == 0 || strcmp(argv[i], "--silent") == 0) {
 			opts.silent = true;
-			first_non_option++;
-		} else if (strcmp(argv[i], "-t") == 0 || strcmp(argv[i], "--timing") == 0) {
-			opts.timing = true;
 			first_non_option++;
 		} else if (strcmp(argv[i], "--stats") == 0) {
 			opts.show_bytecode_stats = true;

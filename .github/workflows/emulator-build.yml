@@ -25,21 +25,10 @@ jobs:
           ninja-build \
           g++
 
-    - name: Configure emulator
+    - name: Build emulator with binary translation
       run: |
         cd emulator
-        mkdir -p .build
-        cd .build
-        cmake .. \
-          -G Ninja \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DCMAKE_C_COMPILER=gcc \
-          -DCMAKE_CXX_COMPILER=g++
-
-    - name: Build emulator
-      run: |
-        cd emulator/.build
-        ninja
+        ./build.sh --bintr
 
     - name: Verify emulator binary
       run: |
@@ -47,6 +36,42 @@ jobs:
         ls -lh laemu
         file laemu
         ./laemu --help
+
+    - name: Run CoreMark benchmark
+      run: |
+        cd emulator/.build
+        echo "=== Running CoreMark benchmark (with --fast and binary translation) ==="
+        ./laemu --fast ../tests/programs/coremark.elf | tee coremark_output.txt
+
+        # Extract and display CoreMark score
+        SCORE=$(grep "CoreMark 1.0" coremark_output.txt | awk '{print $3}')
+        echo ""
+        echo "=== CoreMark Score: $SCORE ==="
+        echo "coremark_score=$SCORE" >> $GITHUB_ENV
+
+    - name: Create benchmark report
+      run: |
+        cd emulator/.build
+        cat > coremark_report.md << EOF
+        # CoreMark Benchmark Report
+
+        **Platform:** Linux x86_64 (Ubuntu 24.04)
+        **Build Configuration:** Release (GCC, Binary Translation enabled)
+        **CoreMark Score:** ${coremark_score}
+
+        ## Full Output
+        \`\`\`
+        EOF
+        cat coremark_output.txt >> coremark_report.md
+        echo '```' >> coremark_report.md
+        cat coremark_report.md
+
+    - name: Upload benchmark report
+      uses: actions/upload-artifact@v4
+      with:
+        name: coremark-report-linux-x86_64
+        path: emulator/.build/coremark_report.md
+        retention-days: 30
 
     - name: Upload emulator artifact
       uses: actions/upload-artifact@v4
@@ -73,33 +98,57 @@ jobs:
           ninja-build \
           g++
 
-    - name: Configure emulator with optimizations
+    - name: Build optimized emulator with binary translation
       run: |
         cd emulator
-        mkdir -p .build-opt
-        cd .build-opt
-        cmake .. \
-          -G Ninja \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DCMAKE_C_COMPILER=gcc \
-          -DCMAKE_CXX_COMPILER=g++ \
-          -DNATIVE=ON
-
-    - name: Build optimized emulator
-      run: |
-        cd emulator/.build-opt
-        ninja
+        ./build.sh --bintr --native
 
     - name: Verify optimized emulator binary
       run: |
-        cd emulator/.build-opt
+        cd emulator/.build
         ls -lh laemu
         file laemu
         ./laemu --help
+
+    - name: Run CoreMark benchmark (optimized)
+      run: |
+        cd emulator/.build
+        echo "=== Running CoreMark benchmark (with --fast, binary translation, and native optimizations) ==="
+        ./laemu --fast ../tests/programs/coremark.elf | tee coremark_output_opt.txt
+
+        # Extract and display CoreMark score
+        SCORE=$(grep "CoreMark 1.0" coremark_output_opt.txt | awk '{print $3}')
+        echo ""
+        echo "=== CoreMark Score (Optimized): $SCORE ==="
+        echo "coremark_score_opt=$SCORE" >> $GITHUB_ENV
+
+    - name: Create benchmark report (optimized)
+      run: |
+        cd emulator/.build
+        cat > coremark_report_opt.md << EOF
+        # CoreMark Benchmark Report (Optimized)
+
+        **Platform:** Linux x86_64 (Ubuntu 24.04)
+        **Build Configuration:** Release (GCC, Binary Translation enabled, Native optimizations)
+        **CoreMark Score:** ${coremark_score_opt}
+
+        ## Full Output
+        \`\`\`
+        EOF
+        cat coremark_output_opt.txt >> coremark_report_opt.md
+        echo '```' >> coremark_report_opt.md
+        cat coremark_report_opt.md
+
+    - name: Upload benchmark report (optimized)
+      uses: actions/upload-artifact@v4
+      with:
+        name: coremark-report-linux-x86_64-optimized
+        path: emulator/.build/coremark_report_opt.md
+        retention-days: 30
 
     - name: Upload optimized emulator artifact
       uses: actions/upload-artifact@v4
       with:
         name: laemu-linux-x86_64-optimized
-        path: emulator/.build-opt/laemu
+        path: emulator/.build/laemu
         retention-days: 30

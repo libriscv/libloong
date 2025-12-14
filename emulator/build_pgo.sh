@@ -1,13 +1,14 @@
-#!/usr/bin/env bash
+#!/bin/sh
 # PGO build script for the LoongArch emulator using CoreMark profiling
 # This script performs a 3-stage build:
 # 1. Build with profiling instrumentation
 # 2. Run CoreMark to collect profile data
 # 3. Rebuild using profile data for optimizations
+# POSIX-compliant for portability (Linux, FreeBSD, etc.)
 
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BUILD_DIR="${SCRIPT_DIR}/.build_pgo"
 PROFILE_DIR="${BUILD_DIR}/pgo_profiles"
 COREMARK_ELF="${SCRIPT_DIR}/../tests/programs/coremark.elf"
@@ -22,7 +23,7 @@ LA_BINARY_TRANSLATION=""
 LA_THREADED="-DLA_THREADED=ON"
 LA_TAILCALL="-DLA_TAILCALL_DISPATCH=OFF"
 
-while [[ $# -gt 0 ]]; do
+while [ $# -gt 0 ]; do
 	case $1 in
 		-d|--debug)
 			BUILD_TYPE="Debug"
@@ -98,13 +99,27 @@ echo "========================================"
 echo "PGO Build for LoongArch Emulator"
 echo "========================================"
 echo "  Build type: $BUILD_TYPE"
-[ -n "$NATIVE" ] && echo "  Native optimization: ON" || echo "  Native optimization: OFF"
-echo "  LTO: ${LTO#-DLTO=}"
-[ -n "$LA_DEBUG" ] && echo "  Debug mode: ON" || echo "  Debug mode: OFF"
-[ -n "$LA_BINARY_TRANSLATION" ] && echo "  Binary translation: ON" || echo "  Binary translation: OFF"
-echo "  Threaded dispatch: ${LA_THREADED#-DLA_THREADED=}"
+if [ -n "$NATIVE" ]; then
+	echo "  Native optimization: ON"
+else
+	echo "  Native optimization: OFF"
+fi
+LTO_VALUE=$(echo "$LTO" | sed 's/.*=//')
+echo "  LTO: $LTO_VALUE"
+if [ -n "$LA_DEBUG" ]; then
+	echo "  Debug mode: ON"
+else
+	echo "  Debug mode: OFF"
+fi
+if [ -n "$LA_BINARY_TRANSLATION" ]; then
+	echo "  Binary translation: ON"
+else
+	echo "  Binary translation: OFF"
+fi
+THREADED_VALUE=$(echo "$LA_THREADED" | sed 's/.*=//')
+echo "  Threaded dispatch: $THREADED_VALUE"
 if [ -n "$MASKED_MEMORY_BITS" ]; then
-	BITS="${MASKED_MEMORY_BITS#-DLA_MASKED_MEMORY_BITS=}"
+	BITS=$(echo "$MASKED_MEMORY_BITS" | sed 's/.*=//')
 	if [ "$BITS" != "0" ]; then
 		SIZE=$((1 << BITS))
 		if [ $SIZE -ge 1073741824 ]; then
@@ -127,15 +142,15 @@ mkdir -p "$PROFILE_DIR"
 
 # Detect compiler type for PGO flags
 COMPILER_TYPE="unknown"
-if command -v "$CXX" &> /dev/null; then
+if command -v "$CXX" >/dev/null 2>&1; then
 	if "$CXX" --version 2>&1 | grep -qi "clang"; then
 		COMPILER_TYPE="clang"
 	elif "$CXX" --version 2>&1 | grep -qi "gcc"; then
 		COMPILER_TYPE="gcc"
 	fi
-elif command -v clang++ &> /dev/null && clang++ --version 2>&1 | grep -qi "clang"; then
+elif command -v clang++ >/dev/null 2>&1 && clang++ --version 2>&1 | grep -qi "clang"; then
 	COMPILER_TYPE="clang"
-elif command -v g++ &> /dev/null && g++ --version 2>&1 | grep -qi "gcc"; then
+elif command -v g++ >/dev/null 2>&1 && g++ --version 2>&1 | grep -qi "gcc"; then
 	COMPILER_TYPE="gcc"
 fi
 
@@ -172,7 +187,17 @@ cmake .. \
 	$MASKED_MEMORY_BITS \
 	$LA_TAILCALL
 
-make -j$(nproc)
+# Detect number of CPU cores in a portable way
+if command -v nproc >/dev/null 2>&1; then
+	NCPUS=$(nproc)
+elif command -v sysctl >/dev/null 2>&1; then
+	# FreeBSD, macOS
+	NCPUS=$(sysctl -n hw.ncpu 2>/dev/null || echo 1)
+else
+	# Fallback
+	NCPUS=1
+fi
+make -j${NCPUS}
 
 # Stage 2: Run CoreMark to collect profile data
 echo ""
@@ -232,7 +257,17 @@ cmake .. \
 	$MASKED_MEMORY_BITS \
 	$LA_TAILCALL
 
-make -j$(nproc)
+# Detect number of CPU cores in a portable way
+if command -v nproc >/dev/null 2>&1; then
+	NCPUS=$(nproc)
+elif command -v sysctl >/dev/null 2>&1; then
+	# FreeBSD, macOS
+	NCPUS=$(sysctl -n hw.ncpu 2>/dev/null || echo 1)
+else
+	# Fallback
+	NCPUS=1
+fi
+make -j${NCPUS}
 
 echo ""
 echo "========================================"

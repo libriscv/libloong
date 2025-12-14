@@ -6,6 +6,9 @@
 #include "util/crc32.hpp"
 #include <cstring>
 #include <algorithm>
+#ifdef LA_BINARY_TRANSLATION
+#include <thread>
+#endif
 
 #ifdef __unix__
 #include <sys/mman.h>

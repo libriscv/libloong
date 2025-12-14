@@ -1,9 +1,10 @@
-#!/usr/bin/env bash
+#!/bin/sh
 # Build script for the LoongArch emulator
+# POSIX-compliant for portability (Linux, FreeBSD, etc.)
 
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BUILD_DIR="${SCRIPT_DIR}/.build"
 
 # Parse arguments
@@ -16,7 +17,7 @@ LA_BINARY_TRANSLATION=""
 LA_THREADED="-DLA_THREADED=ON"
 LA_TAILCALL="-DLA_TAILCALL_DISPATCH=OFF"
 
-while [[ $# -gt 0 ]]; do
+while [ $# -gt 0 ]; do
 	case $1 in
 		-d|--debug)
 			BUILD_TYPE="Debug"
@@ -91,13 +92,28 @@ done
 
 echo "Building LoongArch emulator..."
 echo "  Build type: $BUILD_TYPE"
-[ -n "$NATIVE" ] && echo "  Native optimization: ON" || echo "  Native optimization: OFF"
-echo "  LTO: ${LTO#-DLTO=}"
-[ -n "$LA_DEBUG" ] && echo "  Debug mode: ON" || echo "  Debug mode: OFF"
-[ -n "$LA_BINARY_TRANSLATION" ] && echo "  Binary translation: ON" || echo "  Binary translation: OFF"
-echo "  Threaded dispatch: ${LA_THREADED#-DLA_THREADED=}"
+if [ -n "$NATIVE" ]; then
+	echo "  Native optimization: ON"
+else
+	echo "  Native optimization: OFF"
+fi
+# Extract value after the = sign
+LTO_VALUE=$(echo "$LTO" | sed 's/.*=//')
+echo "  LTO: $LTO_VALUE"
+if [ -n "$LA_DEBUG" ]; then
+	echo "  Debug mode: ON"
+else
+	echo "  Debug mode: OFF"
+fi
+if [ -n "$LA_BINARY_TRANSLATION" ]; then
+	echo "  Binary translation: ON"
+else
+	echo "  Binary translation: OFF"
+fi
+THREADED_VALUE=$(echo "$LA_THREADED" | sed 's/.*=//')
+echo "  Threaded dispatch: $THREADED_VALUE"
 if [ -n "$MASKED_MEMORY_BITS" ]; then
-	BITS="${MASKED_MEMORY_BITS#-DLA_MASKED_MEMORY_BITS=}"
+	BITS=$(echo "$MASKED_MEMORY_BITS" | sed 's/.*=//')
 	SIZE=$((1 << BITS))
 	if [ $SIZE -ge 1073741824 ]; then
 		echo "  Masked memory: ${BITS} bits ($((SIZE / 1073741824))GB arena)"
@@ -126,7 +142,17 @@ cmake .. \
 	$LA_TAILCALL
 
 # Build
-make -j$(nproc)
+# Detect number of CPU cores in a portable way
+if command -v nproc >/dev/null 2>&1; then
+	NCPUS=$(nproc)
+elif command -v sysctl >/dev/null 2>&1; then
+	# FreeBSD, macOS
+	NCPUS=$(sysctl -n hw.ncpu 2>/dev/null || echo 1)
+else
+	# Fallback
+	NCPUS=1
+fi
+make -j${NCPUS}
 
 echo ""
 echo "Build complete! Binary: $BUILD_DIR/laemu"

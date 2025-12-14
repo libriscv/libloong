@@ -1,0 +1,41 @@
+name: FreeBSD Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Emulator CLI on FreeBSD
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Build and test on FreeBSD
+      uses: vmactions/freebsd-vm@v1
+      with:
+        usesh: true
+        prepare: |
+          pkg install -y git cmake ninja
+
+        run: |
+          cd emulator
+          sh build.sh --bintr
+
+          echo "=== Emulator built successfully ==="
+          .build/laemu --help
+
+          echo ""
+          echo "=== Running CoreMark benchmark (with --fast and binary translation) ==="
+          .build/laemu --fast ../tests/programs/coremark.elf | tee coremark_output.txt
+
+          # Extract CoreMark score
+          SCORE=$(grep "CoreMark 1.0" coremark_output.txt | awk '{print $3}')
+          echo ""
+          echo "=== CoreMark Score: $SCORE ==="

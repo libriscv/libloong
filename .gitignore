@@ -37,6 +37,7 @@ core
 vgcore.*
 *.profraw
 .fuzz_inputs/
+emulator/*.c
 
 # Ninja
 .ninja_deps

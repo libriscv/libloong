@@ -33,15 +33,17 @@ For help and all available options:
 
 **Performance Options:**
 - `-n, --native` - Enable native CPU optimizations (`-march=native`)
-- `--no-lto` - Disable link-time optimization (enabled by default)
+- `--lto` - Enable link-time optimization (enabled by default)
+- `--no-lto` - Disable link-time optimization
 - `-d, --debug` - Build in Debug mode (default: Release)
 
 **Library Feature Options:**
 - `--masked-memory-bits N` - Set masked memory arena size to 2^N bytes
   - Example: `--masked-memory-bits 32` for 4GB arena
   - Default: 0 (disabled, full address range)
-- `--binary-translation` - Enable binary translation (experimental)
 - `--no-threaded` - Disable threaded dispatch optimization
+- `--tailcall-dispatch` - Use tailcall dispatch instead of threaded dispatch
+- `--embed <file.c>` - Embed pre-compiled binary translation from file
 
 **Examples:**
 ```bash
@@ -52,10 +54,10 @@ For help and all available options:
 ./build.sh --native
 
 # With 4GB masked memory arena
-./build.sh --masked-memory-bits 32
+./build.sh -N 32
 
-# Native optimizations + 1GB arena
-./build.sh --native --masked-memory-bits 30
+# Build with embedded pre-compiled translation
+./build.sh --bintr --embed program_bintr.c
 
 # Debug build
 ./build.sh --debug
@@ -78,8 +80,10 @@ make
 - `LTO=ON` - Enable link-time optimization (default: ON)
 - `LA_MASKED_MEMORY_BITS=N` - Set masked memory arena to 2^N bytes (0 = disabled)
 - `LA_DEBUG=ON/OFF` - Enable debug output (default: OFF)
-- `LA_BINARY_TRANSLATION=ON/OFF` - Enable binary translation (default: OFF)
+- `LA_BINARY_TRANSLATION=ON/OFF` - Enable binary translation (default: ON)
 - `LA_THREADED=ON/OFF` - Enable threaded dispatch (default: ON)
+- `LA_TAILCALL_DISPATCH=ON/OFF` - Use tailcall dispatch (default: OFF)
+- `LA_EMBED_BINTR="path"` - Embed pre-compiled binary translation from file
 
 **Example:**
 ```bash
@@ -102,9 +106,16 @@ laemu [options] <program> [args...]
 | `-h` | `--help` | Show help message |
 | `-v` | `--verbose` | Enable verbose output (loader & syscalls) |
 | `-s` | `--silent` | Suppress all output except errors |
-| `-t` | `--timing` | Show execution timing and instruction count |
+|  | `--precise` | Use precise simulation mode (slower, for verification) |
+|  | `--stats` | Show bytecode usage statistics after execution |
 | `-f <num>` | `--fuel <num>` | Maximum instructions to execute (default: 2000000000)<br/>Use 0 for unlimited |
-| `-m <size>` | `--memory <size>` | Maximum memory in MiB (default: 512) |
+| `-m <size>` | `--memory <size>` | Maximum memory in MiB (default: 4096) |
+| `-n` | `--no-translate` | Disable binary translation (interpret only) |
+|  | `--no-regcache` | Disable register caching in translated code |
+|  | `--fast` | Enable fastest binary translation (unsafe optimizations) |
+|  | `--nbit-as` | Use automatic N-bit address masking in binary translation |
+| `-T` | `--trace` | Trace binary translation execution |
+| `-O <file>` | `--output <file>` | Write generated translation code to file |
 
 **Note:** The emulator automatically detects architecture from the ELF binary header.
 
@@ -120,9 +131,14 @@ laemu [options] <program> [args...]
 ./laemu program.elf arg1 arg2 arg3
 ```
 
-**Verbose mode with timing:**
+**Verbose mode:**
 ```bash
-./laemu --verbose --timing program.elf
+./laemu --verbose program.elf
+```
+
+**Show bytecode statistics:**
+```bash
+./laemu --stats program.elf
 ```
 
 **Limit execution and memory:**
@@ -140,12 +156,29 @@ laemu [options] <program> [args...]
 ./laemu --fuel 0 long_running_program.elf
 ```
 
+**Generate binary translation code (for embedding):**
+```bash
+./laemu -O program_bintr.c program.elf
+```
+
+**Generate fastest embedded translation (unsafe optimizations):**
+```bash
+./laemu --fast -O program_bintr.c program.elf
+```
+This skips memory bounds checks for maximum performance.
+
+**Compare fast-path vs slow-path (verification):**
+```bash
+./laemu --precise program.elf
+```
+
 ## Output
 
 ### Default Mode
 ```
-Program exited with code 0
+Program exited with code 0 (0.142857 seconds)
 ```
+Will show instructions executed when -f is used.
 
 ### Verbose Mode
 Shows loader information and syscall traces:
@@ -158,12 +191,6 @@ Arguments:
 Program entry point at: 0x120000790
 [Syscall traces...]
 Program exited with code 0
-```
-
-### Timing Mode
-Includes execution statistics:
-```
-Program exited with code 0 after 1234567 instructions (0.142857 seconds)
 ```
 
 ## Exit Codes
@@ -203,22 +230,27 @@ VERBOSE=1 TIMING=1 ./laemu program.elf
 
 ### Performance
 - Fast interpreter with decoder cache
+- **Binary translation** support for near-native performance
+  - **Embedded translations**: ~75% of native speed (always activated when available)
+  - **JIT compilation**: ~40% of native speed (fallback via libtcc)
+  - See [Embedded Binary Translation Guide](../docs/EMBEDDED_BINTR.md)
 - Efficient memory management with flat memory arena
 - Native optimizations available via `--native`
 - Link-time optimization enabled by default
 - Threaded bytecode dispatch for maximum speed
+- Optional tailcall dispatch for specific workloads
 
 ### Compatibility
 - Linux syscall emulation
 - Static binary support
-- LA64 architectures
-- Cross-platform (Linux, macOS, Windows)
+- LA64 architecture (64-bit LoongArch)
+- Cross-platform (Linux, macOS, Windows, FreeBSD)
 
 ### Execution Control
 - Configurable instruction limits (fuel)
 - Memory limits
 - Silent mode for scripting
-- Detailed timing information
+- Precise mode for verification
 - Bytecode usage statistics with `--stats`
 
 ### Memory Management
@@ -363,7 +395,7 @@ Machine
     ↓
 ┌─────────────┬──────────────┐
 │ CPU         │ Memory       │
-│ - Decoder   │ - Arenas     │
+│ - Decoder   │ - Arena      │
 │ - Executor  │ - Execute    │
 │ - Registers │   segments   │
 └─────────────┴──────────────┘
@@ -371,8 +403,22 @@ Machine
 Linux Syscall Emulation
 ```
 
+## Binary Translation
+
+For maximum performance, the emulator supports binary translation:
+
+1. **Build with binary translation**: `./build.sh --bintr` (recommended for all CLI builds)
+2. **Generate translation code**: Use `-O <file.c>` to generate C code for embedding
+3. **Build with embedding**: Use `./build.sh --bintr --embed <file.c>`
+4. **Automatic activation**: Embedded translations activate automatically (~75% native performance)
+
+**Recommendation**: Always build the CLI with `--bintr` enabled. You can disable translation for specific programs at runtime using `--no-translate` if needed. This gives you maximum flexibility without needing to rebuild.
+
+For details, see [Embedded Binary Translation Guide](../docs/EMBEDDED_BINTR.md).
+
 ## See Also
 
+- [Embedded Binary Translation](../docs/EMBEDDED_BINTR.md) - Near-native performance guide
 - [Debugger](../tests/README.md) - Instruction-level debugging tool
 - [Library Integration](../docs/INTEGRATION.md) - Using libloong in your project
 - [API Reference](../docs/API.md) - Full library API

@@ -160,7 +160,7 @@ namespace loongarch
 		}
 
 		// Code block detection
-		const size_t ITS_TIME_TO_SPLIT = is_libtcc ? 5'000 : 1'250;
+		const size_t ITS_TIME_TO_SPLIT = is_libtcc ? 5'000 : 2'500;
 		size_t icounter = 0;
 		std::unordered_set<address_t> global_jump_locations;
 		std::vector<TransInfo> blocks;

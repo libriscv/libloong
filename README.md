@@ -123,6 +123,9 @@ The optional lightweight JIT reaches 38% of native performance (15.5k vs 41k Cor
 
 > CoreMark 1.0 : 15580.375613 / GCC14.2.0 -O3 -DPERFORMANCE_RUN=1   / Static
 
+Using embedded binary translation, it's currently possible to reach ~75% of native:
+
+> CoreMark 1.0 : 30730.418251 / GCC14.2.0 -O3 -DPERFORMANCE_RUN=1   / Static
 
 ## Documentation
 

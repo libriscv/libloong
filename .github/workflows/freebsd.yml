@@ -26,7 +26,7 @@ jobs:
 
         run: |
           cd emulator
-          sh build.sh --bintr
+          sh build.sh
 
           echo "=== Emulator built successfully ==="
           .build/laemu --help

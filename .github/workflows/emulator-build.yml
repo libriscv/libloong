@@ -28,7 +28,7 @@ jobs:
     - name: Build emulator with binary translation
       run: |
         cd emulator
-        ./build.sh --bintr
+        ./build.sh
 
     - name: Verify emulator binary
       run: |
@@ -101,7 +101,7 @@ jobs:
     - name: Build optimized emulator with binary translation
       run: |
         cd emulator
-        ./build.sh --bintr --native
+        ./build.sh --native
 
     - name: Verify optimized emulator binary
       run: |

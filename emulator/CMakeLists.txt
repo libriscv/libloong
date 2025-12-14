@@ -51,13 +51,13 @@ endif()
 
 # Link to libloong
 add_subdirectory(../lib libloong)
+if (NATIVE)
+	target_compile_options(loong PUBLIC -march=native)
+endif()
 
 add_executable(laemu ${SOURCES})
 target_link_libraries(laemu loong)
 
-if (NATIVE)
-	target_compile_options(laemu PRIVATE -march=native)
-endif()
 if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
 	target_link_libraries(laemu pthread -static -static-libgcc -static-libstdc++)
 endif()

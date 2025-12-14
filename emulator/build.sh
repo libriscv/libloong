@@ -13,7 +13,6 @@ NATIVE=""
 LTO="-DLTO=ON"
 MASKED_MEMORY_BITS=""
 LA_DEBUG=""
-LA_BINARY_TRANSLATION=""
 LA_THREADED="-DLA_THREADED=ON"
 LA_TAILCALL="-DLA_TAILCALL_DISPATCH=OFF"
 LA_EMBED_BINTR="-DLA_EMBED_BINTR=\"\""
@@ -29,6 +28,10 @@ while [ $# -gt 0 ]; do
 			NATIVE="-DNATIVE=ON"
 			shift
 			;;
+		--no-native)
+			NATIVE="-DNATIVE=OFF"
+			shift
+			;;
 		--lto)
 			LTO="-DLTO=ON"
 			shift
@@ -40,18 +43,6 @@ while [ $# -gt 0 ]; do
 		-N|--masked-memory-bits)
 			MASKED_MEMORY_BITS="-DLA_MASKED_MEMORY_BITS=$2"
 			shift 2
-			;;
-		--bintr)
-			LA_BINARY_TRANSLATION="-DLA_BINARY_TRANSLATION=ON"
-			shift
-			;;
-		--binary-translation)
-			LA_BINARY_TRANSLATION="-DLA_BINARY_TRANSLATION=ON"
-			shift
-			;;
-		--no-bintr)
-			LA_BINARY_TRANSLATION="-DLA_BINARY_TRANSLATION=OFF"
-			shift
 			;;
 		--no-threaded)
 			LA_THREADED="-DLA_THREADED=OFF"
@@ -87,7 +78,6 @@ while [ $# -gt 0 ]; do
 			echo "Library Options:"
 			echo "  --masked-memory-bits N    Set masked memory arena size to 2^N bytes (0=disabled)"
 			echo "                            Example: --masked-memory-bits 32 (4GB arena)"
-			echo "  --binary-translation      Enable binary translation (experimental)"
 			echo "  --no-threaded             Disable threaded dispatch"
 			echo "  --embed <file.c>          Embed pre-compiled binary translation from file"
 			echo ""
@@ -123,11 +113,6 @@ if [ -n "$LA_DEBUG" ]; then
 else
 	echo "  Debug mode: OFF"
 fi
-if [ -n "$LA_BINARY_TRANSLATION" ]; then
-	echo "  Binary translation: ON"
-else
-	echo "  Binary translation: OFF"
-fi
 THREADED_VALUE=$(echo "$LA_THREADED" | sed 's/.*=//')
 echo "  Threaded dispatch: $THREADED_VALUE"
 if [ -n "$LA_EMBED_BINTR" ]; then
@@ -158,7 +143,7 @@ cmake .. \
 	$NATIVE \
 	$LTO \
 	$LA_DEBUG \
-	$LA_BINARY_TRANSLATION \
+	-DLA_BINARY_TRANSLATION=ON \
 	$LA_THREADED \
 	$MASKED_MEMORY_BITS \
 	$LA_TAILCALL \

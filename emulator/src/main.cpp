@@ -280,7 +280,7 @@ static void print_help(const char* progname)
 	printf("      --fast              Enable fastest binary translation (unsafe)\n");
 	printf("      --nbit-as           Use automatic N-bit address masking in binary translation\n");
 	printf("  -T, --trace             Trace binary translation execution\n");
-	printf("  -O, --output <file>     Write generated translation code to file\n\n");
+	printf("  -O, --output <file>     Write generated translation code to file\n");
 	printf("The emulator automatically detects LA32/LA64 architecture from the ELF binary.\n\n");
 	printf("Examples:\n");
 	printf("  %s program.elf\n", progname);

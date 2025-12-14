@@ -7,6 +7,9 @@ set(CMAKE_CXX_STANDARD 20)
 option(NATIVE "Enable native optimizations" OFF)
 option(LTO "Enable link-time optimization" OFF)
 
+# Embedded binary translation support
+set(LA_EMBED_BINTR "" CACHE STRING "Path to embedded binary translation C file")
+
 # Forward library options if not already set
 # These can be set via command line: -DLA_MASKED_MEMORY_BITS=32
 if (NOT DEFINED LA_DEBUG)
@@ -33,6 +36,18 @@ endif()
 set(SOURCES
 	src/main.cpp
 )
+
+# Add embedded binary translation if specified
+if (LA_EMBED_BINTR)
+	if (EXISTS "${LA_EMBED_BINTR}")
+		message(STATUS "Embedding binary translation from: ${LA_EMBED_BINTR}")
+		list(APPEND SOURCES "${LA_EMBED_BINTR}")
+		# Force the embedded file to be compiled as C++ (it's written in C but compatible)
+		set_source_files_properties("${LA_EMBED_BINTR}" PROPERTIES LANGUAGE CXX)
+	else()
+		message(WARNING "Embedded bintr file not found: ${LA_EMBED_BINTR}")
+	endif()
+endif()
 
 # Link to libloong
 add_subdirectory(../lib libloong)

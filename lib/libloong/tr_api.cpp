@@ -58,6 +58,16 @@ typedef int64_t saddr_t;
 // LoongArch instructions are always 4-byte aligned
 #define LA_ALIGN_MASK 0x3
 
+// Machine alignment for CPU structure
+#ifndef LA_MACHINE_ALIGNMENT
+#define LA_MACHINE_ALIGNMENT 64
+#endif
+
+// Maximum number of syscalls
+#ifndef LA_SYSCALLS_MAX
+#define LA_SYSCALLS_MAX 512
+#endif
+
 #ifdef __TINYC__
 #define UNREACHABLE() /**/
 static inline float fminf(float x, float y) {
@@ -141,7 +151,7 @@ typedef struct {
 static struct CallbackTable {
 	syscall_t* syscalls;
 	void (*unknown_syscall)(CPU*, addr_t);
-	handler_t* handlers;
+	handler_t (*resolve_handler)(uint32_t);
 	int  (*syscall)(CPU*, unsigned, uint64_t, addr_t);
 	ReturnValues (*exception) (CPU*, addr_t, addr_t, int);
 	void (*trace) (CPU*, const char*, addr_t, uint32_t);
@@ -224,10 +234,10 @@ static inline uint64_t MUL128(
 	return (middle << 32) | (uint32_t)p00;
 }
 
-#ifdef EMBEDDABLE_CODE
-static
+#ifndef EMBEDDABLE_CODE
+VISIBLE
 #else
-extern VISIBLE
+static
 #endif
 void init(struct CallbackTable* table, int32_t arena_off, int32_t ins_counter_off)
 {

@@ -1,8 +1,12 @@
+#if !defined(LA_BINARY_TRANSLATION)
+#define LA_BINARY_TRANSLATION
+#endif
 #include "machine.hpp"
 #include "decoder_cache.hpp"
 #include "la_instr.hpp"
 #include "tr_api.hpp"
 #include "tr_types.hpp"
+#include "tr_embedded.hpp"
 #include <algorithm>
 #include <unordered_set>
 #include <unordered_map>
@@ -126,11 +130,11 @@ namespace loongarch
 		return false;
 	}
 
-	void binary_translate(const Machine& machine, const MachineOptions& options,
-		DecodedExecuteSegment& exec, TransOutput& output)
+	// Internal translation function that can be called with different is_libtcc settings
+	static void binary_translate_internal(const Machine& machine, const MachineOptions& options,
+		DecodedExecuteSegment& exec, TransOutput& output, bool is_libtcc)
 	{
 		const bool verbose = options.verbose_loader;
-		const bool is_libtcc = true; // We always use libtcc for LoongArch
 
 		const address_t basepc = exec.exec_begin();
 		const address_t endbasepc = exec.exec_end();
@@ -309,6 +313,12 @@ namespace loongarch
 		extern const std::string bintr_code;
 		code = bintr_code;
 
+		// Add EMBEDDABLE_CODE define if embedded mode is enabled
+		if (options.translate_enable_embedded) {
+			code += "\n// Enable embedded translation mode\n";
+			code += "#define EMBEDDABLE_CODE 1\n\n";
+		}
+
 		// Generate code for each block
 		for (auto& block : blocks)
 		{
@@ -319,21 +329,8 @@ namespace loongarch
 			}
 		}
 
-		// Write generated code to output file if specified
-		if (!options.translate_output_file.empty() && !code.empty()) {
-			std::ofstream ofs(options.translate_output_file, std::ios::out | std::ios::trunc);
-			if (ofs.is_open()) {
-				ofs << code;
-				ofs.close();
-				if (verbose) {
-					printf("libloong: Generated translation code written to %s\n",
-						options.translate_output_file.c_str());
-				}
-			} else {
-				fprintf(stderr, "libloong: Failed to write translation code to %s\n",
-					options.translate_output_file.c_str());
-			}
-		}
+		// Note: We'll write the output file after generating the footer,
+		// so that the footer is included in the written file
 
 		// Generate footer for shared libraries
 		output.footer += "VISIBLE const uint32_t no_mappings = "
@@ -372,13 +369,20 @@ VISIBLE const struct Mapping mappings[] = {
 
 		output.footer += "};\nVISIBLE const uint32_t no_handlers = "
 			+ std::to_string(mapping_indices.size()) + ";\n"
-			+ "VISIBLE const void* unique_mappings[] = {\n";
+			+ "typedef ReturnValues (*HandlerFunc)(CPU*, uint64_t, uint64_t, addr_t);\n"
+			+ "VISIBLE const HandlerFunc unique_mappings[] = {\n";
 
 		// Create array of unique mappings
 		for (auto* handler : handlers) {
 			output.footer += "    " + *handler + ",\n";
 		}
 		output.footer += "};\n";
+
+		// Add embeddable code support - stored separately
+		// This is only appended when writing to file, NOT for JIT compilation
+		if (options.translate_enable_embedded) {
+			output.footer_embedded = generate_embedded_footer(exec.crc32c_hash());
+		}
 
 		if (verbose) {
 			printf("libloong: Binary translation summary:\n");
@@ -388,6 +392,59 @@ VISIBLE const struct Mapping mappings[] = {
 				(long)basepc, (long)endbasepc, (size_t)(endbasepc - basepc));
 			printf("  - Global jump targets: %zu\n", global_jump_locations.size());
 			printf("  - Trace enabled: %s\n", options.translate_trace ? "yes" : "no");
+			if (options.translate_enable_embedded) {
+				printf("  - CRC32-C hash: 0x%08X\n", exec.crc32c_hash());
+			}
+		}
+
+	}
+
+	// Public wrapper for binary translation
+	// This handles the dual translation requirement:
+	// 1. When -O is specified, we need to translate twice (once for libtcc, once for embedded)
+	// 2. When -O is not specified, we only translate once for libtcc
+	void binary_translate(const Machine& machine, const MachineOptions& options,
+		DecodedExecuteSegment& exec, TransOutput& output)
+	{
+		const bool verbose = options.verbose_loader;
+		const bool generate_embedded = !options.translate_output_file.empty();
+
+		// First translation: Always for libtcc (JIT compilation)
+		// This is what will be used to run the program
+		binary_translate_internal(machine, options, exec, output, true);
+
+		// Second translation: For embedded output (only if -O is specified)
+		// This generates optimized code for embedding into binaries
+		if (generate_embedded) {
+			if (verbose) {
+				printf("libloong: Generating embedded translation for output file...\n");
+			}
+
+			// Create separate output for embedded translation
+			TransOutput embedded_output;
+			binary_translate_internal(machine, options, exec, embedded_output, false);
+
+			// Write the embedded translation to file
+			// This includes: code + footer + footer_embedded
+			std::ofstream ofs(options.translate_output_file, std::ios::out | std::ios::trunc);
+			if (ofs.is_open()) {
+				ofs << *embedded_output.code;
+				ofs << embedded_output.footer;
+				if (options.translate_enable_embedded) {
+					ofs << embedded_output.footer_embedded;
+				}
+				ofs.close();
+				if (verbose) {
+					printf("libloong: Embedded translation written to %s\n",
+						options.translate_output_file.c_str());
+					if (options.translate_enable_embedded) {
+						printf("libloong: Code includes embedded translation registration\n");
+					}
+				}
+			} else {
+				fprintf(stderr, "libloong: Failed to write embedded translation to %s\n",
+					options.translate_output_file.c_str());
+			}
 		}
 	}
 

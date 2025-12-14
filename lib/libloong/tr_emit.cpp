@@ -102,8 +102,11 @@ struct Emitter
 		return "reg" + std::to_string(idx);
 	}
 
+	bool is_register_caching_enabled() const {
+		return tinfo.is_libtcc && tinfo.options.translate_use_register_caching;
+	}
 	bool is_cached_register(unsigned idx) const {
-		return tinfo.options.translate_use_register_caching
+		return is_register_caching_enabled()
 			&& idx >= CACHE_START && idx < CACHE_END;
 	}
 
@@ -119,7 +122,7 @@ struct Emitter
 	}
 
 	bool is_cached_fpreg(unsigned idx) const {
-		return tinfo.options.translate_use_register_caching
+		return is_register_caching_enabled()
 			&& idx >= FPR_CACHE_START && idx < FPR_CACHE_END;
 	}
 
@@ -136,7 +139,7 @@ struct Emitter
 		return "STORE_REGS_" + func_name + "();\n";
 	}
 	void store_all_registers() {
-		if (tinfo.options.translate_use_register_caching)
+		if (is_register_caching_enabled())
 			add_code(store_all_registers_string());
 	}
 	void remove_load_all_registers() {
@@ -147,17 +150,17 @@ struct Emitter
 	}
 
 	void reload_all_registers() {
-		if (tinfo.options.translate_use_register_caching)
+		if (is_register_caching_enabled())
 			add_code(load_all_registers_string());
 	}
 
 	void store_syscall_registers() {
-		if (tinfo.options.translate_use_register_caching) {
+		if (is_register_caching_enabled()) {
 			add_code("STORE_SYSREGS_" + func_name + "();");
 		}
 	}
 	void reload_syscall_results() {
-		if (tinfo.options.translate_use_register_caching) {
+		if (is_register_caching_enabled()) {
 			add_code("LOAD_SYSREGS_" + func_name + "();");
 		}
 	}
@@ -236,40 +239,40 @@ struct Emitter
 	}
 
 	std::string arena_offset(const std::string& offset) const {
-		if (tinfo.options.use_shared_execute_segments) {
-			if (tinfo.cpu_relative_offset != 0) {
-				// The arena is relative to the CPU pointer, which
-				// is faster than double indirection through ARENA_AT(cpu, ...)
-				if (this->nbit_mask == UINT32_MAX) {
-					// Full 32-bit mask - can use direct cast
-					return "((char*)cpu + " +
-						std::to_string(tinfo.cpu_relative_offset) + " + (uint32_t)(" + offset + "))";
-				} else if (this->nbit_mask != 0) {
-					return "((char*)cpu + " +
-						std::to_string(tinfo.cpu_relative_offset) + " + ((" + offset + ") & " +
-						hex_address(this->nbit_mask) + "))";
-				} else {
-					return "((char*)cpu + " +
-						std::to_string(tinfo.cpu_relative_offset) + " + (" + offset + "))";
-				}
-			}
-			// Shared execute segments need to access arena through the
-			// CPU pointer, as multiple machines *have* different arenas
-			if (this->nbit_mask != 0) {
-				return "((char*)ARENA_AT(cpu, (" + offset + ") & " +
+		if (!tinfo.options.use_shared_execute_segments && tinfo.is_libtcc) {
+			if (this->nbit_mask == UINT32_MAX) {
+				// Full 32-bit mask - can use direct cast
+				return "((char*)" + hex_address(tinfo.arena_ptr) + " + (uint32_t)(" + offset + "))";
+			} else if (this->nbit_mask != 0) {
+				return "((char*)" + hex_address(tinfo.arena_ptr) + " + ((" + offset + ") & " +
 					hex_address(this->nbit_mask) + "))";
 			} else {
-				return "((char*)ARENA_AT(cpu, " + offset + "))";
+				return "((char*)" + hex_address(tinfo.arena_ptr) + " + " + offset + ")";
 			}
 		}
-		if (this->nbit_mask == UINT32_MAX) {
-			// Full 32-bit mask - can use direct cast
-			return "((char*)" + hex_address(tinfo.arena_ptr) + " + (uint32_t)(" + offset + "))";
-		} else if (this->nbit_mask != 0) {
-			return "((char*)" + hex_address(tinfo.arena_ptr) + " + ((" + offset + ") & " +
+		if (tinfo.cpu_relative_offset != 0) {
+			// The arena is relative to the CPU pointer, which
+			// is faster than double indirection through ARENA_AT(cpu, ...)
+			if (this->nbit_mask == UINT32_MAX) {
+				// Full 32-bit mask - can use direct cast
+				return "((char*)cpu + " +
+					std::to_string(tinfo.cpu_relative_offset) + " + (uint32_t)(" + offset + "))";
+			} else if (this->nbit_mask != 0) {
+				return "((char*)cpu + " +
+					std::to_string(tinfo.cpu_relative_offset) + " + ((" + offset + ") & " +
+					hex_address(this->nbit_mask) + "))";
+			} else {
+				return "((char*)cpu + " +
+					std::to_string(tinfo.cpu_relative_offset) + " + (" + offset + "))";
+			}
+		}
+		// Shared execute segments need to access arena through the
+		// CPU pointer, as multiple machines *have* different arenas
+		if (this->nbit_mask != 0) {
+			return "((char*)ARENA_AT(cpu, (" + offset + ") & " +
 				hex_address(this->nbit_mask) + "))";
 		} else {
-			return "((char*)" + hex_address(tinfo.arena_ptr) + " + " + offset + ")";
+			return "((char*)ARENA_AT(cpu, " + offset + "))";
 		}
 	}
 
@@ -286,13 +289,13 @@ struct Emitter
 	}
 	void emit_store_bounds_check(const std::string& addr) {
 		if (tinfo.options.translate_unchecked_memory_accesses
-			|| nbit_mask != 0) return; // No bounds check
+			|| this->nbit_mask != 0) return; // No bounds check
 
 		// Emit bounds check for address - memory is over-allocated,
 		// to allow for accesses that slightly exceed the allocated size
 		add_code("  if ((" + addr + ") < " +
 			hex_address(tinfo.arena_datastart) + " || (" + addr + ") >= " +
-			hex_address(tinfo.arena_ptr + tinfo.arena_size) + ")");
+			hex_address(tinfo.arena_size) + ")");
 		add_code("    return api.exception(cpu, " + hex_address(pc()) + "ULL, " + addr + ", 2);");
 	}
 
@@ -421,8 +424,15 @@ struct Emitter
 		if (tinfo.options.translate_verbose_fallbacks) {
 			add_code("  api.fallback(cpu, " + hex_address(pc()) + "ULL, " + hex_address(instr_bits) + ");");
 		}
-		const uintptr_t handler_func = reinterpret_cast<uintptr_t>(instr.handler);
-		add_code("  ((handler_t)" + hex_address(handler_func) + ")(cpu, " + hex_address(instr_bits) + ");");
+		if (tinfo.is_libtcc) {
+			const uintptr_t handler_func = reinterpret_cast<uintptr_t>(instr.handler);
+			add_code("  ((handler_t)" + hex_address(handler_func) + ")(cpu, " + hex_address(instr_bits) + ");");
+		} else {
+			// Embedded translation doesn't know the function address, we need a decoding step
+			add_code(
+				"{ static handler_t cached_handler = api.resolve_handler(" + hex_address(instr_bits) + ");\n"
+				"  cached_handler(cpu, " + hex_address(instr_bits) + "); }");
+		}
 		// Reload cached registers after handler returns
 		if (!vr_only) {
 			reload_all_registers();
@@ -1946,7 +1956,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 	// Generate function prologue
 	code += "\nstatic ReturnValues " + emit.func_name + "(CPU* cpu, uint64_t ic, uint64_t max_ic, addr_t pc) {\n";
 
-	if (tinfo.options.translate_use_register_caching) {
+	if (tinfo.is_libtcc && tinfo.options.translate_use_register_caching) {
 		// Declare cached register variables
 		for (unsigned reg = Emitter::CACHE_START; reg < Emitter::CACHE_END; reg++) {
 			if (emit.gpr_used[reg]) {

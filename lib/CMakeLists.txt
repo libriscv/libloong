@@ -79,6 +79,7 @@ if (LA_BINARY_TRANSLATION)
 		libloong/tr_emit.cpp
 		libloong/tr_translate.cpp
 		libloong/tr_compiler.cpp
+		libloong/tr_embedded.cpp
 	)
 	target_compile_definitions(loong PUBLIC
 		ENABLE_LIBTCC=1

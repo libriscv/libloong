@@ -47,8 +47,11 @@ namespace loongarch
 		static CustomArenaInfo estimate_cpu_relative_arena_size_for(size_t memory_max);
 
 #ifdef LA_BINARY_TRANSLATION
-		// Binary translation options
+		/// @brief Enable binary translation
 		bool translate_enabled = true;
+		/// @brief Activate any self-registered embedded binary translations
+		/// with priority over JIT-compiled translations.
+		bool translate_enable_embedded = true;
 		bool translate_trace = false;
 		bool translate_ignore_instruction_limit = false;
 		/// @brief Enable register caching in the binary translator.

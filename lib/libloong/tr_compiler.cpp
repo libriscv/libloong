@@ -2,6 +2,7 @@
 #include "decoder_cache.hpp"
 #include "threaded_bytecodes.hpp"
 #include "tr_types.hpp"
+#include "tr_internal.hpp"
 #include <cstring>
 #include <atomic>
 #include <mutex>
@@ -98,7 +99,7 @@ namespace loongarch
 #endif
 
 	// Dylib helper functions
-	static inline void* dylib_lookup(void* dylib, const char* name, bool is_libtcc)
+	void* dylib_lookup(void* dylib, const char* name, bool is_libtcc)
 	{
 #ifdef ENABLE_LIBTCC
 		if (is_libtcc) {
@@ -107,9 +108,15 @@ namespace loongarch
 #else
 		(void)is_libtcc;
 #endif
-		// For non-libtcc, we would use dlsym here
-		(void)dylib;
-		(void)name;
+		// For embedded translations, dylib is a pointer to EmbeddedDylib structure
+		if (!is_libtcc && dylib) {
+			auto* embedded = static_cast<EmbeddedDylib*>(dylib);
+			if (strcmp(name, "init") == 0) return (void*)embedded->init_ptr;
+			if (strcmp(name, "no_mappings") == 0) return (void*)embedded->no_mappings_ptr;
+			if (strcmp(name, "mappings") == 0) return (void*)embedded->mappings_ptr;
+			if (strcmp(name, "no_handlers") == 0) return (void*)embedded->no_handlers_ptr;
+			if (strcmp(name, "unique_mappings") == 0) return (void*)embedded->unique_mappings_ptr;
+		}
 		return nullptr;
 	}
 
@@ -127,21 +134,8 @@ namespace loongarch
 		(void)dylib;
 	}
 
-	// Mapping structure from dylib
-	struct Mapping {
-		address_t addr;
-		unsigned mapping_index;
-	};
-
-	// Arena information for background compilation
-	struct ArenaInfo {
-		const uint8_t* arena_ptr;
-		int32_t arena_offset;
-		int32_t ic_offset;
-	};
-
 	// Initialize the translated segment with callbacks
-	static bool initialize_translated_segment(DecodedExecuteSegment& exec, void* dylib, const ArenaInfo& arena_info, bool is_libtcc)
+	bool initialize_translated_segment(DecodedExecuteSegment& exec, void* dylib, const ArenaInfo& arena_info, bool is_libtcc)
 	{
 		if (dylib == nullptr)
 			return false;
@@ -159,7 +153,7 @@ namespace loongarch
 		static struct CallbackTable {
 			Machine::syscall_t** syscalls;
 			Machine::unknown_syscall_t* unknown_syscall;
-			DecoderData::handler_t* handlers;
+			DecoderData::handler_t (*resolve_handler)(uint32_t);
 			int  (*syscall)(CPU&, unsigned, uint64_t, address_t);
 			ReturnValues (*exception) (CPU&, address_t, address_t, int);
 			void (*trace) (CPU&, const char*, address_t, uint32_t);
@@ -189,7 +183,9 @@ namespace loongarch
 				return -1; // Indicate error
 			}
 		};
-		callback_table.handlers = DecoderData::get_handlers_array();
+		callback_table.resolve_handler = [](uint32_t instr_bits) -> DecoderData::handler_t {
+			return CPU::decode(la_instruction{instr_bits}).handler;
+		};
 		callback_table.exception = [](CPU& cpu, address_t pc, address_t data, int type) -> ReturnValues {
 			cpu.registers().pc = pc;
 			const char* reason =
@@ -373,6 +369,24 @@ namespace loongarch
 		if (!options.translate_enabled)
 			return false;
 
+		// First, check if an embedded translation is available
+		// Embedded translations are pre-compiled and registered via global constructors
+		// This is much faster than JIT compilation
+		extern bool try_activate_embedded_translation(const MachineOptions&, DecodedExecuteSegment&,
+			uint32_t, void*);
+
+		const uint32_t crc32c_hash = exec->crc32c_hash();
+		if (crc32c_hash != 0) {
+			// Try to activate embedded translation
+			if (try_activate_embedded_translation(options, *exec, crc32c_hash, (void*)&machine)) {
+				if (options.verbose_loader) {
+					printf("libloong: Using embedded binary translation (CRC32-C: 0x%08X)\n", crc32c_hash);
+				}
+				return true;
+			}
+		}
+
+		// No embedded translation found, proceed with JIT compilation
 		TransOutput output;
 
 		try {

@@ -63,7 +63,8 @@ namespace loongarch
 	struct TransOutput {
 		std::unordered_map<std::string, std::string> defines;
 		std::shared_ptr<std::string> code;
-		std::string footer;
+		std::string footer;                   // JIT footer (mappings + handlers)
+		std::string footer_embedded;          // Additional embedded footer (registration)
 		std::vector<TransMapping<>> mappings;
 	};
 

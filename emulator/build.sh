@@ -16,6 +16,7 @@ LA_DEBUG=""
 LA_BINARY_TRANSLATION=""
 LA_THREADED="-DLA_THREADED=ON"
 LA_TAILCALL="-DLA_TAILCALL_DISPATCH=OFF"
+LA_EMBED_BINTR="-DLA_EMBED_BINTR=\"\""
 
 while [ $# -gt 0 ]; do
 	case $1 in
@@ -60,6 +61,21 @@ while [ $# -gt 0 ]; do
 			LA_TAILCALL="-DLA_TAILCALL_DISPATCH=ON"
 			shift
 			;;
+		--embed)
+			# Convert relative path to absolute path
+			if [ -n "$2" ]; then
+				if [ -f "$2" ]; then
+					LA_EMBED_BINTR="-DLA_EMBED_BINTR=$(cd "$(dirname "$2")" && pwd)/$(basename "$2")"
+				else
+					echo "Error: Embedded bintr file not found: $2"
+					exit 1
+				fi
+			else
+				echo "Error: --embed requires a file path"
+				exit 1
+			fi
+			shift 2
+			;;
 		-h|--help)
 			echo "Usage: $0 [options]"
 			echo ""
@@ -73,6 +89,7 @@ while [ $# -gt 0 ]; do
 			echo "                            Example: --masked-memory-bits 32 (4GB arena)"
 			echo "  --binary-translation      Enable binary translation (experimental)"
 			echo "  --no-threaded             Disable threaded dispatch"
+			echo "  --embed <file.c>          Embed pre-compiled binary translation from file"
 			echo ""
 			echo "Examples:"
 			echo "  $0                                    # Standard optimized build"
@@ -80,6 +97,7 @@ while [ $# -gt 0 ]; do
 			echo "  $0 --masked-memory-bits 32            # 4GB masked memory arena"
 			echo "  $0 -n --masked-memory-bits 30         # 1GB arena with native opts"
 			echo "  $0 -d                                 # Debug build"
+			echo "  $0 --embed program_bintr.c            # Build with embedded translation"
 			exit 0
 			;;
 		*)
@@ -112,6 +130,10 @@ else
 fi
 THREADED_VALUE=$(echo "$LA_THREADED" | sed 's/.*=//')
 echo "  Threaded dispatch: $THREADED_VALUE"
+if [ -n "$LA_EMBED_BINTR" ]; then
+	EMBED_FILE=$(echo "$LA_EMBED_BINTR" | sed 's/.*=//')
+	echo "  Embedded bintr: $EMBED_FILE"
+fi
 if [ -n "$MASKED_MEMORY_BITS" ]; then
 	BITS=$(echo "$MASKED_MEMORY_BITS" | sed 's/.*=//')
 	SIZE=$((1 << BITS))
@@ -139,7 +161,8 @@ cmake .. \
 	$LA_BINARY_TRANSLATION \
 	$LA_THREADED \
 	$MASKED_MEMORY_BITS \
-	$LA_TAILCALL
+	$LA_TAILCALL \
+	$LA_EMBED_BINTR
 
 # Build
 # Detect number of CPU cores in a portable way

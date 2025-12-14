@@ -7,6 +7,8 @@
 #include "tr_types.hpp"
 #include <inttypes.h>
 #include <sstream>
+#include <algorithm>
+#include <functional>
 
 namespace loongarch {
 
@@ -593,15 +595,13 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 	// Jump table for local jumps within the block
 	emit.add_code("jump_table:");
 	if (!tinfo.jump_locations.empty()) {
-		emit.add_code("  switch (pc) {");
+		// Collect all jump targets
+		std::vector<address_t> all_jump_targets;
 		for (address_t jump_target : tinfo.jump_locations) {
 			if (jump_target < tinfo.basepc || jump_target >= tinfo.endpc)
 				throw MachineException(ILLEGAL_OPERATION,
 					"emit: jump target outside block", jump_target);
-			char label[64];
-			snprintf(label, sizeof(label), "  case 0x%" PRIx64 ": goto label_%" PRIx64 ";",
-				(uint64_t)jump_target, (uint64_t)jump_target);
-			emit.add_code(label);
+			all_jump_targets.push_back(jump_target);
 			mappings.push_back({jump_target, emit.func_name, 0});
 		}
 		for (address_t jump_target : tinfo.global_jump_locations) {
@@ -609,18 +609,81 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 				continue;
 			if (tinfo.jump_locations.count(jump_target) != 0)
 				continue; // Already added
-			char label[64];
-			snprintf(label, sizeof(label), "  case 0x%" PRIx64 ": goto label_%" PRIx64 ";",
-				(uint64_t)jump_target, (uint64_t)jump_target);
-			emit.add_code(label);
+			all_jump_targets.push_back(jump_target);
 			mappings.push_back({jump_target, emit.func_name, 0});
 		}
-		// Unknown PC: Return to caller
-		emit.add_code("  default:");
+
+		// Sort jump targets for binary tree structure
+		std::sort(all_jump_targets.begin(), all_jump_targets.end());
+
+		const size_t num_targets = all_jump_targets.size();
+
+		// Helper lambda to recursively generate binary search tree
+		std::function<void(size_t, size_t, int)> generate_tree;
+		generate_tree = [&](size_t start, size_t end, int depth) {
+			const size_t count = end - start;
+			if (count == 0)
+				return;
+
+			std::string indent(depth * 2 + 2, ' ');
+
+			if (count == 1) {
+				// Leaf node: direct goto
+				char code[128];
+				snprintf(code, sizeof(code), "%sif (pc == 0x%" PRIx64 "ULL) goto label_%" PRIx64 ";",
+					indent.c_str(), (uint64_t)all_jump_targets[start], (uint64_t)all_jump_targets[start]);
+				emit.add_code(code);
+			} else if (count == 2) {
+				// Two targets: simple if-else
+				char code[128];
+				snprintf(code, sizeof(code), "%sif (pc == 0x%" PRIx64 "ULL) goto label_%" PRIx64 ";",
+					indent.c_str(), (uint64_t)all_jump_targets[start], (uint64_t)all_jump_targets[start]);
+				emit.add_code(code);
+				snprintf(code, sizeof(code), "%selse if (pc == 0x%" PRIx64 "ULL) goto label_%" PRIx64 ";",
+					indent.c_str(), (uint64_t)all_jump_targets[start + 1], (uint64_t)all_jump_targets[start + 1]);
+				emit.add_code(code);
+			} else {
+				// Split in half for binary search
+				const size_t mid = start + count / 2;
+				const address_t pivot = all_jump_targets[mid];
+
+				char condition[128];
+				snprintf(condition, sizeof(condition), "%sif (pc < 0x%" PRIx64 "ULL) {",
+					indent.c_str(), (uint64_t)pivot);
+				emit.add_code(condition);
+
+				// Left subtree (addresses < pivot)
+				generate_tree(start, mid, depth + 1);
+
+				emit.add_code(indent + "} else {");
+
+				// Right subtree (addresses >= pivot)
+				generate_tree(mid, end, depth + 1);
+
+				emit.add_code(indent + "}");
+			}
+		};
+
+		if (tinfo.is_libtcc) {
+			// Use binary tree structure
+			generate_tree(0, num_targets, 0);
+		} else {
+			// Single switch statement
+			emit.add_code("  switch (pc) {");
+			for (address_t jump_target : all_jump_targets) {
+				char label[64];
+				snprintf(label, sizeof(label), "  case 0x%" PRIx64 ": goto label_%" PRIx64 ";",
+					(uint64_t)jump_target, (uint64_t)jump_target);
+				emit.add_code(label);
+			}
+			emit.add_code("  }");
+		}
+
+		// Unknown PC: Return to caller (after all segments)
+		emit.add_code("  // Unknown PC: Return to caller");
 		//emit.emit_custom_trace("pc"); // Trace unknown jump
 		emit.store_all_registers();
-		emit.add_code("    cpu->pc = pc; return (ReturnValues){ic, max_ic};");
-		emit.add_code("  }");
+		emit.add_code("  cpu->pc = pc; return (ReturnValues){ic, max_ic};");
 		emit.add_code("");
 	}
 

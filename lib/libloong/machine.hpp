@@ -144,10 +144,6 @@ namespace loongarch
 		Arena& arena();
 		void setup_accelerated_heap(address_t arena_base, size_t arena_size); // Creates arena if needed
 
-		// Serialization
-		size_t serialize_to(std::vector<uint8_t>& vec) const;
-		int deserialize_from(const std::vector<uint8_t>& vec);
-
 		// Print helper
 		void print(const char* data, size_t len);
 		void print(std::string_view str);

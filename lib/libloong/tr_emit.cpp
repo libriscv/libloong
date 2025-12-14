@@ -673,7 +673,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			int64_t offs = InstructionHelpers::sign_extend_26(instr.i26.offs());
 			address_t target = emit.pc() + (offs << 2);
 			address_t return_addr = emit.pc() + 4;
-			emit.emit_call(1, target, return_addr); // rd=1 (ra) for BL
+			emit.emit_call(REG_RA, target, return_addr);
 			break;
 		}
 		case InstrId::BEQ: {

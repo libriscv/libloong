@@ -186,20 +186,6 @@ namespace loongarch
 		print(str.data(), str.size());
 	}
 
-	size_t Machine::serialize_to(std::vector<uint8_t>& vec) const
-	{
-		// Serialization not yet implemented
-		(void)vec;
-		return 0;
-	}
-
-	int Machine::deserialize_from(const std::vector<uint8_t>& vec)
-	{
-		// Deserialization not yet implemented
-		(void)vec;
-		return -1;
-	}
-
 	void Machine::set_rdtime(rdtime_callback_t* callback)
 	{
 		m_rdtime_handler = callback;

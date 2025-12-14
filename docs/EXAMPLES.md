@@ -198,63 +198,6 @@ int main() {
 }
 ```
 
-### 7. Serialization / Checkpointing
-
-```cpp
-#include <libloong/machine.hpp>
-#include <iostream>
-#include <fstream>
-
-int main() {
-    std::vector<uint8_t> binary = /* ... */;
-
-    loongarch::Machine machine { binary };
-    loongarch::setup_linux_syscalls(machine);
-
-    // Run for a while
-    machine.simulate<false>(100000);
-
-    // Save state
-    std::vector<uint8_t> checkpoint;
-    machine.serialize_to(checkpoint);
-
-    std::ofstream out("checkpoint.bin", std::ios::binary);
-    out.write((char*)checkpoint.data(), checkpoint.size());
-    out.close();
-
-    std::cout << "Checkpoint saved (" << checkpoint.size() << " bytes)\n";
-
-    // Later: restore state
-    std::ifstream in("checkpoint.bin", std::ios::binary);
-    std::vector<uint8_t> restored((std::istreambuf_iterator<char>(in)),
-                                   std::istreambuf_iterator<char>());
-
-    machine.deserialize_from(restored);
-    std::cout << "Checkpoint restored\n";
-
-    // Continue execution
-    machine.simulate();
-
-    return 0;
-}
-```
-
-## Building the Examples
-
-```bash
-# Create build directory
-mkdir build && cd build
-
-# Configure with examples
-cmake .. -DCMAKE_BUILD_TYPE=Release
-
-# Build
-make -j$(nproc)
-
-# Run example
-./example_program path/to/loongarch/program.elf
-```
-
 ## Testing with Simple Programs
 
 ### Fibonacci Example (C code for LoongArch)

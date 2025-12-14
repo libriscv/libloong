@@ -20,6 +20,7 @@ set(loong_VERSION_MINOR 1)
 # Source files
 set(SOURCES
 	libloong/cpu.cpp
+	libloong/debug.cpp
 	libloong/elf_loader.cpp
 	libloong/la64.cpp
 	libloong/machine.cpp
@@ -32,8 +33,6 @@ set(SOURCES
 	libloong/decoded_exec_segment.cpp
 	libloong/shared_exec_segment.cpp
 	libloong/util/crc32c.cpp
-	libloong/debug.cpp
-	libloong/serialize.cpp
 	libloong/threaded_rewriter.cpp
 	libloong/posix/signals.cpp
 	libloong/posix/threads.cpp

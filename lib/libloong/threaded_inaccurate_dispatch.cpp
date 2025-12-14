@@ -1,6 +1,7 @@
 #include "cpu.hpp"
 #include "machine.hpp"
 #include "threaded_bytecodes.hpp"
+#include <inttypes.h>
 
 #define DECODER()   (*decoder)
 #define CPU()       (*this)
@@ -59,7 +60,7 @@ continue_segment:
 		decoder = &exec_decoder[pc >> DecoderCache::SHIFT];
 
 		if constexpr (TRACE_DISPATCH) {
-			printf("  [dispatch] PC=0x%lx bytecode=%d block_bytes=%d instr_count=%d instr=0x%08x max_instr=%lu\n",
+			printf("  [dispatch] PC=0x%lx bytecode=%d block_bytes=%d instr_count=%d instr=0x%08x max_instr=%" PRIu64 "\n",
 				(unsigned long)pc, decoder->get_bytecode(), decoder->block_bytes,
 				decoder->instruction_count(), decoder->instr, machine().max_instructions());
 		}
@@ -154,7 +155,7 @@ new_execute_segment:
 		exec_decoder  = exec->pc_relative_decoder_cache();
 
 		if constexpr (TRACE_DISPATCH) {
-			printf("  [new_execute_segment] Segment [0x%lx, 0x%lx), max_instructions=%lu\n",
+			printf("  [new_execute_segment] Segment [0x%lx, 0x%lx), max_instructions=%" PRIu64 "\n",
 				(unsigned long)current_begin, (unsigned long)current_end, machine().max_instructions());
 		}
 

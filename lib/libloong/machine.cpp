@@ -9,8 +9,9 @@
 
 namespace loongarch
 {
-	Machine::Machine(std::string_view binary, const MachineOptions& options)
-		: cpu(*this), memory(*this, binary, options),
+	Machine::Machine(std::string_view binary, std::shared_ptr<MachineOptions> options)
+		: cpu(*this, *options), memory(*this, binary, *options),
+		  m_options(std::move(options)),
 		  m_arena(nullptr)
 	{
 		cpu.reset();  // Reset CPU after memory is loaded
@@ -29,10 +30,19 @@ namespace loongarch
 			}
 		});
 	}
+	Machine::Machine(std::string_view binary, const MachineOptions& options)
+		: Machine(binary, std::make_shared<MachineOptions>(options))
+	{
+	}
 
 	Machine::Machine(const std::vector<uint8_t>& binary, const MachineOptions& options)
 		: Machine(std::string_view(
 			reinterpret_cast<const char*>(binary.data()), binary.size()), options)
+	{
+	}
+	Machine::Machine(const std::vector<uint8_t>& binary, std::shared_ptr<MachineOptions> options)
+		: Machine(std::string_view(
+			reinterpret_cast<const char*>(binary.data()), binary.size()), std::move(options))
 	{
 	}
 

@@ -165,8 +165,7 @@ static int run_program(const std::vector<uint8_t>& binary, const EmulatorOptions
 			.translate_output_file = opts.translate_output_file,
 #endif
 		});
-		machine = new (arena_ptr) Machine(binary, *options);
-		machine->set_options(options);
+		machine = new (arena_ptr) Machine(binary, std::move(options));
 
 		// Setup Linux syscalls
 		machine->setup_linux_syscalls();

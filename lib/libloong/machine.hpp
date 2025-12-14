@@ -22,7 +22,9 @@ namespace loongarch
 
 		// Construction
 		Machine(std::string_view binary, const MachineOptions& options = {});
+		Machine(std::string_view binary, std::shared_ptr<MachineOptions> options);
 		Machine(const std::vector<uint8_t>& binary, const MachineOptions& options = {});
+		Machine(const std::vector<uint8_t>& binary, std::shared_ptr<MachineOptions> options);
 		Machine(const Machine&) = delete;
 		~Machine();
 

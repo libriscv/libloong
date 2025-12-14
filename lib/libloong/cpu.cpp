@@ -19,9 +19,10 @@ namespace loongarch
 		return empty_shared;
 	}
 
-	CPU::CPU(Machine& machine)
+	CPU::CPU(Machine& machine, const MachineOptions& options)
 		: m_machine(machine), m_exec(empty_execute_segment().get())
 	{
+		(void)options;
 		// Don't call reset() here - memory isn't loaded yet!
 		// reset() will be called by Machine after memory is initialized
 	}

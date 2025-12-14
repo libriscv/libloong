@@ -17,7 +17,7 @@ namespace loongarch
 		using instruction_t = Instruction;
 		using breakpoint_t = std::function<void(CPU&)>;
 
-		CPU(Machine& machine);
+		CPU(Machine& machine, const MachineOptions& options);
 		CPU(Machine& machine, const Machine& other);
 
 		void reset();

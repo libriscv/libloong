@@ -1,0 +1,145 @@
+name: Fuzzing
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+jobs:
+  build-fuzzers:
+    name: Build Fuzzers
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          cmake \
+          ninja-build \
+          clang-18 \
+          lld-18
+
+    - name: Configure CMake for fuzzing
+      run: |
+        mkdir -p fuzz/build
+        cd fuzz/build
+        cmake .. \
+          -G Ninja \
+          -DCMAKE_BUILD_TYPE=Debug \
+          -DCMAKE_C_COMPILER=clang-18 \
+          -DCMAKE_CXX_COMPILER=clang++-18
+
+    - name: Build fuzzers
+      run: |
+        cd fuzz/build
+        ninja
+
+    - name: Upload fuzzer binaries
+      uses: actions/upload-artifact@v4
+      with:
+        name: fuzzers
+        path: fuzz/build/*fuzzer
+        retention-days: 1
+
+  fuzz-instructions:
+    name: Fuzz Instruction Set
+    needs: build-fuzzers
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang-18 lld-18
+
+    - name: Download fuzzer binaries
+      uses: actions/download-artifact@v4
+      with:
+        name: fuzzers
+        path: fuzz/build
+
+    - name: Make fuzzers executable
+      run: chmod +x fuzz/build/*fuzzer
+
+    - name: Create fuzzer input directory
+      run: mkdir -p fuzz/.fuzz_inputs_vm
+
+    - name: Run instruction set fuzzer
+      run: |
+        cd fuzz
+        timeout 30 ./build/vmfuzzer .fuzz_inputs_vm/ || true
+
+    - name: Check for crashes
+      if: always()
+      run: |
+        cd fuzz
+        if ls crash-* 2>/dev/null || ls leak-* 2>/dev/null || ls timeout-* 2>/dev/null; then
+          echo "::error::Instruction fuzzer found crashes or issues!"
+          ls -la crash-* leak-* timeout-* 2>/dev/null || true
+          exit 1
+        else
+          echo "No crashes found during instruction fuzzing"
+        fi
+
+  fuzz-elf:
+    name: Fuzz ELF Binaries
+    needs: build-fuzzers
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang-18 lld-18
+
+    - name: Download fuzzer binaries
+      uses: actions/download-artifact@v4
+      with:
+        name: fuzzers
+        path: fuzz/build
+
+    - name: Make fuzzers executable
+      run: chmod +x fuzz/build/*fuzzer
+
+    - name: Create fuzzer input directory
+      run: mkdir -p fuzz/.fuzz_inputs_elf
+
+    - name: Run ELF binary fuzzer
+      run: |
+        cd fuzz
+        timeout 30 ./build/elffuzzer .fuzz_inputs_elf/ || true
+
+    - name: Check for crashes
+      if: always()
+      run: |
+        cd fuzz
+        if ls crash-* 2>/dev/null || ls leak-* 2>/dev/null || ls timeout-* 2>/dev/null; then
+          echo "::error::ELF fuzzer found crashes or issues!"
+          ls -la crash-* leak-* timeout-* 2>/dev/null || true
+          exit 1
+        else
+          echo "No crashes found during ELF fuzzing"
+        fi

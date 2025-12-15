@@ -4,6 +4,7 @@
 #include <cstdlib>
 using namespace loongarch;
 static constexpr uint32_t MAX_INSTRUCTIONS = 5'000;
+static const auto options = std::make_shared<MachineOptions>();
 
 // In order to be able to inspect a coredump we want to
 // crash on every ASAN error.
@@ -34,12 +35,11 @@ static void fuzz_instruction_set(const uint8_t* data, size_t len)
 
 	constexpr uint32_t EXEC_ADDR  =  0x10000;
 	constexpr uint32_t STACK_ADDR = 0x800000;
-	auto options = std::make_shared<MachineOptions>();
 
 	try
 	{
 		// Create machine with custom arena
-		Machine machine { std::string_view{}, *options };
+		Machine machine { std::string_view{}, options };
 		machine.set_options(options);
 		machine.memory.allocate_custom_arena(16ull << 20, 0x10000, 0x20000);
 
@@ -69,7 +69,7 @@ static void fuzz_elf_binary(const uint8_t* data, size_t len)
 	try
 	{
 		// Create machine from ELF binary in fuzzer input data
-		Machine machine { std::string_view{reinterpret_cast<const char*>(data), len}, {} };
+		Machine machine { std::string_view{reinterpret_cast<const char*>(data), len}, options };
 
 		// Start execution at entry point
 		machine.cpu.jump(machine.memory.start_address());

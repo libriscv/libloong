@@ -12,7 +12,8 @@
 namespace loongarch::script {
 
 // Helper function to execute a shell command and capture output
-static std::pair<int, std::string> execute_command(const std::string& command) {
+static std::pair<int, std::string> execute_command(const std::string& command)
+{
 	std::array<char, 256> buffer;
 	std::string result;
 	int exit_code = -1;
@@ -48,13 +49,72 @@ Script::Script(std::vector<uint8_t> binary, const ScriptOptions& options)
 	initialize_machine();
 }
 
-Script::~Script() {
+Script::Script(Script&& other)
+	: m_machine(other.m_machine),
+	  m_userdata(other.m_userdata),
+	  m_call_depth(other.m_call_depth),
+	  m_binary(std::move(other.m_binary)),
+	  m_options(std::move(other.m_options)),
+	  m_temp_file(std::move(other.m_temp_file)),
+	  m_arena_ptr(other.m_arena_ptr),
+	  m_arena_size(other.m_arena_size)
+{
+	other.m_machine = nullptr;
+	other.m_arena_ptr = nullptr;
+	other.m_arena_size = 0;
+}
+Script& Script::operator=(Script&& other)
+{
+	if (this != &other) {
+		if (!m_temp_file.empty() && !m_options.keep_temp_files) {
+			std::filesystem::remove(m_temp_file);
+		}
+		if (this->m_arena_ptr != nullptr) {
+			if (m_machine != nullptr) {
+				m_machine->~Machine();
+				m_machine = nullptr;
+			}
+			delete[] this->m_arena_ptr;
+			this->m_arena_ptr = nullptr;
+		} else if (m_machine != nullptr) {
+			delete m_machine;
+			m_machine = nullptr;
+		}
+
+		m_machine = other.m_machine;
+		m_userdata = other.m_userdata;
+		m_call_depth = other.m_call_depth;
+		m_binary = std::move(other.m_binary);
+		m_options = std::move(other.m_options);
+		m_temp_file = std::move(other.m_temp_file);
+		m_arena_ptr = other.m_arena_ptr;
+		m_arena_size = other.m_arena_size;
+
+		other.m_machine = nullptr;
+		other.m_arena_ptr = nullptr;
+		other.m_arena_size = 0;
+	}
+	return *this;
+}
+
+Script::~Script()
+{
 	if (!m_temp_file.empty() && !m_options.keep_temp_files) {
 		std::filesystem::remove(m_temp_file);
 	}
 	// Time Machine destruction
 	auto t0 = std::chrono::high_resolution_clock::now();
-	m_machine.reset();
+	if (this->m_arena_ptr != nullptr) {
+		if (m_machine != nullptr) {
+			m_machine->~Machine();
+			m_machine = nullptr;
+		}
+		delete[] this->m_arena_ptr;
+		this->m_arena_ptr = nullptr;
+	} else if (m_machine != nullptr) {
+		delete m_machine;
+		m_machine = nullptr;
+	}
 	if (m_options.verbose) {
 		auto t1 = std::chrono::high_resolution_clock::now();
 		auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count();
@@ -241,8 +301,25 @@ void Script::initialize_machine() {
 	};
 
 	try {
-		// Create machine instance
-		m_machine = std::make_unique<Machine>(m_binary, m_machineoptions);
+		auto arena_info = MachineOptions::estimate_cpu_relative_arena_size_for(m_options.memory_max);
+#ifdef __linux__
+		const size_t custom_arena_size = arena_info.total_size;
+		this->m_arena_ptr = static_cast<uint8_t*>(std::aligned_alloc(LA_MACHINE_ALIGNMENT, custom_arena_size));
+		if (!m_arena_ptr) {
+			throw ScriptException("Failed to allocate custom arena memory");
+		}
+		this->m_arena_size = custom_arena_size;
+		m_machineoptions.custom_arena_pointer = &m_arena_ptr[arena_info.arena_offset];
+		m_machineoptions.custom_arena_size = arena_info.arena_size;
+		// Placement new the Machine into the custom arena
+		this->m_machine = new (m_arena_ptr) Machine(
+			m_binary, m_machineoptions);
+#else
+		// On non-Linux platforms, fall back to default arena allocation
+		const size_t custom_arena_size = 0;
+		const void* custom_arena_ptr = nullptr;
+		m_machine = new Machine(m_binary, m_machineoptions);
+#endif
 		m_machine->set_userdata(this);
 
 		// Setup Linux environment

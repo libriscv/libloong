@@ -56,12 +56,17 @@ namespace GameEngine {
 			fmt::print("{}\n{}\n", screen_buffer[y+0], screen_buffer[y+1]);
 		}
 		// One line up, display stats
+		static double t_total = 0.0;
+		static uint64_t frame_count = 0;
+		t_total += (frame_count == 0) ? 0.0 : t;
+		frame_count++;
+		const double avg_time = t_total / frame_count;
 		fmt::print("\033[{}A", 1);
-		fmt::print("+= LoongScript {}  Time: {:.2f}us  Instr: {}  MI/s: {:.2f} ==\n",
+		fmt::print("+= LoongScript {}  Time: {:.2f}us (avg={:.2f}us)  Instr: {} ==\n",
 			is_jit ? "JIT" : "Interp",
 			t * 1e6,
-			cycles,
-			(cycles / 1e6) / t);
+			avg_time * 1e6,
+			cycles);
 	}
 }
 

@@ -115,8 +115,8 @@ public:
 		return m_machine->memory.memstring(addr, max_len);
 	}
 
-	Script(Script&&) = default;
-	Script& operator=(Script&&) = default;
+	Script(Script&&);
+	Script& operator=(Script&&);
 	Script(const Script&) = delete;
 	Script& operator=(const Script&) = delete;
 	~Script();
@@ -145,12 +145,14 @@ private:
 	// Callback dispatcher (static)
 	static void dispatch_callback(Machine& machine, int syscall_num);
 
-	std::unique_ptr<Machine> m_machine;
+	Machine* m_machine = nullptr;
 	void* m_userdata = nullptr;
 	mutable uint8_t m_call_depth = 0;
 	std::vector<uint8_t> m_binary;
 	ScriptOptions m_options;
 	std::string m_temp_file;
+	uint8_t* m_arena_ptr = nullptr;
+	size_t   m_arena_size = 0;
 };
 
 // Event class: Cached host -> guest function calls

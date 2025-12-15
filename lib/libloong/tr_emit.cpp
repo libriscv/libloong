@@ -69,6 +69,12 @@ struct Emitter
 	bool fpr_used[32] = {}; // Track which FP registers are actually used
 	address_t nbit_mask = 0;
 	address_t last_fallback_pc = 0;
+	address_t last_read_check_pc = 0;
+	address_t last_write_check_pc = 0;
+	int last_read_check_register = 0;
+	int last_read_check_offset = 0;
+	int last_write_check_register = 0;
+	int last_write_check_offset = 0;
 	std::unordered_set<address_t> static_functions;
 
 	static std::string function_name_from(address_t address) {
@@ -294,7 +300,7 @@ struct Emitter
 		}
 	}
 
-	void emit_load_bounds_check(const std::string& addr) {
+	void emit_load_bounds_check(const std::string& addr, size_t size) {
 		if (tinfo.options.translate_unchecked_memory_accesses
 			|| this->nbit_mask != 0) return; // No bounds check
 
@@ -307,7 +313,7 @@ struct Emitter
 			hex_address(arena_end_sub_rodata) + ") {");
 		add_code("  pc = " + hex_address(pc()) + "ULL; goto handle_exception; }");
 	}
-	void emit_store_bounds_check(const std::string& addr) {
+	void emit_store_bounds_check(const std::string& addr, size_t size) {
 		if (tinfo.options.translate_unchecked_memory_accesses
 			|| this->nbit_mask != 0) return; // No bounds check
 
@@ -321,6 +327,10 @@ struct Emitter
 		add_code("  pc = " + hex_address(pc()) + "ULL; goto handle_exception; }");
 	}
 
+	static bool offset_is_within_overallocation(int64_t old_offset, int64_t new_offset, size_t size) {
+		return std::abs(new_offset - old_offset) <= int64_t(LA_OVER_ALLOCATE_SIZE - size);
+	}
+
 	// Emit memory load - templatized for different sizes and signedness
 	// size: 8, 16, 32, or 64 bits
 	// is_signed: whether to sign-extend (only matters for sizes < 64)
@@ -330,12 +340,32 @@ struct Emitter
 		if (offset != 0)
 			addr.append(" + " + std::to_string(offset));
 		std::string ptr = arena_offset(addr);
-		this->emit_load_bounds_check(addr);
+		size >>= 3;
 
-		if (size == 64) {
+		// Avoiding bounds-checks is extremely important for performance, however
+		// we only avoid it under certain limited conditions:
+		// 1. There are zero instructions between this and the last check
+		//    for the same register + offset
+		// 2. The last check was for the same type (read vs write)
+		// 3. The size was <= 8 bytes
+		// 4. The arena is over-allocated by 64 bytes, allowing up to
+		//    8 instructions of 8-byte accesses with a single check
+		if (last_read_check_pc == pc() - 4
+			&& last_read_check_register == int(rj)
+			&& offset_is_within_overallocation(last_read_check_offset, offset, size)) {
+			// Skip bounds check, but continue (same register, same original bounds-checked offset)
+			last_read_check_pc = pc();
+		} else {
+			this->emit_load_bounds_check(addr, size);
+			last_read_check_pc = pc();
+			last_read_check_register = rj;
+			last_read_check_offset = offset + size;
+		}
+
+		if (size == 8) {
 			// 64-bit load
 			add_code("  " + reg(rd) + " = *(uint64_t*)" + ptr + ";");
-		} else if (size == 32) {
+		} else if (size == 4) {
 			if (is_signed) {
 				// Sign-extend 32-bit to 64-bit
 				add_code("  " + reg(rd) + " = *(int32_t*)" + ptr + ";");
@@ -343,7 +373,7 @@ struct Emitter
 				// Zero-extend 32-bit to 64-bit
 				add_code("  " + reg(rd) + " = *(uint32_t*)" + ptr + ";");
 			}
-		} else if (size == 16) {
+		} else if (size == 2) {
 			if (is_signed) {
 				// Sign-extend 16-bit to 64-bit
 				add_code("  " + reg(rd) + " = *(int16_t*)" + ptr + ";");
@@ -351,7 +381,7 @@ struct Emitter
 				// Zero-extend 16-bit to 64-bit
 				add_code("  " + reg(rd) + " = *(uint16_t*)" + ptr + ";");
 			}
-		} else if (size == 8) {
+		} else if (size == 1) {
 			if (is_signed) {
 				// Sign-extend 8-bit to 64-bit
 				add_code("  " + reg(rd) + " = *(int8_t*)" + ptr + ";");
@@ -369,15 +399,27 @@ struct Emitter
 		if (offset != 0)
 			addr.append(" + " + std::to_string(offset));
 		std::string ptr = arena_offset(addr);
-		this->emit_store_bounds_check(addr);
+		size >>= 3;
 
-		if (size == 64) {
+		if (last_write_check_pc == pc() - 4
+			&& last_write_check_register == int(rj)
+			&& offset_is_within_overallocation(last_write_check_offset, offset, size)) {
+			// Skip bounds check
+			last_write_check_pc = pc();
+		} else {
+			this->emit_store_bounds_check(addr, size);
+			last_write_check_pc = pc();
+			last_write_check_register = rj;
+			last_write_check_offset = offset + size;
+		}
+
+		if (size == 8) {
 			add_code("  *(uint64_t*)" + ptr + " = " + reg(rd) + ";");
-		} else if (size == 32) {
+		} else if (size == 4) {
 			add_code("  *(uint32_t*)" + ptr + " = " + reg(rd) + ";");
-		} else if (size == 16) {
+		} else if (size == 2) {
 			add_code("  *(uint16_t*)" + ptr + " = " + reg(rd) + ";");
-		} else if (size == 8) {
+		} else if (size == 1) {
 			add_code("  *(uint8_t*)" + ptr + " = " + reg(rd) + ";");
 		}
 	}
@@ -387,23 +429,25 @@ struct Emitter
 		if (rd == 0) return;
 		std::string addr = reg(rj) + " + " + reg(rk);
 		std::string ptr = arena_offset(addr);
-		this->emit_load_bounds_check(addr);
+		size >>= 3;
 
-		if (size == 64) {
+		this->emit_load_bounds_check(addr, size);
+
+		if (size == 8) {
 			add_code("  " + reg(rd) + " = *(uint64_t*)" + ptr + ";");
-		} else if (size == 32) {
+		} else if (size == 4) {
 			if (is_signed) {
 				add_code("  " + reg(rd) + " = *(int32_t*)" + ptr + ";");
 			} else {
 				add_code("  " + reg(rd) + " = *(uint32_t*)" + ptr + ";");
 			}
-		} else if (size == 16) {
+		} else if (size == 2) {
 			if (is_signed) {
 				add_code("  " + reg(rd) + " = *(int16_t*)" + ptr + ";");
 			} else {
 				add_code("  " + reg(rd) + " = *(uint16_t*)" + ptr + ";");
 			}
-		} else if (size == 8) {
+		} else if (size == 1) {
 			if (is_signed) {
 				add_code("  " + reg(rd) + " = *(int8_t*)" + ptr + ";");
 			} else {
@@ -416,15 +460,17 @@ struct Emitter
 	void emit_store_indexed(unsigned size, unsigned rd, unsigned rj, unsigned rk) {
 		std::string addr = reg(rj) + " + " + reg(rk);
 		std::string ptr = arena_offset(addr);
-		this->emit_store_bounds_check(addr);
+		size >>= 3;
 
-		if (size == 64) {
+		this->emit_store_bounds_check(addr, size);
+
+		if (size == 8) {
 			add_code("  *(uint64_t*)" + ptr + " = " + reg(rd) + ";");
-		} else if (size == 32) {
+		} else if (size == 4) {
 			add_code("  *(uint32_t*)" + ptr + " = " + reg(rd) + ";");
-		} else if (size == 16) {
+		} else if (size == 2) {
 			add_code("  *(uint16_t*)" + ptr + " = " + reg(rd) + ";");
-		} else if (size == 8) {
+		} else if (size == 1) {
 			add_code("  *(uint8_t*)" + ptr + " = " + reg(rd) + ";");
 		}
 	}
@@ -665,6 +711,8 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			snprintf(label, sizeof(label), "label_%" PRIx64 ":", (uint64_t)emit.pc());
 			emit.add_code(label);
 			emit.last_fallback_pc = 0; // Reset fallback tracking
+			emit.last_read_check_pc = 0;
+			emit.last_write_check_pc = 0;
 		}
 
 		// Emit trace call if tracing is enabled
@@ -1582,7 +1630,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 			std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string(offset);
 			std::string ptr = emit.arena_offset(addr);
-			emit.emit_load_bounds_check(addr);
+			emit.emit_load_bounds_check(addr, 4);
 			emit.add_code("  " + emit.freg_wu(instr.ri12.rd) + " = *(uint32_t*)" + ptr + ";");
 			break;
 		}
@@ -1591,7 +1639,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 			std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string(offset);
 			std::string ptr = emit.arena_offset(addr);
-			emit.emit_load_bounds_check(addr);
+			emit.emit_load_bounds_check(addr, 8);
 			emit.add_code("  " + emit.freg_du(instr.ri12.rd) + " = *(uint64_t*)" + ptr + ";");
 			break;
 		}
@@ -1600,7 +1648,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 			std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string(offset);
 			std::string ptr = emit.arena_offset(addr);
-			emit.emit_store_bounds_check(addr);
+			emit.emit_store_bounds_check(addr, 4);
 			emit.add_code("  *(uint32_t*)" + ptr + " = " + emit.freg_wu(instr.ri12.rd) + ";");
 			break;
 		}
@@ -1609,7 +1657,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 			std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string(offset);
 			std::string ptr = emit.arena_offset(addr);
-			emit.emit_store_bounds_check(addr);
+			emit.emit_store_bounds_check(addr, 8);
 			emit.add_code("  *(uint64_t*)" + ptr + " = " + emit.freg_du(instr.ri12.rd) + ";");
 			break;
 		}
@@ -1619,7 +1667,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			// Indexed load single-precision float
 			std::string addr = emit.reg(instr.r3.rj) + " + " + emit.reg(instr.r3.rk);
 			std::string ptr = emit.arena_offset(addr);
-			emit.emit_load_bounds_check(addr);
+			emit.emit_load_bounds_check(addr, 4);
 			emit.add_code("  " + emit.freg_wu(instr.r3.rd) + " = *(uint32_t*)" + ptr + ";");
 			break;
 		}
@@ -1627,7 +1675,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			// Indexed load double-precision float
 			std::string addr = emit.reg(instr.r3.rj) + " + " + emit.reg(instr.r3.rk);
 			std::string ptr = emit.arena_offset(addr);
-			emit.emit_load_bounds_check(addr);
+			emit.emit_load_bounds_check(addr, 8);
 			emit.add_code("  " + emit.freg_du(instr.r3.rd) + " = *(uint64_t*)" + ptr + ";");
 			break;
 		}
@@ -1635,7 +1683,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			// Indexed store single-precision float
 			std::string addr = emit.reg(instr.r3.rj) + " + " + emit.reg(instr.r3.rk);
 			std::string ptr = emit.arena_offset(addr);
-			emit.emit_store_bounds_check(addr);
+			emit.emit_store_bounds_check(addr, 4);
 			emit.add_code("  *(uint32_t*)" + ptr + " = " + emit.freg_wu(instr.r3.rd) + ";");
 			break;
 		}
@@ -1643,7 +1691,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			// Indexed store double-precision float
 			std::string addr = emit.reg(instr.r3.rj) + " + " + emit.reg(instr.r3.rk);
 			std::string ptr = emit.arena_offset(addr);
-			emit.emit_store_bounds_check(addr);
+			emit.emit_store_bounds_check(addr, 8);
 			emit.add_code("  *(uint64_t*)" + ptr + " = " + emit.freg_du(instr.r3.rd) + ";");
 			break;
 		}
@@ -2229,7 +2277,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			// Load 128-bit vector from memory
 			int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 			std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string(offset);
-			emit.emit_load_bounds_check(addr);
+			emit.emit_load_bounds_check(addr, 16);
 			std::string ptr0 = emit.arena_offset(addr);
 			std::string ptr1 = emit.arena_offset(addr + " + 8");
 			emit.add_code("  { lasx_reg* vr_ptr = &cpu->vr[" + std::to_string(instr.ri12.rd) + "];");
@@ -2241,7 +2289,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			// Store 128-bit vector to memory
 			int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 			std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string(offset);
-			emit.emit_store_bounds_check(addr);
+			emit.emit_store_bounds_check(addr, 16);
 			std::string ptr0 = emit.arena_offset(addr);
 			std::string ptr1 = emit.arena_offset(addr + " + 8");
 			emit.add_code("  { lasx_reg* vr_ptr = &cpu->vr[" + std::to_string(instr.ri12.rd) + "];");
@@ -2252,7 +2300,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 		case InstrId::VLDX: {
 			// Vector indexed load (LSX 128-bit)
 			std::string addr = emit.reg(instr.r3.rj) + " + " + emit.reg(instr.r3.rk);
-			emit.emit_load_bounds_check(addr);
+			emit.emit_load_bounds_check(addr, 16);
 			std::string ptr0 = emit.arena_offset(addr);
 			std::string ptr1 = emit.arena_offset(addr + " + 8");
 			emit.add_code("  { lasx_reg* vr_ptr = &cpu->vr[" + std::to_string(instr.r3.rd) + "];");
@@ -2263,7 +2311,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 		case InstrId::VSTX: {
 			// Vector indexed store (LSX 128-bit)
 			std::string addr = emit.reg(instr.r3.rj) + " + " + emit.reg(instr.r3.rk);
-			emit.emit_store_bounds_check(addr);
+			emit.emit_store_bounds_check(addr, 16);
 			std::string ptr0 = emit.arena_offset(addr);
 			std::string ptr1 = emit.arena_offset(addr + " + 8");
 			emit.add_code("  { lasx_reg* vr_ptr = &cpu->vr[" + std::to_string(instr.r3.rd) + "];");

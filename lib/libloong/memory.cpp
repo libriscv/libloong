@@ -64,15 +64,17 @@ void Memory::allocate_arena(size_t size)
 	}
 	if (this->m_arena) free_arena();
 #ifdef __unix__
-	this->m_arena = static_cast<uint8_t*>(mmap(nullptr, size + LA_OVER_ALLOCATE_SIZE,
+	this->m_arena = static_cast<uint8_t*>(mmap(nullptr, size + 2 * LA_OVER_ALLOCATE_SIZE,
 		PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0));
 	if (this->m_arena == MAP_FAILED) {
 		this->m_arena = nullptr;
 		throw MachineException(OUT_OF_MEMORY, "Failed to allocate memory arena");
 	}
+	this->m_arena += LA_OVER_ALLOCATE_SIZE;
 #else
 	try {
-		this->m_arena = new uint8_t[size + LA_OVER_ALLOCATE_SIZE]();
+		this->m_arena = new uint8_t[LA_OVER_ALLOCATE_SIZE + size + LA_OVER_ALLOCATE_SIZE]();
+		this->m_arena += LA_OVER_ALLOCATE_SIZE;
 	} catch (const std::bad_alloc&) {
 		this->m_arena = nullptr;
 		throw MachineException(OUT_OF_MEMORY, "Failed to allocate memory arena");
@@ -104,15 +106,15 @@ void Memory::allocate_custom_arena(size_t size, address_t rodata_start, address_
 }
 void Memory::use_custom_arena(void* ptr, size_t size)
 {
-	if (size < LA_OVER_ALLOCATE_SIZE) {
+	if (size < 2 * LA_OVER_ALLOCATE_SIZE) {
 		throw MachineException(INVALID_PROGRAM, "Custom arena size too small");
 	}
-	if (LA_MASKED_MEMORY_BITS != 0 && size < LA_MASKED_MEMORY_SIZE + LA_OVER_ALLOCATE_SIZE) {
+	if (LA_MASKED_MEMORY_BITS != 0 && size < LA_MASKED_MEMORY_SIZE + 2 * LA_OVER_ALLOCATE_SIZE) {
 		throw MachineException(INVALID_PROGRAM, "Custom arena size too small for masked memory");
 	}
 	if (this->m_arena) free_arena();
-	this->m_arena = (uint8_t*)ptr;
-	this->m_arena_size = size - LA_OVER_ALLOCATE_SIZE;
+	this->m_arena = (uint8_t*)ptr + LA_OVER_ALLOCATE_SIZE;
+	this->m_arena_size = size - 2 * LA_OVER_ALLOCATE_SIZE;
 	this->m_arena_end_sub_rodata = this->m_arena_size - this->m_rodata_start;
 	this->m_arena_end_sub_data = this->m_arena_size - this->m_data_start;
 }
@@ -121,9 +123,9 @@ void Memory::free_arena_internal(uint8_t* arena, size_t size)
 {
 	if (!arena) return;
 #ifdef __unix__
-	munmap(arena, size + LA_OVER_ALLOCATE_SIZE);
+	munmap(arena - LA_OVER_ALLOCATE_SIZE, size + 2 * LA_OVER_ALLOCATE_SIZE);
 #else
-	delete[] arena;
+	delete[] (arena - LA_OVER_ALLOCATE_SIZE);
 #endif
 }
 void Memory::free_arena()

@@ -33,16 +33,21 @@ namespace loongarch
 		address_t exec_begin() const noexcept { return m_exec_begin; }
 		address_t exec_end() const noexcept { return m_exec_end; }
 
-		auto* decoder_cache() noexcept { return m_decoder_cache.cache; }
-		auto* decoder_cache() const noexcept { return m_decoder_cache.cache; }
 		auto* pc_relative_decoder_cache(address_t pc = 0) noexcept {
-			return m_decoder_cache.cache - exec_begin() / 4 + (pc / 4);
+			return m_current_decoder_cache + (pc / 4);
 		}
+		void set_current_decoder_cache(DecoderData* cache) noexcept {
+			m_current_decoder_cache = cache - exec_begin() / 4;
+		}
+		DecoderData* get_decoder_cache_base() noexcept { return m_decoder_cache.cache; }
 		size_t decoder_cache_size() const noexcept { return m_decoder_cache.size; }
 
 		void set_decoder_cache(DecoderData* cache, size_t size) noexcept {
-			m_decoder_cache.cache = cache;
-			m_decoder_cache.size = size;
+			this->m_decoder_cache.cache = cache;
+			this->m_decoder_cache.size = size;
+			if (cache != nullptr) {
+				this->set_current_decoder_cache(cache);
+			}
 		}
 
 		size_t size_bytes() const noexcept { return m_exec_end - m_exec_begin; }
@@ -77,6 +82,9 @@ namespace loongarch
 			m_patched_decoder_cache.cache = cache;
 			m_patched_decoder_cache.size = size;
 		}
+		void activate_patched_decoder_cache() noexcept {
+			this->set_current_decoder_cache(m_patched_decoder_cache.cache);
+		}
 
 		// Background compilation state
 		bool is_background_compiling() const noexcept;
@@ -93,10 +101,11 @@ namespace loongarch
 	private:
 		address_t m_exec_begin;
 		address_t m_exec_end;
-		DecoderCache m_decoder_cache;
+		DecoderData* m_current_decoder_cache = nullptr;
 		bool m_stale = false;
 		bool m_execute_only = false;
 		uint32_t m_crc32c_hash = 0;
+		DecoderCache m_decoder_cache;
 #ifdef LA_BINARY_TRANSLATION
 		bool m_is_libtcc = false;
 		const char* m_mappings_base_address = nullptr;

@@ -40,7 +40,7 @@ namespace loongarch
 		address_t current_end   = exec->exec_end();
 
 		// Offset the cache pointer so we can use cache[pc >> SHIFT] directly
-		DecoderData* exec_decoder = exec->decoder_cache() - (current_begin >> DecoderCache::SHIFT);
+		DecoderData* exec_decoder = exec->pc_relative_decoder_cache();
 		DecoderData* decoder;
 
 		// Inaccurate mode doesn't track counter/max_counter but needs them for compatibility

@@ -20,12 +20,12 @@ namespace loongarch
 
 		// Get the main execute segment
 		const auto main_exec = memory.exec_segment_for(memory.start_address());
-		if (!main_exec || !main_exec->decoder_cache()) {
+		if (main_exec->empty()) {
 			return {}; // No decoder cache available
 		}
 
 		// Iterate through the decoder cache
-		const auto* cache = main_exec->decoder_cache();
+		const auto* cache = main_exec->pc_relative_decoder_cache();
 		const size_t cache_size = main_exec->decoder_cache_size();
 
 		for (size_t i = 0; i < cache_size; ++i) {

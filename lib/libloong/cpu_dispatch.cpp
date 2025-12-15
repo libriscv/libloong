@@ -75,7 +75,7 @@ namespace loongarch
 		// Initialize cached segment info
 		address_t exec_begin = exec->exec_begin();
 		address_t exec_end = exec->exec_end();
-		DecoderData* cache = exec->decoder_cache() - (exec_begin >> DecoderCache::SHIFT);
+		DecoderData* cache = exec->pc_relative_decoder_cache();
 
 		machine().set_max_instructions(UINT64_MAX);
 		while (machine().max_instructions()) {
@@ -90,7 +90,7 @@ namespace loongarch
 				// Cache new segment info
 				exec_begin = exec->exec_begin();
 				exec_end = exec->exec_end();
-				cache = exec->decoder_cache() - (exec_begin >> DecoderCache::SHIFT);
+				cache = exec->pc_relative_decoder_cache();
 			}
 
 			// Calculate PC-relative cache index

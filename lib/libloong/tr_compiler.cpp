@@ -237,6 +237,9 @@ namespace loongarch
 		// Issue memory fence to ensure patched decoder is visible
 		std::atomic_thread_fence(std::memory_order_seq_cst);
 
+		DecoderData* old_decoder = exec.pc_relative_decoder_cache();
+		exec.activate_patched_decoder_cache();
+
 		// Apply livepatch bytecode to all translated locations
 		// This will cause execution to swap to the patched decoder cache
 		for (unsigned i = 0; i < nmappings; i++)
@@ -244,7 +247,7 @@ namespace loongarch
 			const auto addr = mappings[i].addr;
 
 			if (exec.is_within(addr)) {
-				auto& entry = *exec.pc_relative_decoder_cache(addr);
+				auto& entry = old_decoder[addr >> DecoderCache::SHIFT];
 				/// XXX: Set the livepatch bytecode atomically
 				/// NOTE: handler_idx=0 means binary translation livepatch
 				entry.set_bytecode(LA64_BC_LIVEPATCH);
@@ -311,14 +314,14 @@ namespace loongarch
 		// Choose which decoder cache to apply mappings to
 		DecoderData* target_decoder = live_patch
 			? exec.patched_decoder_cache()
-			: exec.decoder_cache();
+			: exec.get_decoder_cache_base();
 
 		if (live_patch) {
 			// For live-patching, we need to copy the entire decoder cache first
 			const size_t cache_size = exec.decoder_cache_size();
 			if (!exec.patched_decoder_cache()) {
 				auto* patched = new DecoderData[cache_size];
-				std::copy(exec.decoder_cache(), exec.decoder_cache() + cache_size, patched);
+				std::copy(exec.get_decoder_cache_base(), exec.get_decoder_cache_base() + cache_size, patched);
 				exec.set_patched_decoder_cache(patched, cache_size);
 				target_decoder = patched;
 			}

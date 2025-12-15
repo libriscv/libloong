@@ -159,7 +159,7 @@ new_execute_segment:
 		current_begin = exec->exec_begin();
 		current_end   = exec->exec_end();
 		// Offset the cache pointer for the new segment
-		exec_decoder  = exec->decoder_cache() - (current_begin >> DecoderCache::SHIFT);
+		exec_decoder  = exec->pc_relative_decoder_cache();
 
 		if (counter < max_counter)
 			goto continue_segment;

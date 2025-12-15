@@ -109,10 +109,10 @@ libloong follows the same design principles as libriscv:
 
 ```sh
 Function    Best Rate MB/s  Avg time     Min time     Max time
-Copy:           32634.1     0.005007     0.004903     0.005219
-Scale:          15336.0     0.012081     0.010433     0.013761
-Add:            19884.1     0.015094     0.012070     0.017555
-Triad:          13502.2     0.021949     0.017775     0.024309
+Copy:           32773.6     0.004963     0.004882     0.005249
+Scale:          18533.7     0.009850     0.008633     0.011861
+Add:            20248.1     0.012846     0.011853     0.014884
+Triad:          15246.9     0.016148     0.015741     0.017126
 ```
 
 <img width="600" height="371" alt="CoreMark 1 0 interpreters, Dec 2025 (Ryzen 7950X)" src="https://github.com/user-attachments/assets/b37e985e-8332-44fc-880b-781bc1a07cc5" />

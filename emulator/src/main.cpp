@@ -181,6 +181,13 @@ static int run_program(const std::vector<uint8_t>& binary, const EmulatorOptions
 		}
 		machine->setup_linux(opts.program_args, {"LC_ALL=C", "USER=groot"});
 
+#ifdef LA_BINARY_TRANSLATION
+		if (!machine->options().translate_output_file.empty()) {
+			printf("%s\n", machine->options().translate_output_file.c_str());
+			return 0;
+		}
+#endif
+
 		if (opts.verbose) {
 			printf("Program entry point at: 0x%" PRIx64 "\n",
 				   (uint64_t)machine->memory.start_address());
@@ -280,7 +287,7 @@ static void print_help(const char* progname)
 	printf("      --fast              Enable fastest binary translation (unsafe)\n");
 	printf("      --nbit-as           Use automatic N-bit address masking in binary translation\n");
 	printf("  -T, --trace             Trace binary translation execution\n");
-	printf("  -O, --output <file>     Write generated translation code to file\n");
+	printf("  -O, --output <file>     Write binary translation to file, and exit\n");
 	printf("The emulator automatically detects LA32/LA64 architecture from the ELF binary.\n\n");
 	printf("Examples:\n");
 	printf("  %s program.elf\n", progname);

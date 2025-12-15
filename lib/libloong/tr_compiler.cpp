@@ -155,7 +155,7 @@ namespace loongarch
 			Machine::unknown_syscall_t* unknown_syscall;
 			DecoderData::handler_t (*resolve_handler)(uint32_t);
 			int  (*syscall)(CPU&, unsigned, uint64_t, address_t);
-			ReturnValues (*exception) (CPU&, address_t, address_t, int);
+			ReturnValues (*exception) (CPU&, address_t);
 			void (*trace) (CPU&, const char*, address_t, uint32_t);
 			void (*log) (CPU&, address_t, const char*);
 			void (*fallback) (CPU&, address_t, uint32_t);
@@ -186,13 +186,18 @@ namespace loongarch
 		callback_table.resolve_handler = [](uint32_t instr_bits) -> DecoderData::handler_t {
 			return CPU::decode(la_instruction{instr_bits}).handler;
 		};
-		callback_table.exception = [](CPU& cpu, address_t pc, address_t data, int type) -> ReturnValues {
+		callback_table.exception = [](CPU& cpu, address_t pc) -> ReturnValues {
 			cpu.registers().pc = pc;
-			const char* reason =
-				(type == ExceptionType::PROTECTION_FAULT) ? "Protection fault" : "Exception triggered";
-			cpu.machine().set_current_exception(
-				std::make_exception_ptr(MachineException(static_cast<ExceptionType>(type), reason, data))
-			);
+			try {
+				// Decode and execute the instruction at PC to trigger the exception
+				auto instr = cpu.read_current_instruction();
+				cpu.execute(instr);
+				// If we get here, the exception didn't occur as expected:
+				cpu.machine().set_current_exception(std::make_exception_ptr(
+					MachineException(INVALID_PROGRAM, "Exception handler returned unexpectedly")));
+			} catch (...) {
+				cpu.machine().set_current_exception(std::current_exception());
+			}
 			cpu.machine().stop();
 			return ReturnValues{ cpu.machine().instruction_counter(), 0u };
 		};

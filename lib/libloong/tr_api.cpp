@@ -153,7 +153,7 @@ static struct CallbackTable {
 	void (*unknown_syscall)(CPU*, addr_t);
 	handler_t (*resolve_handler)(uint32_t);
 	int  (*syscall)(CPU*, unsigned, uint64_t, addr_t);
-	ReturnValues (*exception) (CPU*, addr_t, addr_t, int);
+	ReturnValues (*exception) (CPU*, addr_t);
 	void (*trace) (CPU*, const char*, addr_t, uint32_t);
 	void (*log) (CPU*, addr_t, const char*);
 	void (*fallback) (CPU*, addr_t, uint32_t);

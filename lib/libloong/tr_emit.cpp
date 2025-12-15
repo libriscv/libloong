@@ -282,10 +282,12 @@ struct Emitter
 
 		// Emit bounds check for address - memory is over-allocated,
 		// to allow for accesses that slightly exceed the allocated size
-		add_code("  if ((" + addr + ") < " +
-			hex_address(tinfo.arena_rostart) + " || (" + addr + ") >= " +
-			hex_address(tinfo.arena_size) + ")");
-		add_code("    return api.exception(cpu, " + hex_address(pc()) + "ULL, " + addr + ", 2);");
+		// Rewrite expression to (addr - rodata_start < arena_size - rodata_start)
+		const address_t arena_end_sub_rodata = tinfo.arena_size - tinfo.arena_rostart;
+		add_code("  if ((" + addr + " - " +
+			hex_address(tinfo.arena_rostart) + ") >= " +
+			hex_address(arena_end_sub_rodata) + ") {");
+		add_code("  pc = " + hex_address(pc()) + "ULL; goto handle_exception; }");
 	}
 	void emit_store_bounds_check(const std::string& addr) {
 		if (tinfo.options.translate_unchecked_memory_accesses
@@ -293,10 +295,12 @@ struct Emitter
 
 		// Emit bounds check for address - memory is over-allocated,
 		// to allow for accesses that slightly exceed the allocated size
-		add_code("  if ((" + addr + ") < " +
-			hex_address(tinfo.arena_datastart) + " || (" + addr + ") >= " +
-			hex_address(tinfo.arena_size) + ")");
-		add_code("    return api.exception(cpu, " + hex_address(pc()) + "ULL, " + addr + ", 2);");
+		// Rewrite expression to (addr - data_start < arena_size - data_start)
+		const address_t arena_end_sub_data = tinfo.arena_size - tinfo.arena_datastart;
+		add_code("  if ((" + addr + " - " +
+			hex_address(tinfo.arena_datastart) + ") >= " +
+			hex_address(arena_end_sub_data) + ") {");
+		add_code("  pc = " + hex_address(pc()) + "ULL; goto handle_exception; }");
 	}
 
 	// Emit memory load - templatized for different sizes and signedness
@@ -1949,6 +1953,12 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 
 	emit.add_code("  cpu->pc = " + hex_address(tinfo.endpc) + ";");
 	emit.emit_return();
+	emit.add_code("handle_exception:");
+	emit.store_all_registers();
+	// At this point we don't know what happened, but PC has been updated,
+	// and so we can call the instruction handler (essentially to re-trigger
+	// the exception in the normal way)
+	emit.add_code("    return api.exception(cpu, pc);");
 	emit.add_code("}");
 
 	// Generate static function definitions

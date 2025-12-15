@@ -107,6 +107,11 @@ static inline uint32_t do_bswap32(uint32_t x) {
 #define fmaxf(x, y) __builtin_fmaxf(x, y)
 #define fmax(x, y) __builtin_fmax(x, y)
 #endif
+// NaN = 0xFF exponent and non-zero mantissa
+#define isnanf(x) ((x) != (x))
+#define isnan(x) ((x) != (x))
+//#define isnanf(x) (((*(uint32_t*)&x) & 0x7FFFFFFF) > 0x7F800000)
+//#define isnan(x) (((*(uint64_t*)&x) & 0x7FFFFFFFFFFFFFFF) > 0x7FF0000000000000)
 
 #ifdef __HAVE_BUILTIN_SPECULATION_SAFE_VALUE
 #define SPECSAFE(x) __builtin_speculation_safe_value(x)

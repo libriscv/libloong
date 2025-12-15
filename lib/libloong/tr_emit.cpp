@@ -227,6 +227,24 @@ struct Emitter
 		return "cpu->vr[" + std::to_string(idx) + "].du[0]";
 	}
 
+	// Generate FP register access for word signed (int32_t)
+	std::string freg_w(unsigned idx) {
+		if (is_cached_fpreg(idx)) {
+			mark_fpreg_used(idx);
+			return cached_fpregname(idx) + "->w[0]";
+		}
+		return "cpu->vr[" + std::to_string(idx) + "].w[0]";
+	}
+
+	// Generate FP register access for double signed (int64_t)
+	std::string freg_d(unsigned idx) {
+		if (is_cached_fpreg(idx)) {
+			mark_fpreg_used(idx);
+			return cached_fpregname(idx) + "->d[0]";
+		}
+		return "cpu->vr[" + std::to_string(idx) + "].d[0]";
+	}
+
 	// Emit a simple arithmetic/logic instruction
 	void emit_alu_rri(const char* op, unsigned rd, unsigned rj, int64_t imm) {
 		if (rd == 0) return; // Writing to zero register is NOP
@@ -1732,6 +1750,198 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 				"-" + emit.freg32(fj) + " * "
 				+ emit.freg32(fk) + " + "
 				+ emit.freg32(fa) + ";");
+			break;
+		}
+
+		// Floating-point conversion: Integer to Float
+		case InstrId::FFINT_D_L: {
+			// Convert 64-bit signed integer to double-precision float
+			uint32_t fd = instr.whole & 0x1F;
+			uint32_t fj = (instr.whole >> 5) & 0x1F;
+			emit.add_code("  " + emit.freg64(fd) + " = (double)" + emit.freg_d(fj) + ";");
+			break;
+		}
+		case InstrId::FFINT_D_W: {
+			// Convert 32-bit signed integer to double-precision float
+			uint32_t fd = instr.whole & 0x1F;
+			uint32_t fj = (instr.whole >> 5) & 0x1F;
+			emit.add_code("  " + emit.freg64(fd) + " = (double)" + emit.freg_w(fj) + ";");
+			break;
+		}
+		case InstrId::FFINT_S_W: {
+			// Convert 32-bit signed integer to single-precision float
+			uint32_t fd = instr.whole & 0x1F;
+			uint32_t fj = (instr.whole >> 5) & 0x1F;
+			emit.add_code("  " + emit.freg32(fd) + " = (float)" + emit.freg_w(fj) + ";");
+			break;
+		}
+		case InstrId::FFINT_S_L: {
+			// Convert 64-bit signed integer to single-precision float
+			uint32_t fd = instr.whole & 0x1F;
+			uint32_t fj = (instr.whole >> 5) & 0x1F;
+			emit.add_code("  " + emit.freg32(fd) + " = (float)" + emit.freg_d(fj) + ";");
+			break;
+		}
+
+		// Floating-point conversion: Float to Integer with truncation
+		case InstrId::FTINTRZ_W_S: {
+			// Convert single to 32-bit integer with truncation (round towards zero)
+			uint32_t fd = instr.whole & 0x1F;
+			uint32_t fj = (instr.whole >> 5) & 0x1F;
+			emit.add_code("  " + emit.freg_w(fd) + " = (int32_t)" + emit.freg32(fj) + ";");
+			break;
+		}
+		case InstrId::FTINTRZ_W_D: {
+			// Convert double to 32-bit integer with truncation (round towards zero)
+			uint32_t fd = instr.whole & 0x1F;
+			uint32_t fj = (instr.whole >> 5) & 0x1F;
+			emit.add_code("  " + emit.freg_w(fd) + " = (int32_t)" + emit.freg64(fj) + ";");
+			break;
+		}
+		case InstrId::FTINTRZ_L_S: {
+			// Convert single to 64-bit integer with truncation (round towards zero)
+			uint32_t fd = instr.whole & 0x1F;
+			uint32_t fj = (instr.whole >> 5) & 0x1F;
+			emit.add_code("  " + emit.freg_d(fd) + " = (int64_t)" + emit.freg32(fj) + ";");
+			break;
+		}
+		case InstrId::FTINTRZ_L_D: {
+			// Convert double to 64-bit integer with truncation (round towards zero)
+			uint32_t fd = instr.whole & 0x1F;
+			uint32_t fj = (instr.whole >> 5) & 0x1F;
+			emit.add_code("  " + emit.freg_d(fd) + " = (int64_t)" + emit.freg64(fj) + ";");
+			break;
+		}
+
+		// Floating-point comparison
+		case InstrId::FCMP_COND_S: {
+			// Floating-point compare with condition (single precision)
+			// Format: fcmp.cond.s cc, fj, fk
+			uint32_t cd = instr.whole & 0x7;         // FCC register index (3 bits)
+			uint32_t fj = (instr.whole >> 5) & 0x1F; // Source register 1
+			uint32_t fk = (instr.whole >> 10) & 0x1F; // Source register 2
+			uint32_t cond = (instr.whole >> 15) & 0x1F; // Condition code (5 bits)
+
+			std::string fj_val = emit.freg32(fj);
+			std::string fk_val = emit.freg32(fk);
+			std::string is_unordered = "(isnanf(" + fj_val + ") || isnanf(" + fk_val + "))";
+
+			// Generate comparison logic based on condition code (matching la_instr_impl.hpp)
+			std::string result;
+			switch (cond) {
+				case 0x02: // CLT - (Quiet) Less Than (ordered)
+				case 0x03: // SLT - Signaling Less Than (ordered)
+					result = "(!" + is_unordered + " && (" + fj_val + " < " + fk_val + "))";
+					break;
+				case 0x04: // CEQ - Equal (ordered)
+				case 0x05: // SEQ - Signaling Equal (ordered)
+					result = "(!" + is_unordered + " && (" + fj_val + " == " + fk_val + "))";
+					break;
+				case 0x06: // CLE - (Quiet) Less or Equal (ordered)
+				case 0x07: // SLE - Signaling Less or Equal (ordered)
+					result = "(!" + is_unordered + " && (" + fj_val + " <= " + fk_val + "))";
+					break;
+				case 0x08: // CUN - (Quiet) Incomparable
+				case 0x09: // SUN - Signaling Incomparable
+					result = is_unordered;
+					break;
+				case 0x0A: // CULT - Less than or incomparable
+				case 0x0B: // SULT - Signaling Less than or incomparable
+					result = "((" + fj_val + " < " + fk_val + ") || " + is_unordered + ")";
+					break;
+				case 0x0E: // CULE - (Quiet) Unordered or Less or Equal
+				case 0x0F: // SULE - Signaling Unordered or Less or Equal
+					result = "(" + is_unordered + " || (" + fj_val + " <= " + fk_val + "))";
+					break;
+				case 0x14: // COR - (Quiet) Ordered
+					result = "(!" + is_unordered + ")";
+					break;
+				case 0x18: // CUNE - (Quiet) Unordered or Not Equal
+				case 0x19: // SUNE - Signaling Unordered or Not Equal
+					result = "(" + is_unordered + " || (" + fj_val + " != " + fk_val + "))";
+					break;
+				default:
+					// For unsupported conditions, fall back to slow path
+					result = "";
+					break;
+			}
+
+			if (!result.empty()) {
+				// Set the condition flag
+				emit.add_code("  if (" + result + ") {");
+				emit.add_code("    cpu->fcc |= (1u << " + std::to_string(cd) + ");");
+				emit.add_code("  } else {");
+				emit.add_code("    cpu->fcc &= ~(1u << " + std::to_string(cd) + ");");
+				emit.add_code("  }");
+			} else {
+				emit.add_code("  cpu->pc = " + hex_address(emit.pc()) + "ULL;");
+				emit.add_code("  goto handle_exception;");
+			}
+			break;
+		}
+		case InstrId::FCMP_COND_D: {
+			// Floating-point compare with condition (double precision)
+			// Format: fcmp.cond.d cc, fj, fk
+			uint32_t cd = instr.whole & 0x7;         // FCC register index (3 bits)
+			uint32_t fj = (instr.whole >> 5) & 0x1F; // Source register 1
+			uint32_t fk = (instr.whole >> 10) & 0x1F; // Source register 2
+			uint32_t cond = (instr.whole >> 15) & 0x1F; // Condition code (5 bits)
+
+			std::string fj_val = emit.freg64(fj);
+			std::string fk_val = emit.freg64(fk);
+			std::string is_unordered = "(isnan(" + fj_val + ") || isnan(" + fk_val + "))";
+
+			// Generate comparison logic based on condition code (matching la_instr_impl.hpp)
+			std::string result;
+			switch (cond) {
+				case 0x02: // CLT - (Quiet) Less Than (ordered)
+				case 0x03: // SLT - Signaling Less Than (ordered)
+					result = "(!" + is_unordered + " && (" + fj_val + " < " + fk_val + "))";
+					break;
+				case 0x04: // CEQ - Equal (ordered)
+				case 0x05: // SEQ - Signaling Equal (ordered)
+					result = "(!" + is_unordered + " && (" + fj_val + " == " + fk_val + "))";
+					break;
+				case 0x06: // CLE - (Quiet) Less or Equal (ordered)
+				case 0x07: // SLE - Signaling Less or Equal (ordered)
+					result = "(!" + is_unordered + " && (" + fj_val + " <= " + fk_val + "))";
+					break;
+				case 0x08: // CUN - (Quiet) Incomparable
+				case 0x09: // SUN - Signaling Incomparable
+					result = is_unordered;
+					break;
+				case 0x0A: // CULT - Less than or incomparable
+				case 0x0B: // SULT - Signaling Less than or incomparable
+					result = "((" + fj_val + " < " + fk_val + ") || " + is_unordered + ")";
+					break;
+				case 0x0E: // CULE - (Quiet) Unordered or Less or Equal
+				case 0x0F: // SULE - Signaling Unordered or Less or Equal
+					result = "(" + is_unordered + " || (" + fj_val + " <= " + fk_val + "))";
+					break;
+				case 0x14: // COR - (Quiet) Ordered
+					result = "(!" + is_unordered + ")";
+					break;
+				case 0x18: // CUNE - (Quiet) Unordered or Not Equal
+				case 0x19: // SUNE - Signaling Unordered or Not Equal
+					result = "(" + is_unordered + " || (" + fj_val + " != " + fk_val + "))";
+					break;
+				default:
+					// For unsupported conditions, fall back to slow path
+					result = "";
+					break;
+			}
+
+			if (!result.empty()) {
+				// Set the condition flag
+				emit.add_code("  if (" + result + ") {");
+				emit.add_code("    cpu->fcc |= (1u << " + std::to_string(cd) + ");");
+				emit.add_code("  } else {");
+				emit.add_code("    cpu->fcc &= ~(1u << " + std::to_string(cd) + ");");
+				emit.add_code("  }");
+			} else {
+				emit.add_code("  cpu->pc = " + hex_address(emit.pc()) + "ULL;");
+				emit.add_code("  goto handle_exception;");
+			}
 			break;
 		}
 

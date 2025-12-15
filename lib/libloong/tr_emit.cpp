@@ -1901,6 +1901,57 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			break;
 		}
 
+		// Floating-point conversion: Float to Float
+		case InstrId::FCVT_S_D: {
+			// Convert double-precision to single-precision float
+			uint32_t fd = instr.whole & 0x1F;
+			uint32_t fj = (instr.whole >> 5) & 0x1F;
+			emit.add_code("  " + emit.freg32(fd) + " = (float)" + emit.freg64(fj) + ";");
+			break;
+		}
+		case InstrId::FCVT_D_S: {
+			// Convert single-precision to double-precision float
+			uint32_t fd = instr.whole & 0x1F;
+			uint32_t fj = (instr.whole >> 5) & 0x1F;
+			emit.add_code("  " + emit.freg64(fd) + " = (double)" + emit.freg32(fj) + ";");
+			break;
+		}
+
+		// Move between FPR and GPR
+		case InstrId::MOVFR2GR_S: {
+			// Move 32-bit value from FPR to GPR (sign-extended)
+			uint32_t rd = instr.whole & 0x1F;
+			if (rd == 0) break; // Writes to r0 are discarded
+			uint32_t fj = (instr.whole >> 5) & 0x1F;
+			// Read 32-bit value from FPR and sign-extend to 64 bits
+			emit.add_code("  " + emit.reg(rd) + " = (int64_t)(int32_t)" + emit.freg_wu(fj) + ";");
+			break;
+		}
+		case InstrId::MOVFR2GR_D: {
+			// Move 64-bit value from FPR to GPR
+			uint32_t rd = instr.whole & 0x1F;
+			if (rd == 0) break; // Writes to r0 are discarded
+			uint32_t fj = (instr.whole >> 5) & 0x1F;
+			emit.add_code("  " + emit.reg(rd) + " = " + emit.freg_du(fj) + ";");
+			break;
+		}
+		case InstrId::MOVGR2FR_W: {
+			// Move 32-bit value from GPR to FPR (word)
+			uint32_t fd = instr.whole & 0x1F;
+			uint32_t rj = (instr.whole >> 5) & 0x1F;
+			// Write 32-bit value to low word and clear upper 32 bits
+			emit.add_code("  " + emit.freg_wu(fd) + " = (uint32_t)" + emit.reg(rj) + ";");
+			emit.add_code("  cpu->vr[" + std::to_string(fd) + "].wu[1] = 0;");
+			break;
+		}
+		case InstrId::MOVGR2FR_D: {
+			// Move 64-bit value from GPR to FPR
+			uint32_t fd = instr.whole & 0x1F;
+			uint32_t rj = (instr.whole >> 5) & 0x1F;
+			emit.add_code("  " + emit.freg_du(fd) + " = " + emit.reg(rj) + ";");
+			break;
+		}
+
 		// Floating-point comparison
 		case InstrId::FCMP_COND_S: {
 			// Floating-point compare with condition (single precision)

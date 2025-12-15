@@ -1,4 +1,4 @@
-#include "memory.hpp"
+#include "machine.hpp"
 
 #include "elf.hpp"
 #include <cstring>

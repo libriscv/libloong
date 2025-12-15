@@ -1,6 +1,4 @@
-#include "memory.hpp"
 #include "machine.hpp"
-#define OVER_ALLOCATE_SIZE 64 /* Avoid SIMD bounds-check */
 
 namespace loongarch
 {

@@ -99,6 +99,9 @@ namespace loongarch
 		DecodedExecuteSegment* m_exec;
 		bool m_ll_bit = false; // LL/SC linked-load bit
 	};
+	// The CPU-relative memory offset is calculated as:
+	//   AlignUp(sizeof(Machine), 4096) - LA_OVER_ALLOCATE_SIZE
+	static constexpr address_t LA_CPU_RELATIVE_MEMORY_OFFSET = (4096 - LA_OVER_ALLOCATE_SIZE - sizeof(CPU));
 
 } // namespace loongarch
 

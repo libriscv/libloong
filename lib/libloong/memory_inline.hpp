@@ -20,7 +20,12 @@ inline T Memory::read(address_t addr) const
 		}
 	}
 
+#ifdef LA_CPU_RELATIVE_MEMORY
+	const auto offset = (intptr_t)(this);
+	return *reinterpret_cast<const T*>(LA_CPU_RELATIVE_MEMORY_OFFSET + offset + addr);
+#else
 	return *reinterpret_cast<const T*>(&m_arena[addr]);
+#endif
 }
 
 template <typename T, bool EnableSegReg>
@@ -38,7 +43,12 @@ inline void Memory::write(address_t addr, T value)
 		}
 	}
 
+#ifdef LA_CPU_RELATIVE_MEMORY
+	const auto offset = (intptr_t)(this);
+	*reinterpret_cast<T*>(LA_CPU_RELATIVE_MEMORY_OFFSET + offset + addr) = value;
+#else
 	*reinterpret_cast<T*>(&m_arena[addr]) = value;
+#endif
 }
 
 template <typename T>

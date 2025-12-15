@@ -1,6 +1,5 @@
-#include "memory.hpp"
-
 #include "machine.hpp"
+
 #include "elf.hpp"
 #include "shared_exec_segment.hpp"
 #include "util/crc32.hpp"

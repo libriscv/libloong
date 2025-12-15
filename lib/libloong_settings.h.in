@@ -19,3 +19,6 @@
 
 // Masked memory arena bits (0 = disabled)
 #define LA_MASKED_MEMORY_BITS @LA_MASKED_MEMORY_BITS@ULL
+
+// CPU-relative memory operations
+#cmakedefine LA_CPU_RELATIVE_MEMORY

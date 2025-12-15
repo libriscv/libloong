@@ -1481,6 +1481,94 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			}
 			break;
 
+		case InstrId::MOVCF2GR: {
+			// Move condition flag to GPR
+			uint32_t rd = instr.whole & 0x1F;
+			uint32_t cj = (instr.whole >> 5) & 0x7;
+			if (rd != 0) {
+				emit.add_code("  " + emit.reg(rd) + " = (cpu->fcc >> " + std::to_string(cj) + ") & 1;");
+			}
+			break;
+		}
+
+		case InstrId::BITREV_4B: {
+			// Bit reverse 4 bytes
+			uint32_t rd = instr.r2.rd;
+			uint32_t rj = instr.r2.rj;
+			if (rd != 0) {
+				emit.add_code("  {");
+				emit.add_code("    uint32_t val = (uint32_t)" + emit.reg(rj) + ";");
+				emit.add_code("    uint32_t result = 0;");
+				emit.add_code("    for (int i = 0; i < 4; i++) {");
+				emit.add_code("      uint8_t byte = (val >> (i * 8)) & 0xFF;");
+				emit.add_code("      uint8_t rev = 0;");
+				emit.add_code("      for (int j = 0; j < 8; j++) {");
+				emit.add_code("        if (byte & (1 << j)) rev |= (1 << (7 - j));");
+				emit.add_code("      }");
+				emit.add_code("      result |= (rev << (i * 8));");
+				emit.add_code("    }");
+				emit.add_code("    " + emit.reg(rd) + " = (int64_t)(int32_t)result;");
+				emit.add_code("  }");
+			}
+			break;
+		}
+
+		case InstrId::BITREV_8B: {
+			// Bit reverse 8 bytes
+			uint32_t rd = instr.r2.rd;
+			uint32_t rj = instr.r2.rj;
+			if (rd != 0) {
+				emit.add_code("  {");
+				emit.add_code("    uint64_t val = " + emit.reg(rj) + ";");
+				emit.add_code("    uint64_t result = 0;");
+				emit.add_code("    for (int i = 0; i < 8; i++) {");
+				emit.add_code("      uint8_t byte = (val >> (i * 8)) & 0xFF;");
+				emit.add_code("      uint8_t rev = 0;");
+				emit.add_code("      for (int j = 0; j < 8; j++) {");
+				emit.add_code("        if (byte & (1 << j)) rev |= (1 << (7 - j));");
+				emit.add_code("      }");
+				emit.add_code("      result |= ((uint64_t)rev << (i * 8));");
+				emit.add_code("    }");
+				emit.add_code("    " + emit.reg(rd) + " = result;");
+				emit.add_code("  }");
+			}
+			break;
+		}
+
+		case InstrId::BITREV_W: {
+			// Bit reverse word (32 bits)
+			uint32_t rd = instr.r2.rd;
+			uint32_t rj = instr.r2.rj;
+			if (rd != 0) {
+				emit.add_code("  {");
+				emit.add_code("    uint32_t val = (uint32_t)" + emit.reg(rj) + ";");
+				emit.add_code("    uint32_t result = 0;");
+				emit.add_code("    for (int i = 0; i < 32; i++) {");
+				emit.add_code("      if (val & (1u << i)) result |= (1u << (31 - i));");
+				emit.add_code("    }");
+				emit.add_code("    " + emit.reg(rd) + " = (int64_t)(int32_t)result;");
+				emit.add_code("  }");
+			}
+			break;
+		}
+
+		case InstrId::BITREV_D: {
+			// Bit reverse doubleword (64 bits)
+			uint32_t rd = instr.r2.rd;
+			uint32_t rj = instr.r2.rj;
+			if (rd != 0) {
+				emit.add_code("  {");
+				emit.add_code("    uint64_t val = " + emit.reg(rj) + ";");
+				emit.add_code("    uint64_t result = 0;");
+				emit.add_code("    for (int i = 0; i < 64; i++) {");
+				emit.add_code("      if (val & (1ULL << i)) result |= (1ULL << (63 - i));");
+				emit.add_code("    }");
+				emit.add_code("    " + emit.reg(rd) + " = result;");
+				emit.add_code("  }");
+			}
+			break;
+		}
+
 		// Special instructions
 		case InstrId::NOP:  // No operation
 		case InstrId::DBAR: // Memory barriers - no-op in emulation

@@ -1,10 +1,13 @@
 #include <script.hpp>
-#include <fmt/core.h>
-#include <chrono>
-#include <thread>
-#include <cmath>
+
 #include <algorithm>
+#include <array>
+#include <chrono>
+#include <cmath>
+#include <fmt/core.h>
 #include <iostream>
+#include <numeric>
+#include <thread>
 using namespace loongarch::script;
 
 // Simple ASCII-based terminal game renderer
@@ -56,11 +59,11 @@ namespace GameEngine {
 			fmt::print("{}\n{}\n", screen_buffer[y+0], screen_buffer[y+1]);
 		}
 		// One line up, display stats
-		static double t_total = 0.0;
-		static uint64_t frame_count = 0;
-		t_total += (frame_count == 0) ? 0.0 : t;
-		frame_count++;
-		const double avg_time = t_total / frame_count;
+		static std::array<double, 64> tv = {0};
+		static unsigned tv_idx = 0;
+		tv[tv_idx % tv.size()] = t;
+		tv_idx++;
+		const double avg_time = std::accumulate(std::begin(tv), std::end(tv), 0.0) * double(1.0 / tv.size());
 		fmt::print("\033[{}A", 1);
 		fmt::print("+= LoongScript {}  Time: {:.2f}us (avg={:.2f}us)  Instr: {} ==\n",
 			is_jit ? "JIT" : "Interp",
@@ -74,7 +77,7 @@ namespace GameEngine {
 struct HostGameState {
 	bool running = true;
 	int score = 0;
-	float delta_time = 0.033f; // ~30 FPS
+	float delta_time = 0.0167f;
 	std::chrono::steady_clock::time_point last_frame_time;
 
 	// Input state
@@ -302,19 +305,24 @@ int main(int argc, char* argv[]) {
 			GameEngine::draw_border();
 
 			// Update game logic (guest-side)
-			auto start_time = std::chrono::steady_clock::now();
-			game_script.call<void>("game_update");
-			auto cycles = game_script.machine().instruction_counter();
-			auto end_time = std::chrono::steady_clock::now();
+			std::chrono::duration<double> update_time;
+			uint64_t cycles = 0;
+			{
+				auto start_time = std::chrono::high_resolution_clock::now();
+				game_script.call<void>("game_update");
+				cycles = game_script.machine().instruction_counter();
+				auto end_time = std::chrono::high_resolution_clock::now();
+				update_time = end_time - start_time;
+			}
 
 			// Render
 			GameEngine::render(
-				std::chrono::duration<double>(end_time - start_time).count(),
+				update_time.count(),
 				cycles,
 				game_script.machine().is_binary_translation_enabled());
 
-			// Target 30 FPS
-			std::this_thread::sleep_for(std::chrono::milliseconds(32));
+			// Target 60 FPS
+			std::this_thread::sleep_for(std::chrono::milliseconds(16));
 		}
 
 		// Cleanup terminal

@@ -370,6 +370,24 @@ extern "C" {
     pub fn libloong_machine_get_pc(machine: *const LibLoongMachine) -> u64;
     pub fn libloong_machine_set_pc(machine: *mut LibLoongMachine, pc: u64);
 
+    pub fn libloong_machine_copy_to_guest(
+        machine: *mut LibLoongMachine,
+        dest: u64,
+        src: *const u8,
+        len: usize,
+    ) -> LibLoongError;
+    pub fn libloong_machine_copy_from_guest(
+        machine: *const LibLoongMachine,
+        dest: *mut u8,
+        src: u64,
+        len: usize,
+    ) -> LibLoongError;
+    pub fn libloong_machine_mmap_allocate(machine: *mut LibLoongMachine, size: usize) -> u64;
+
+    pub fn libloong_machine_arena_malloc(machine: *mut LibLoongMachine, size: usize) -> u64;
+    pub fn libloong_machine_arena_free(machine: *mut LibLoongMachine, ptr: u64) -> i32;
+    pub fn libloong_machine_has_arena(machine: *const LibLoongMachine) -> i32;
+
     pub fn libloong_machine_set_stdout_callback(callback: Option<LibLoongStdoutCallback>);
 
     pub fn libloong_machine_set_userdata(machine: *mut LibLoongMachine, userdata: *mut ());

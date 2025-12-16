@@ -140,6 +140,8 @@ LibLoongMachine* libloong_machine_create(
         MachineOptions opts = to_machine_options(options);
 
         Machine* machine = new Machine(binary, opts);
+		auto exit_addr = machine->address_of("_exit");
+		machine->memory.set_exit_address(exit_addr);
         if (error_info) {
             error_info->error_code = LIBLOONG_OK;
             error_info->exception_type = LIBLOONG_EXCEPTION_NONE;
@@ -509,6 +511,46 @@ void libloong_machine_set_pc(LibLoongMachine* machine, uint64_t pc) {
     if (machine) {
         reinterpret_cast<Machine*>(machine)->cpu.jump(pc);
     }
+}
+
+LibLoongError libloong_machine_copy_to_guest(LibLoongMachine* machine, uint64_t dest, const void* src, size_t len) {
+    Machine* m = reinterpret_cast<Machine*>(machine);
+    return safe_call([&]() {
+        m->memory.copy_to_guest(dest, src, len);
+    }, LIBLOONG_ERROR_INVALID_ADDRESS);
+}
+
+LibLoongError libloong_machine_copy_from_guest(const LibLoongMachine* machine, void* dest, uint64_t src, size_t len) {
+    const Machine* m = reinterpret_cast<const Machine*>(machine);
+    return safe_call([&]() {
+        m->memory.copy_from_guest(dest, src, len);
+    }, LIBLOONG_ERROR_INVALID_ADDRESS);
+}
+
+uint64_t libloong_machine_mmap_allocate(LibLoongMachine* machine, size_t size) {
+    Machine* m = reinterpret_cast<Machine*>(machine);
+    return m->memory.mmap_allocate(size);
+}
+
+uint64_t libloong_machine_arena_malloc(LibLoongMachine* machine, size_t size) {
+    Machine* m = reinterpret_cast<Machine*>(machine);
+    if (!m->has_arena()) {
+        return 0;
+    }
+    return m->arena().malloc(size);
+}
+
+int libloong_machine_arena_free(LibLoongMachine* machine, uint64_t ptr) {
+    Machine* m = reinterpret_cast<Machine*>(machine);
+    if (!m->has_arena()) {
+        return -1;
+    }
+    return m->arena().free(ptr);
+}
+
+int libloong_machine_has_arena(const LibLoongMachine* machine) {
+    const Machine* m = reinterpret_cast<const Machine*>(machine);
+    return m->has_arena() ? 1 : 0;
 }
 
 // Static callback storage

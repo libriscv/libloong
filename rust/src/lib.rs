@@ -201,6 +201,29 @@ impl Machine {
         Ok(())
     }
 
+    /// Check if the machine has an accelerated arena/heap
+    pub fn has_arena(&self) -> bool {
+        unsafe { ffi::libloong_machine_has_arena(self.handle) != 0 }
+    }
+
+    /// Allocate memory on the guest heap (requires accelerated heap to be set up)
+    ///
+    /// # Returns
+    ///
+    /// Returns the guest address of the allocated memory, or 0 if allocation fails or arena is not set up.
+    pub fn arena_malloc(&mut self, size: usize) -> u64 {
+        unsafe { ffi::libloong_machine_arena_malloc(self.handle, size) }
+    }
+
+    /// Free memory on the guest heap (requires accelerated heap to be set up)
+    ///
+    /// # Returns
+    ///
+    /// Returns 0 on success, -1 if arena is not set up.
+    pub fn arena_free(&mut self, ptr: u64) -> i32 {
+        unsafe { ffi::libloong_machine_arena_free(self.handle, ptr) }
+    }
+
     /// Simulate execution for up to `max_instructions`
     ///
     /// # Arguments
@@ -496,6 +519,38 @@ impl Machine {
         }
 
         Ok(())
+    }
+
+    /// Copy data from host to guest memory
+    pub fn copy_to_guest(&mut self, dest: u64, src: &[u8]) -> Result<(), Error> {
+        let error = unsafe {
+            ffi::libloong_machine_copy_to_guest(self.handle, dest, src.as_ptr(), src.len())
+        };
+        if error != ffi::LibLoongError::LIBLOONG_OK {
+            return Err(error.into());
+        }
+        Ok(())
+    }
+
+    /// Copy data from guest to host memory
+    pub fn copy_from_guest(&self, dest: &mut [u8], src: u64) -> Result<(), Error> {
+        let error = unsafe {
+            ffi::libloong_machine_copy_from_guest(self.handle, dest.as_mut_ptr(), src, dest.len())
+        };
+        if error != ffi::LibLoongError::LIBLOONG_OK {
+            return Err(error.into());
+        }
+        Ok(())
+    }
+
+    /// Allocate writable guest memory using mmap
+    ///
+    /// # Returns
+    ///
+    /// Returns the guest address of the allocated memory. This memory is writable
+    /// and can be used with copy_to_guest/copy_from_guest or as arena base.
+    pub fn mmap_allocate(&mut self, size: usize) -> u64 {
+        unsafe { ffi::libloong_machine_mmap_allocate(self.handle, size) }
     }
 
     /// Read a null-terminated string from guest memory

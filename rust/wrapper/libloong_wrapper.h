@@ -195,6 +195,16 @@ void libloong_machine_set_register(LibLoongMachine* machine, unsigned reg_num, u
 uint64_t libloong_machine_get_pc(const LibLoongMachine* machine);
 void libloong_machine_set_pc(LibLoongMachine* machine, uint64_t pc);
 
+// Memory operations
+LibLoongError libloong_machine_copy_to_guest(LibLoongMachine* machine, uint64_t dest, const void* src, size_t len);
+LibLoongError libloong_machine_copy_from_guest(const LibLoongMachine* machine, void* dest, uint64_t src, size_t len);
+uint64_t libloong_machine_mmap_allocate(LibLoongMachine* machine, size_t size);
+
+// Guest heap allocation (requires accelerated heap to be set up)
+uint64_t libloong_machine_arena_malloc(LibLoongMachine* machine, size_t size);
+int libloong_machine_arena_free(LibLoongMachine* machine, uint64_t ptr);
+int libloong_machine_has_arena(const LibLoongMachine* machine);
+
 // Print callback
 void libloong_machine_set_stdout_callback(LibLoongStdoutCallback callback);
 

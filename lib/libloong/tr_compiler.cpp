@@ -40,6 +40,9 @@ namespace loongarch
 		tcc_define_symbol(state, "ARCH", "HOST_UNKNOWN");
 		tcc_define_symbol(state, "LA_SYSCALLS_MAX", std::to_string(LA_SYSCALLS_MAX).c_str());
 		tcc_define_symbol(state, "LA_MACHINE_ALIGNMENT", "64");
+#ifdef LA_LASX_ENABLED
+		tcc_define_symbol(state, "LA_LASX_ENABLED", "1");
+#endif
 		tcc_set_options(state, "-std=c99 -O2 -nostdlib");
 
 #if defined(_WIN32)

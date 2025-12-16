@@ -8,6 +8,7 @@ project(loong CXX)
 option(LA_DEBUG "Enable debug output" OFF)
 option(LA_BINARY_TRANSLATION "Enable binary translation" OFF)
 option(LA_THREADED "Enable threaded support" ON)
+option(LA_LASX "Enable LASX 256-bit vector instructions" OFF)
 set(LA_MASKED_MEMORY_BITS "0" CACHE STRING "Power-of-two memory arena size for masking (0 = disabled)")
 option(LA_CPU_RELATIVE_MEMORY "Enable CPU-relative memory arena" OFF)
 
@@ -71,6 +72,13 @@ configure_file(libloong.pc.in ${CMAKE_CURRENT_BINARY_DIR}/libloong.pc)
 
 # Create loong library
 add_library(loong ${SOURCES})
+
+# LASX support
+if (LA_LASX)
+	target_compile_definitions(loong PUBLIC
+		LA_LASX_ENABLED=1
+	)
+endif()
 
 # Binary translation support
 if (LA_BINARY_TRANSLATION)

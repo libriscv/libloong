@@ -376,6 +376,9 @@ TEST_CASE("Floating-point operations", "[basic][float]") {
 	}
 
 	SECTION("LASX vectorized initialization") {
+#ifndef LA_LASX_ENABLED
+		return;
+#endif
 		CompilerOptions opts;
 		opts.optimization = 2;
 		opts.extra_flags = {"-mlasx"};
@@ -414,6 +417,9 @@ TEST_CASE("Floating-point operations", "[basic][float]") {
 	}
 
 	SECTION("LASX vector add, mul and fmadd") {
+#ifndef LA_LASX_ENABLED
+		return;
+#endif
 		CompilerOptions opts;
 		opts.optimization = 2;
 		opts.extra_flags = {"-mlasx"};

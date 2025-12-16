@@ -8,6 +8,9 @@ using namespace loongarch::test;
 
 TEST_CASE("LASX vector load/add/store sequence", "[instructions][lasx]") {
 	InstructionTester tester;
+#ifndef LA_LASX_ENABLED
+	return;
+#endif
 
 	SECTION("xvld -> xvfadd.d -> xvst") {
 		// Allocate 4KB of aligned memory for test data
@@ -94,6 +97,9 @@ TEST_CASE("Individual LASX instructions", "[instructions][lasx]") {
 	InstructionTester tester;
 
 	SECTION("xvld - load 256-bit vector") {
+#ifndef LA_LASX_ENABLED
+	return;
+#endif
 		auto guest_addr = tester.allocate_guest_memory(64, 32);
 
 		// Write test data: 4 doubles = 32 bytes
@@ -118,6 +124,9 @@ TEST_CASE("Individual LASX instructions", "[instructions][lasx]") {
 	}
 
 	SECTION("xvfadd.d - add two 256-bit vectors of doubles") {
+#ifndef LA_LASX_ENABLED
+	return;
+#endif
 		std::vector<double> vec1 = {1.0, 2.0, 3.0, 4.0};
 		std::vector<double> vec2 = {5.0, 6.0, 7.0, 8.0};
 
@@ -139,6 +148,9 @@ TEST_CASE("Individual LASX instructions", "[instructions][lasx]") {
 	}
 
 	SECTION("xvst - store 256-bit vector") {
+#ifndef LA_LASX_ENABLED
+	return;
+#endif
 		auto guest_addr = tester.allocate_guest_memory(64, 32);
 
 		// Set up xr2 with test data
@@ -321,6 +333,9 @@ TEST_CASE("vfcmp and xvfcmp - vector FP comparisons", "[instructions][vector][fc
 	}
 
 	SECTION("xvfcmp.slt.d - LASX less than comparison") {
+#ifndef LA_LASX_ENABLED
+	return;
+#endif
 		// Set up two LASX vectors with doubles
 		std::vector<double> vec1 = {1.0, 5.0, 3.0, 2.0}; // 256-bit LASX = 4 doubles
 		std::vector<double> vec2 = {2.0, 3.0, 4.0, 2.0};
@@ -348,6 +363,9 @@ TEST_CASE("vfcmp and xvfcmp - vector FP comparisons", "[instructions][vector][fc
 
 TEST_CASE("Complex instruction sequence from real code", "[instructions][complex]") {
 	InstructionTester tester;
+#ifndef LA_LASX_ENABLED
+	return;
+#endif
 
 	SECTION("Mixed LASX operations") {
 		// From the example:

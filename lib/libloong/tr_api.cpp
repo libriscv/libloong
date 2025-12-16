@@ -120,6 +120,7 @@ static inline uint32_t do_bswap32(uint32_t x) {
 #endif
 
 // Floating-point register union
+#ifdef LA_LASX_ENABLED
 typedef union {
 	int8_t   b[32];
 	int16_t  h[16];
@@ -132,13 +133,31 @@ typedef union {
 	float    f[8];
 	double   df[4];
 } lasx_reg;
+#else
+typedef union {
+	int8_t   b[16];
+	int16_t  h[8];
+	int32_t  w[4];
+	int64_t  d[2];
+	uint8_t  bu[16];
+	uint16_t hu[8];
+	uint32_t wu[4];
+	uint64_t du[2];
+	float    f[4];
+	double   df[2];
+} lasx_reg;
+#endif
 
 // CPU structure - simplified version for binary translation
 __attribute__((aligned(LA_MACHINE_ALIGNMENT)))
 typedef struct {
 	addr_t  pc;        // Program counter
 	addr_t  r[32];     // General-purpose registers
+#ifdef LA_LASX_ENABLED
 	addr_t padding[3]; // Padding to align vectors
+#else
+	addr_t padding[1]; // Padding to align vectors
+#endif
 	lasx_reg vr[32];   // Vector/FP registers
 	uint32_t fcsr;     // Floating-point control/status register
 	uint8_t  fcc;      // Floating-point condition codes

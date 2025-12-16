@@ -129,7 +129,7 @@ struct GuestStdString {
 		}
 	}
 
-	void fix_addresses(Machine& machine, address_t self)
+	void fix_addresses(Machine&, address_t self)
 	{
 		this->move(self);
 	}

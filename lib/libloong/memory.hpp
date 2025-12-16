@@ -146,9 +146,11 @@ namespace loongarch
 		void free_arena();
 		static void free_arena_internal(uint8_t* arena, size_t size);
 		inline bool is_readable(address_t addr, size_t size = sizeof(address_t)) const noexcept {
+			(void)size; // XXX: static_assert(size <= LA_OVER_ALLOCATE_SIZE);
 			return addr - m_rodata_start < m_arena_end_sub_rodata;
 		}
 		inline bool is_writable(address_t addr, size_t size = sizeof(address_t)) const noexcept {
+			(void)size;
 			return addr - m_data_start < m_arena_end_sub_data;
 		}
 		[[noreturn]] LA_COLD_PATH() static void protection_fault(address_t addr, const char* message);

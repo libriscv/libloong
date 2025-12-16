@@ -179,7 +179,9 @@ namespace loongarch
 				cpu.registers().pc = pc;
 				cpu.machine().set_max_instructions(max_ic);
 				cpu.machine().system_call(sysnum);
-				return cpu.machine().stopped() || (cpu.pc() != pc);
+				const bool divergent = cpu.machine().stopped() || (cpu.pc() != pc);
+				cpu.increment_pc(4);
+				return divergent;
 			} catch (...) {
 				cpu.machine().set_current_exception(std::current_exception());
 				cpu.machine().stop();

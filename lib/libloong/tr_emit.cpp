@@ -313,6 +313,36 @@ struct Emitter
 			hex_address(arena_end_sub_rodata) + ") {");
 		add_code("  pc = " + hex_address(pc()) + "ULL; goto handle_exception; }");
 	}
+	void emit_mergable_load_bounds_check(const std::string& addr, int reg, int64_t offset, size_t size) {
+		// Avoiding bounds-checks is extremely important for performance, however
+		// we only avoid it under certain limited conditions:
+		// 1. There are zero instructions between this and the last check
+		//    for the same register + offset
+		// 2. The last check was for the same type (read vs write)
+		// 3. The size was <= 8 bytes
+		// 4. The arena is over-allocated by 64 bytes on both sides, allowing
+		//    up to 8x8-byte nearby accesses with a single check
+		if (last_read_check_pc == pc() - 4
+			&& last_read_check_register == reg
+			&& offset_is_within_overallocation(last_read_check_offset, offset, size)) {
+			// Skip bounds check, but continue (same register, same original bounds-checked offset)
+			last_read_check_pc = pc();
+		} else if (last_write_check_pc == pc() - 4
+			&& last_write_check_register == reg
+			&& offset_is_within_overallocation(last_write_check_offset, offset, size)) {
+			// Previous was a write check for same register + offset range
+			// The arena is divided into unreadable, readable and writable regions,
+			// and any region that is writable is also readable, so we inherit the check:
+			last_read_check_pc = pc();
+			last_read_check_register = reg;
+			last_read_check_offset = offset + size;
+		} else {
+			this->emit_load_bounds_check(addr, size);
+			last_read_check_pc = pc();
+			last_read_check_register = reg;
+			last_read_check_offset = offset + size;
+		}
+	}
 	void emit_store_bounds_check(const std::string& addr, size_t size) {
 		if (tinfo.options.translate_unchecked_memory_accesses
 			|| this->nbit_mask != 0) return; // No bounds check
@@ -325,6 +355,19 @@ struct Emitter
 			hex_address(tinfo.arena_datastart) + ") >= " +
 			hex_address(arena_end_sub_data) + ") {");
 		add_code("  pc = " + hex_address(pc()) + "ULL; goto handle_exception; }");
+	}
+	void emit_mergable_store_bounds_check(const std::string& addr, int reg, int64_t offset, size_t size) {
+		if (last_write_check_pc == pc() - 4
+			&& last_write_check_register == reg
+			&& offset_is_within_overallocation(last_write_check_offset, offset, size)) {
+			// Skip bounds check
+			last_write_check_pc = pc();
+		} else {
+			this->emit_store_bounds_check(addr, size);
+			last_write_check_pc = pc();
+			last_write_check_register = reg;
+			last_write_check_offset = offset + size;
+		}
 	}
 
 	static bool offset_is_within_overallocation(int64_t old_offset, int64_t new_offset, size_t size) {
@@ -342,25 +385,7 @@ struct Emitter
 		std::string ptr = arena_offset(addr);
 		size >>= 3;
 
-		// Avoiding bounds-checks is extremely important for performance, however
-		// we only avoid it under certain limited conditions:
-		// 1. There are zero instructions between this and the last check
-		//    for the same register + offset
-		// 2. The last check was for the same type (read vs write)
-		// 3. The size was <= 8 bytes
-		// 4. The arena is over-allocated by 64 bytes, allowing up to
-		//    8 instructions of 8-byte accesses with a single check
-		if (last_read_check_pc == pc() - 4
-			&& last_read_check_register == int(rj)
-			&& offset_is_within_overallocation(last_read_check_offset, offset, size)) {
-			// Skip bounds check, but continue (same register, same original bounds-checked offset)
-			last_read_check_pc = pc();
-		} else {
-			this->emit_load_bounds_check(addr, size);
-			last_read_check_pc = pc();
-			last_read_check_register = rj;
-			last_read_check_offset = offset + size;
-		}
+		this->emit_mergable_load_bounds_check(addr, rj, offset, size);
 
 		if (size == 8) {
 			// 64-bit load
@@ -401,17 +426,7 @@ struct Emitter
 		std::string ptr = arena_offset(addr);
 		size >>= 3;
 
-		if (last_write_check_pc == pc() - 4
-			&& last_write_check_register == int(rj)
-			&& offset_is_within_overallocation(last_write_check_offset, offset, size)) {
-			// Skip bounds check
-			last_write_check_pc = pc();
-		} else {
-			this->emit_store_bounds_check(addr, size);
-			last_write_check_pc = pc();
-			last_write_check_register = rj;
-			last_write_check_offset = offset + size;
-		}
+		this->emit_mergable_store_bounds_check(addr, rj, offset, size);
 
 		if (size == 8) {
 			add_code("  *(uint64_t*)" + ptr + " = " + reg(rd) + ";");
@@ -864,16 +879,16 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			// Store cached registers before syscall
 			if (code != 0) { // 0 = regular syscall
 				emit.store_syscall_registers();
-				emit.add_code("  if (api.syscall(cpu, " + std::to_string(code) + ", max_ic, " + hex_address(emit.pc()) + ")) {");
+				emit.add_code("  if (api.syscall(cpu, " + std::to_string(code) + ", max_ic, " + hex_address(emit.pc()) + "))");
 			} else {
 				emit.store_all_registers();
-				emit.add_code("  if (api.syscall(cpu, " + emit.reg(REG_A7) + ", max_ic, " + hex_address(emit.pc()) + ")) {");
+				emit.add_code("  if (api.syscall(cpu, " + emit.reg(REG_A7) + ", max_ic, " + hex_address(emit.pc()) + "))");
 			}
 			if (!tinfo.options.translate_ignore_instruction_limit) {
-				emit.add_code("    cpu->pc += 4; return (ReturnValues){ic, MAX_COUNTER(cpu)}; }");
+				emit.add_code("    return (ReturnValues){ic, MAX_COUNTER(cpu)};");
 				emit.add_code("  max_ic = MAX_COUNTER(cpu);");
 			} else {
-				emit.add_code("    cpu->pc += 4; return (ReturnValues){0, MAX_COUNTER(cpu)}; }");
+				emit.add_code("    return (ReturnValues){0, MAX_COUNTER(cpu)};");
 			}
 			// Reload cached registers after syscall
 			emit.reload_syscall_results();
@@ -1627,37 +1642,37 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 		// Floating-point loads and stores
 		case InstrId::FLD_S: {
 			// Load single-precision float (32-bit) into FPR
-			int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
+			const int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 			std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string(offset);
 			std::string ptr = emit.arena_offset(addr);
-			emit.emit_load_bounds_check(addr, 4);
+			emit.emit_mergable_load_bounds_check(addr, instr.ri12.rj, offset, 4);
 			emit.add_code("  " + emit.freg_wu(instr.ri12.rd) + " = *(uint32_t*)" + ptr + ";");
 			break;
 		}
 		case InstrId::FLD_D: {
 			// Load double-precision float (64-bit) into FPR
-			int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
+			const int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 			std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string(offset);
 			std::string ptr = emit.arena_offset(addr);
-			emit.emit_load_bounds_check(addr, 8);
+			emit.emit_mergable_load_bounds_check(addr, instr.ri12.rj, offset, 8);
 			emit.add_code("  " + emit.freg_du(instr.ri12.rd) + " = *(uint64_t*)" + ptr + ";");
 			break;
 		}
 		case InstrId::FST_S: {
 			// Store single-precision float (32-bit) from FPR
-			int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
+			const int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 			std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string(offset);
 			std::string ptr = emit.arena_offset(addr);
-			emit.emit_store_bounds_check(addr, 4);
+			emit.emit_mergable_store_bounds_check(addr, instr.ri12.rj, offset, 4);
 			emit.add_code("  *(uint32_t*)" + ptr + " = " + emit.freg_wu(instr.ri12.rd) + ";");
 			break;
 		}
 		case InstrId::FST_D: {
 			// Store double-precision float (64-bit) from FPR
-			int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
+			const int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 			std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string(offset);
 			std::string ptr = emit.arena_offset(addr);
-			emit.emit_store_bounds_check(addr, 8);
+			emit.emit_mergable_store_bounds_check(addr, instr.ri12.rj, offset, 8);
 			emit.add_code("  *(uint64_t*)" + ptr + " = " + emit.freg_du(instr.ri12.rd) + ";");
 			break;
 		}
@@ -2275,9 +2290,9 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 		// These are slow, and probably need to be optimized harder
 		case InstrId::VLD: {
 			// Load 128-bit vector from memory
-			int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
+			const int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 			std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string(offset);
-			emit.emit_load_bounds_check(addr, 16);
+			emit.emit_mergable_load_bounds_check(addr, instr.ri12.rj, offset, 16);
 			std::string ptr0 = emit.arena_offset(addr);
 			std::string ptr1 = emit.arena_offset(addr + " + 8");
 			emit.add_code("  { lasx_reg* vr_ptr = &cpu->vr[" + std::to_string(instr.ri12.rd) + "];");
@@ -2287,9 +2302,9 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 		}
 		case InstrId::VST: {
 			// Store 128-bit vector to memory
-			int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
+			const int64_t offset = InstructionHelpers::sign_extend_12(instr.ri12.imm);
 			std::string addr = emit.reg(instr.ri12.rj) + " + " + std::to_string(offset);
-			emit.emit_store_bounds_check(addr, 16);
+			emit.emit_mergable_store_bounds_check(addr, instr.ri12.rj, offset, 16);
 			std::string ptr0 = emit.arena_offset(addr);
 			std::string ptr1 = emit.arena_offset(addr + " + 8");
 			emit.add_code("  { lasx_reg* vr_ptr = &cpu->vr[" + std::to_string(instr.ri12.rd) + "];");

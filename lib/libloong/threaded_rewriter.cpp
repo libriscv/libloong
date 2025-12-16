@@ -543,38 +543,6 @@ uint32_t DecodedExecuteSegment::optimize_bytecode(uint8_t& bytecode, address_t p
 			fi.rk = original.r3.rk;
 			return fi.whole;
 		} break;
-		case LA64_BC_XVLD: {
-			// XVLD xd, rj, si12 - uses RI12 format
-			auto fi = *(FasterLA64_RI12 *)&instruction_bits;
-			fi.rd = original.ri12.rd;
-			fi.rj = original.ri12.rj;
-			fi.set_imm(original.ri12.imm);
-			return fi.whole;
-		} break;
-		case LA64_BC_XVST: {
-			// XVST xd, rj, si12 - uses RI12 format
-			auto fi = *(FasterLA64_RI12 *)&instruction_bits;
-			fi.rd = original.ri12.rd;
-			fi.rj = original.ri12.rj;
-			fi.set_imm(original.ri12.imm);
-			return fi.whole;
-		} break;
-		case LA64_BC_XVLDX: {
-			// XVLDX xd, rj, rk - uses R3 format
-			auto fi = *(FasterLA64_R3 *)&instruction_bits;
-			fi.rd = original.r3.rd;
-			fi.rj = original.r3.rj;
-			fi.rk = original.r3.rk;
-			return fi.whole;
-		} break;
-		case LA64_BC_XVSTX: {
-			// XVSTX xd, rj, rk - uses R3 format
-			auto fi = *(FasterLA64_R3 *)&instruction_bits;
-			fi.rd = original.r3.rd;
-			fi.rj = original.r3.rj;
-			fi.rk = original.r3.rk;
-			return fi.whole;
-		} break;
 		case LA64_BC_FMADD_D: {
 			// FMADD.D fd, fj, fk, fa - 4R-type format
 			auto fi = *(FasterLA64_4R *)&instruction_bits;
@@ -797,6 +765,40 @@ uint32_t DecodedExecuteSegment::optimize_bytecode(uint8_t& bytecode, address_t p
 				return original.whole;
 			}
 		} break;
+#ifdef LA_LASX_ENABLED
+		case LA64_BC_XVLD: {
+			// XVLD xd, rj, si12 - uses RI12 format
+			auto fi = *(FasterLA64_RI12 *)&instruction_bits;
+			fi.rd = original.ri12.rd;
+			fi.rj = original.ri12.rj;
+			fi.set_imm(original.ri12.imm);
+			return fi.whole;
+		} break;
+		case LA64_BC_XVST: {
+			// XVST xd, rj, si12 - uses RI12 format
+			auto fi = *(FasterLA64_RI12 *)&instruction_bits;
+			fi.rd = original.ri12.rd;
+			fi.rj = original.ri12.rj;
+			fi.set_imm(original.ri12.imm);
+			return fi.whole;
+		} break;
+		case LA64_BC_XVLDX: {
+			// XVLDX xd, rj, rk - uses R3 format
+			auto fi = *(FasterLA64_R3 *)&instruction_bits;
+			fi.rd = original.r3.rd;
+			fi.rj = original.r3.rj;
+			fi.rk = original.r3.rk;
+			return fi.whole;
+		} break;
+		case LA64_BC_XVSTX: {
+			// XVSTX xd, rj, rk - uses R3 format
+			auto fi = *(FasterLA64_R3 *)&instruction_bits;
+			fi.rd = original.r3.rd;
+			fi.rj = original.r3.rj;
+			fi.rk = original.r3.rk;
+			return fi.whole;
+		} break;
+#endif // LA_LASX_ENABLED
 	}
 	return instruction_bits;
 }

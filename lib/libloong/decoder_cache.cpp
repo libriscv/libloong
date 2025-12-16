@@ -129,8 +129,6 @@ extern bool try_translate(const Machine&, const MachineOptions&, std::shared_ptr
 		case InstrId::FMADD_D: return LA64_BC_FMADD_D;
 		case InstrId::VFMADD_D: return LA64_BC_VFMADD_D;
 		case InstrId::VHADDW_D_W: return LA64_BC_VHADDW_D_W;
-		case InstrId::XVLD: return LA64_BC_XVLD;
-		case InstrId::XVST: return LA64_BC_XVST;
 		case InstrId::SRLI_W: return LA64_BC_SRLI_W;
 		case InstrId::SRL_D: return LA64_BC_SRL_D;
 		case InstrId::LU52I_D: return LA64_BC_LU52I_D;
@@ -152,9 +150,13 @@ extern bool try_translate(const Machine&, const MachineOptions&, std::shared_ptr
 		case InstrId::VST: return LA64_BC_VST;
 		case InstrId::VLDX: return LA64_BC_VLDX;
 		case InstrId::VSTX: return LA64_BC_VSTX;
+		case InstrId::VFADD_D: return LA64_BC_VFADD_D;
+#ifdef LA_LASX_ENABLED
+		case InstrId::XVLD: return LA64_BC_XVLD;
+		case InstrId::XVST: return LA64_BC_XVST;
 		case InstrId::XVLDX: return LA64_BC_XVLDX;
 		case InstrId::XVSTX: return LA64_BC_XVSTX;
-		case InstrId::VFADD_D: return LA64_BC_VFADD_D;
+#endif
 
 		// PC-modifying non-diverging instructions
 		case InstrId::PCADDI: return LA64_BC_PCADDI;

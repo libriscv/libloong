@@ -636,46 +636,6 @@ INSTRUCTION(LA64_BC_VHADDW_D_W, la64_vhaddw_d_w)
 	NEXT_INSTR();
 }
 
-// LA64_BC_XVLD: LASX 256-bit vector load
-INSTRUCTION(LA64_BC_XVLD, la64_xvld)
-{
-	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
-	const auto addr = REG(fi.rj) + fi.imm;
-	auto& vr = REGISTERS().getvr(fi.rd);
-	vr = MACHINE().memory.template read<remove_cvref_t<decltype(vr)>, true>(addr);
-	NEXT_INSTR();
-}
-
-// LA64_BC_XVST: LASX 256-bit vector store
-INSTRUCTION(LA64_BC_XVST, la64_xvst)
-{
-	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
-	const auto addr = REG(fi.rj) + fi.imm;
-	const auto& vr = REGISTERS().getvr(fi.rd);
-	MACHINE().memory.template write<remove_cvref_t<decltype(vr)>, true>(addr, vr);
-	NEXT_INSTR();
-}
-
-// LA64_BC_XVLDX: LASX 256-bit vector indexed load (xd = mem[rj + rk])
-INSTRUCTION(LA64_BC_XVLDX, la64_xvldx)
-{
-	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
-	const auto addr = REG(fi.rj) + REG(fi.rk);
-	auto& vr = REGISTERS().getvr(fi.rd);
-	vr = MACHINE().memory.template read<remove_cvref_t<decltype(vr)>, true>(addr);
-	NEXT_INSTR();
-}
-
-// LA64_BC_XVSTX: LASX 256-bit vector indexed store (mem[rj + rk] = xd)
-INSTRUCTION(LA64_BC_XVSTX, la64_xvstx)
-{
-	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
-	const auto addr = REG(fi.rj) + REG(fi.rk);
-	const auto& vr = REGISTERS().getvr(fi.rd);
-	MACHINE().memory.template write<remove_cvref_t<decltype(vr)>, true>(addr, vr);
-	NEXT_INSTR();
-}
-
 // LA64_BC_FMADD_D: Fused multiply-add double precision
 INSTRUCTION(LA64_BC_FMADD_D, la64_fmadd_d)
 {
@@ -1003,6 +963,48 @@ INSTRUCTION(LA64_BC_REVB_4H, la64_revb_4h)
 	REG(fi.rd) = result;
 	NEXT_INSTR();
 }
+
+#ifdef LA_LASX_ENABLED
+// LA64_BC_XVLD: LASX 256-bit vector load
+INSTRUCTION(LA64_BC_XVLD, la64_xvld)
+{
+	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
+	const auto addr = REG(fi.rj) + fi.imm;
+	auto& vr = REGISTERS().getvr(fi.rd);
+	vr = MACHINE().memory.template read<remove_cvref_t<decltype(vr)>, true>(addr);
+	NEXT_INSTR();
+}
+
+// LA64_BC_XVST: LASX 256-bit vector store
+INSTRUCTION(LA64_BC_XVST, la64_xvst)
+{
+	auto fi = *(FasterLA64_RI12 *)&DECODER().instr;
+	const auto addr = REG(fi.rj) + fi.imm;
+	const auto& vr = REGISTERS().getvr(fi.rd);
+	MACHINE().memory.template write<remove_cvref_t<decltype(vr)>, true>(addr, vr);
+	NEXT_INSTR();
+}
+
+// LA64_BC_XVLDX: LASX 256-bit vector indexed load (xd = mem[rj + rk])
+INSTRUCTION(LA64_BC_XVLDX, la64_xvldx)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	const auto addr = REG(fi.rj) + REG(fi.rk);
+	auto& vr = REGISTERS().getvr(fi.rd);
+	vr = MACHINE().memory.template read<remove_cvref_t<decltype(vr)>, true>(addr);
+	NEXT_INSTR();
+}
+
+// LA64_BC_XVSTX: LASX 256-bit vector indexed store (mem[rj + rk] = xd)
+INSTRUCTION(LA64_BC_XVSTX, la64_xvstx)
+{
+	auto fi = *(FasterLA64_R3 *)&DECODER().instr;
+	const auto addr = REG(fi.rj) + REG(fi.rk);
+	const auto& vr = REGISTERS().getvr(fi.rd);
+	MACHINE().memory.template write<remove_cvref_t<decltype(vr)>, true>(addr, vr);
+	NEXT_INSTR();
+}
+#endif // LA_LASX_ENABLED
 
 // LA64_BC_INVALID: Invalid instruction
 INSTRUCTION(LA64_BC_INVALID, execute_invalid)

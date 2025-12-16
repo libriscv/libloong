@@ -28,6 +28,9 @@ namespace loongarch
 					m_unknown_syscall_handler(m, sysnum);
 				};
 			}
+			m_stdout = [](const char* data, size_t len) {
+				fwrite(data, 1, len, stdout);
+			};
 		});
 	}
 	Machine::Machine(std::string_view binary, const MachineOptions& options)
@@ -178,7 +181,7 @@ namespace loongarch
 
 	void Machine::print(const char* data, size_t len)
 	{
-		fwrite(data, 1, len, stdout);
+		this->m_stdout(data, len);
 	}
 
 	void Machine::print(std::string_view str)

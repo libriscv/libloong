@@ -18,6 +18,7 @@ namespace loongarch
 	{
 		using syscall_t = void(Machine&);
 		using unknown_syscall_t = void(Machine&, int);
+		using stdout_callback_t = void(const char*, size_t);
 		using rdtime_callback_t = uint64_t(Machine&);
 
 		// Construction
@@ -147,6 +148,7 @@ namespace loongarch
 		// Print helper
 		void print(const char* data, size_t len);
 		void print(std::string_view str);
+		void set_print_callback(stdout_callback_t* callback) noexcept { m_stdout = callback; }
 
 		// Bytecode statistics
 		struct BytecodeStats {
@@ -185,6 +187,7 @@ namespace loongarch
 		std::exception_ptr m_current_exception = nullptr;
 		static inline std::array<syscall_t*, LA_SYSCALLS_MAX> m_syscall_handlers = {};
 		static inline unknown_syscall_t* m_unknown_syscall_handler = nullptr;
+		static inline stdout_callback_t* m_stdout = nullptr;
 		static inline rdtime_callback_t* m_rdtime_handler = nullptr;
 
 		void push_argument(address_t& sp, address_t value);

@@ -1,0 +1,173 @@
+name: Rust Bindings
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'rust/**'
+      - 'lib/libloong/**'
+      - '.github/workflows/rust-bindings.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'rust/**'
+      - 'lib/libloong/**'
+      - '.github/workflows/rust-bindings.yml'
+
+jobs:
+  rust-bindings:
+    name: Build and Test Rust Bindings
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          cmake \
+          ninja-build \
+          g++-14 \
+          g++-14-loongarch64-linux-gnu
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: stable
+
+    - name: Cache Rust dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          rust/target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('rust/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
+
+    - name: Build libloong C++ library
+      run: |
+        mkdir -p build
+        cd build
+        cmake .. \
+          -G Ninja \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_C_COMPILER=gcc-14 \
+          -DCMAKE_CXX_COMPILER=g++-14
+        ninja loong
+
+    - name: Build Rust bindings
+      run: |
+        cd rust
+        cargo build --release --verbose
+
+    - name: Run Rust tests
+      run: |
+        cd rust
+        cargo test --release --verbose
+
+    - name: Check code formatting
+      run: |
+        cd rust
+        cargo fmt -- --check
+
+    - name: Run Clippy linter
+      run: |
+        cd rust
+        cargo clippy --all-targets --all-features -- -D warnings
+
+    - name: Build test program (return_42)
+      run: |
+        mkdir -p rust/test_programs
+        cat > rust/test_programs/return_42.c << 'EOF'
+        int main() {
+            return 42;
+        }
+        EOF
+        loongarch64-linux-gnu-gcc-14 -O2 -static \
+          -Wl,-Ttext-segment=0x200000 \
+          -o rust/test_programs/return_42.elf \
+          rust/test_programs/return_42.c
+
+    - name: Build test program (hello_world)
+      run: |
+        cat > rust/test_programs/hello_world.c << 'EOF'
+        #include <stdio.h>
+        int main() {
+            printf("Hello from LoongArch!\n");
+            return 0;
+        }
+        EOF
+        loongarch64-linux-gnu-gcc-14 -O2 -static \
+          -Wl,-Ttext-segment=0x200000 \
+          -o rust/test_programs/hello_world.elf \
+          rust/test_programs/hello_world.c
+
+    - name: Build test program (factorial)
+      run: |
+        cat > rust/test_programs/factorial.c << 'EOF'
+        unsigned long factorial(unsigned long n) {
+            if (n <= 1) return 1;
+            return n * factorial(n - 1);
+        }
+        int main() {
+            return 0;
+        }
+        EOF
+        loongarch64-linux-gnu-gcc-14 -O2 -static \
+          -Wl,-Ttext-segment=0x200000 \
+          -o rust/test_programs/factorial.elf \
+          rust/test_programs/factorial.c
+
+    - name: Test hello_world example
+      run: |
+        cd rust
+        cargo run --release --example hello_world -- test_programs/hello_world.elf 2>&1 | tee output.txt
+        if ! grep -q "Hello from LoongArch!" output.txt; then
+          echo "ERROR: Expected output not found!"
+          exit 1
+        fi
+        echo "✓ hello_world example passed"
+
+    - name: Test vmcall example with factorial
+      run: |
+        cd rust
+        cargo run --release --example vmcall -- test_programs/factorial.elf factorial 5 2>&1 | tee output.txt
+        if ! grep -q "120" output.txt; then
+          echo "ERROR: Expected factorial(5) = 120 not found!"
+          exit 1
+        fi
+        echo "✓ vmcall example (factorial) passed"
+
+    - name: Test vmcall example with return_42
+      run: |
+        cd rust
+        cargo run --release --example vmcall -- test_programs/return_42.elf main 2>&1 | tee output.txt
+        if ! grep -q "42" output.txt; then
+          echo "ERROR: Expected return value 42 not found!"
+          exit 1
+        fi
+        echo "✓ vmcall example (return_42) passed"
+
+    - name: Generate documentation
+      run: |
+        cd rust
+        cargo doc --no-deps --release
+
+    - name: Summary
+      if: success()
+      run: |
+        echo "================================"
+        echo "✓ All Rust binding tests passed!"
+        echo "================================"
+        echo ""
+        echo "Build artifacts:"
+        ls -lh rust/target/release/examples/ 2>/dev/null || true
+        echo ""
+        echo "Test programs:"
+        ls -lh rust/test_programs/*.elf 2>/dev/null || true

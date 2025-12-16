@@ -29,11 +29,10 @@
 
 mod ffi;
 
-pub use ffi::Error;
+pub use ffi::{Error, ExceptionType};
 
-use std::ffi::{CStr, CString};
+use std::ffi::CString;
 use std::marker::PhantomData;
-use std::ptr;
 
 /// Machine options for configuring the emulator
 #[derive(Debug, Clone)]
@@ -57,7 +56,7 @@ impl Default for MachineOptions {
         Self {
             memory_max: 256 * 1024 * 1024,
             stack_size: 2 * 1024 * 1024,
-            brk_size: 1 * 1024 * 1024,
+            brk_size: 1024 * 1024,
             verbose_loader: false,
             verbose_syscalls: false,
             use_shared_execute_segments: true,
@@ -73,7 +72,11 @@ impl From<MachineOptions> for ffi::LibLoongMachineOptions {
             brk_size: opts.brk_size,
             verbose_loader: if opts.verbose_loader { 1 } else { 0 },
             verbose_syscalls: if opts.verbose_syscalls { 1 } else { 0 },
-            use_shared_execute_segments: if opts.use_shared_execute_segments { 1 } else { 0 },
+            use_shared_execute_segments: if opts.use_shared_execute_segments {
+                1
+            } else {
+                0
+            },
         }
     }
 }
@@ -103,19 +106,19 @@ impl Machine {
     /// Returns an error if the binary is invalid or machine creation fails
     pub fn new(binary: &[u8], options: MachineOptions) -> Result<Self, Error> {
         let opts = ffi::LibLoongMachineOptions::from(options);
-        let mut error = ffi::LibLoongError::LIBLOONG_OK;
+        let mut error_info = std::mem::MaybeUninit::<ffi::LibLoongErrorInfo>::uninit();
 
         let handle = unsafe {
             ffi::libloong_machine_create(
                 binary.as_ptr(),
                 binary.len(),
                 &opts,
-                &mut error
+                error_info.as_mut_ptr(),
             )
         };
 
         if handle.is_null() {
-            return Err(error.into());
+            return Err(unsafe { error_info.assume_init() }.into());
         }
 
         Ok(Self {
@@ -135,19 +138,13 @@ impl Machine {
             .iter()
             .map(|&s| CString::new(s).expect("Invalid argument string"))
             .collect();
-        let args_ptrs: Vec<*const i8> = args_cstr
-            .iter()
-            .map(|cs| cs.as_ptr())
-            .collect();
+        let args_ptrs: Vec<*const i8> = args_cstr.iter().map(|cs| cs.as_ptr()).collect();
 
         let env_cstr: Vec<CString> = env
             .iter()
             .map(|&s| CString::new(s).expect("Invalid environment string"))
             .collect();
-        let env_ptrs: Vec<*const i8> = env_cstr
-            .iter()
-            .map(|cs| cs.as_ptr())
-            .collect();
+        let env_ptrs: Vec<*const i8> = env_cstr.iter().map(|cs| cs.as_ptr()).collect();
 
         let error = unsafe {
             ffi::libloong_machine_setup_linux(
@@ -190,7 +187,11 @@ impl Machine {
     }
 
     /// Setup accelerated heap with custom arena
-    pub fn setup_accelerated_heap(&mut self, arena_base: u64, arena_size: usize) -> Result<(), Error> {
+    pub fn setup_accelerated_heap(
+        &mut self,
+        arena_base: u64,
+        arena_size: usize,
+    ) -> Result<(), Error> {
         let error = unsafe {
             ffi::libloong_machine_setup_accelerated_heap(self.handle, arena_base, arena_size)
         };
@@ -210,11 +211,17 @@ impl Machine {
     ///
     /// Returns `Ok(())` if execution completes or reaches the instruction limit.
     pub fn simulate(&mut self, max_instructions: u64) -> Result<(), Error> {
+        let mut error_info = std::mem::MaybeUninit::<ffi::LibLoongErrorInfo>::uninit();
         let error = unsafe {
-            ffi::libloong_machine_simulate(self.handle, max_instructions, 0)
+            ffi::libloong_machine_simulate(
+                self.handle,
+                max_instructions,
+                0,
+                error_info.as_mut_ptr(),
+            )
         };
         if error != ffi::LibLoongError::LIBLOONG_OK {
-            return Err(error.into());
+            return Err(unsafe { error_info.assume_init() }.into());
         }
         Ok(())
     }
@@ -276,13 +283,18 @@ impl Machine {
     ///
     /// # Returns
     ///
-    /// Returns the function's return value
+    /// Returns the function's return value as u64
     pub fn vmcall(&mut self, func_addr: u64, args: &[u64]) -> Result<u64, Error> {
         if args.len() > 8 {
-            return Err(Error::Execution);
+            return Err(Error::Execution {
+                exception_type: None,
+                data: 0,
+                message: "Too many arguments (max 8)".to_string(),
+            });
         }
 
         let mut return_value: u64 = 0;
+        let mut error_info = std::mem::MaybeUninit::<ffi::LibLoongErrorInfo>::uninit();
         let error = unsafe {
             ffi::libloong_machine_vmcall(
                 self.handle,
@@ -291,11 +303,12 @@ impl Machine {
                 args.as_ptr(),
                 args.len(),
                 &mut return_value,
+                error_info.as_mut_ptr(),
             )
         };
 
         if error != ffi::LibLoongError::LIBLOONG_OK {
-            return Err(error.into());
+            return Err(unsafe { error_info.assume_init() }.into());
         }
 
         Ok(return_value)
@@ -310,14 +323,23 @@ impl Machine {
     ///
     /// # Returns
     ///
-    /// Returns the function's return value
+    /// Returns the function's return value as u64
     pub fn vmcall_by_name(&mut self, func_name: &str, args: &[u64]) -> Result<u64, Error> {
         if args.len() > 8 {
-            return Err(Error::Execution);
+            return Err(Error::Execution {
+                exception_type: None,
+                data: 0,
+                message: "Too many arguments (max 8)".to_string(),
+            });
         }
 
-        let func_name_cstr = CString::new(func_name).map_err(|_| Error::Execution)?;
+        let func_name_cstr = CString::new(func_name).map_err(|_| Error::Execution {
+            exception_type: None,
+            data: 0,
+            message: "Invalid function name".to_string(),
+        })?;
         let mut return_value: u64 = 0;
+        let mut error_info = std::mem::MaybeUninit::<ffi::LibLoongErrorInfo>::uninit();
 
         let error = unsafe {
             ffi::libloong_machine_vmcall_by_name(
@@ -327,11 +349,92 @@ impl Machine {
                 args.as_ptr(),
                 args.len(),
                 &mut return_value,
+                error_info.as_mut_ptr(),
             )
         };
 
         if error != ffi::LibLoongError::LIBLOONG_OK {
-            return Err(error.into());
+            return Err(unsafe { error_info.assume_init() }.into());
+        }
+
+        Ok(return_value)
+    }
+
+    /// Call a guest function that returns a float
+    ///
+    /// # Arguments
+    ///
+    /// * `func_addr` - Address of the function to call
+    /// * `args` - Function arguments (up to 8 supported)
+    ///
+    /// # Returns
+    ///
+    /// Returns the function's return value as f32
+    pub fn vmcall_float(&mut self, func_addr: u64, args: &[u64]) -> Result<f32, Error> {
+        if args.len() > 8 {
+            return Err(Error::Execution {
+                exception_type: None,
+                data: 0,
+                message: "Too many arguments (max 8)".to_string(),
+            });
+        }
+
+        let mut return_value: f32 = 0.0;
+        let mut error_info = std::mem::MaybeUninit::<ffi::LibLoongErrorInfo>::uninit();
+        let error = unsafe {
+            ffi::libloong_machine_vmcall_float(
+                self.handle,
+                func_addr,
+                u64::MAX,
+                args.as_ptr(),
+                args.len(),
+                &mut return_value,
+                error_info.as_mut_ptr(),
+            )
+        };
+
+        if error != ffi::LibLoongError::LIBLOONG_OK {
+            return Err(unsafe { error_info.assume_init() }.into());
+        }
+
+        Ok(return_value)
+    }
+
+    /// Call a guest function that returns a double
+    ///
+    /// # Arguments
+    ///
+    /// * `func_addr` - Address of the function to call
+    /// * `args` - Function arguments (up to 8 supported)
+    ///
+    /// # Returns
+    ///
+    /// Returns the function's return value as f64
+    pub fn vmcall_double(&mut self, func_addr: u64, args: &[u64]) -> Result<f64, Error> {
+        if args.len() > 8 {
+            return Err(Error::Execution {
+                exception_type: None,
+                data: 0,
+                message: "Too many arguments (max 8)".to_string(),
+            });
+        }
+
+        let mut return_value: f64 = 0.0;
+        let mut error_info = std::mem::MaybeUninit::<ffi::LibLoongErrorInfo>::uninit();
+        let error = unsafe {
+            ffi::libloong_machine_vmcall_double(
+                self.handle,
+                func_addr,
+                u64::MAX,
+                args.as_ptr(),
+                args.len(),
+                &mut return_value,
+                error_info.as_mut_ptr(),
+            )
+        };
+
+        if error != ffi::LibLoongError::LIBLOONG_OK {
+            return Err(unsafe { error_info.assume_init() }.into());
         }
 
         Ok(return_value)
@@ -415,7 +518,11 @@ impl Machine {
         }
 
         buffer.truncate(actual_len);
-        String::from_utf8(buffer).map_err(|_| Error::Execution)
+        String::from_utf8(buffer).map_err(|_| Error::Execution {
+            exception_type: None,
+            data: 0,
+            message: "Invalid UTF-8 string".to_string(),
+        })
     }
 
     /// Get a CPU register value (0-31)
@@ -451,7 +558,7 @@ impl Machine {
 
     /// Get user data pointer
     pub fn get_userdata(&self) -> *mut () {
-        unsafe { ffi::libloong_machine_get_userdata(self.handle) as *mut () }
+        unsafe { ffi::libloong_machine_get_userdata(self.handle) }
     }
 
     /// Get the raw handle (for advanced use cases)
@@ -504,6 +611,6 @@ mod tests {
         let opts = MachineOptions::default();
         assert_eq!(opts.memory_max, 256 * 1024 * 1024);
         assert_eq!(opts.stack_size, 2 * 1024 * 1024);
-        assert_eq!(opts.brk_size, 1 * 1024 * 1024);
+        assert_eq!(opts.brk_size, 1024 * 1024);
     }
 }

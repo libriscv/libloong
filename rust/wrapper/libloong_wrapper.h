@@ -32,6 +32,31 @@ typedef enum {
     LIBLOONG_ERROR_UNKNOWN = 99,
 } LibLoongError;
 
+// Detailed exception information
+typedef enum {
+    LIBLOONG_EXCEPTION_NONE = 0,
+    LIBLOONG_EXCEPTION_ILLEGAL_OPCODE,
+    LIBLOONG_EXCEPTION_ILLEGAL_OPERATION,
+    LIBLOONG_EXCEPTION_PROTECTION_FAULT,
+    LIBLOONG_EXCEPTION_EXECUTION_SPACE_PROTECTION_FAULT,
+    LIBLOONG_EXCEPTION_MISALIGNED_INSTRUCTION,
+    LIBLOONG_EXCEPTION_UNIMPLEMENTED_INSTRUCTION,
+    LIBLOONG_EXCEPTION_MACHINE_TIMEOUT,
+    LIBLOONG_EXCEPTION_OUT_OF_MEMORY,
+    LIBLOONG_EXCEPTION_INVALID_PROGRAM,
+    LIBLOONG_EXCEPTION_FEATURE_DISABLED,
+    LIBLOONG_EXCEPTION_UNIMPLEMENTED_SYSCALL,
+    LIBLOONG_EXCEPTION_GUEST_ABORT,
+} LibLoongExceptionType;
+
+// Extended error information
+typedef struct {
+    LibLoongError error_code;
+    LibLoongExceptionType exception_type;
+    uint64_t data;  // Context-dependent: failing address, PC, or other relevant data
+    char message[256];
+} LibLoongErrorInfo;
+
 // Syscall callback type
 typedef void (*LibLoongSyscallHandler)(LibLoongMachine* machine);
 
@@ -43,7 +68,7 @@ LibLoongMachine* libloong_machine_create(
     const uint8_t* binary_data,
     size_t binary_size,
     const LibLoongMachineOptions* options,
-    LibLoongError* error
+    LibLoongErrorInfo* error_info
 );
 
 void libloong_machine_destroy(LibLoongMachine* machine);
@@ -71,7 +96,8 @@ LibLoongError libloong_machine_setup_accelerated_heap(
 LibLoongError libloong_machine_simulate(
     LibLoongMachine* machine,
     uint64_t max_instructions,
-    uint64_t counter
+    uint64_t counter,
+    LibLoongErrorInfo* error_info
 );
 
 void libloong_machine_stop(LibLoongMachine* machine);
@@ -101,7 +127,8 @@ LibLoongError libloong_machine_vmcall(
     uint64_t max_instructions,
     const uint64_t* args,
     size_t arg_count,
-    uint64_t* return_value
+    uint64_t* return_value,
+    LibLoongErrorInfo* error_info
 );
 
 LibLoongError libloong_machine_vmcall_by_name(
@@ -110,7 +137,29 @@ LibLoongError libloong_machine_vmcall_by_name(
     uint64_t max_instructions,
     const uint64_t* args,
     size_t arg_count,
-    uint64_t* return_value
+    uint64_t* return_value,
+    LibLoongErrorInfo* error_info
+);
+
+// vmcall with float return support
+LibLoongError libloong_machine_vmcall_float(
+    LibLoongMachine* machine,
+    uint64_t func_addr,
+    uint64_t max_instructions,
+    const uint64_t* args,
+    size_t arg_count,
+    float* return_value,
+    LibLoongErrorInfo* error_info
+);
+
+LibLoongError libloong_machine_vmcall_double(
+    LibLoongMachine* machine,
+    uint64_t func_addr,
+    uint64_t max_instructions,
+    const uint64_t* args,
+    size_t arg_count,
+    double* return_value,
+    LibLoongErrorInfo* error_info
 );
 
 // Symbol lookup

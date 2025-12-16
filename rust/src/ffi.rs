@@ -1,4 +1,6 @@
 //! Low-level FFI bindings to the libloong C wrapper
+#![allow(dead_code)]
+#![allow(non_camel_case_types)]
 
 use std::fmt;
 
@@ -31,36 +33,178 @@ pub enum LibLoongError {
     LIBLOONG_ERROR_UNKNOWN = 99,
 }
 
-/// Error type for libloong operations
+#[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LibLoongExceptionType {
+    LIBLOONG_EXCEPTION_NONE = 0,
+    LIBLOONG_EXCEPTION_ILLEGAL_OPCODE,
+    LIBLOONG_EXCEPTION_ILLEGAL_OPERATION,
+    LIBLOONG_EXCEPTION_PROTECTION_FAULT,
+    LIBLOONG_EXCEPTION_EXECUTION_SPACE_PROTECTION_FAULT,
+    LIBLOONG_EXCEPTION_MISALIGNED_INSTRUCTION,
+    LIBLOONG_EXCEPTION_UNIMPLEMENTED_INSTRUCTION,
+    LIBLOONG_EXCEPTION_MACHINE_TIMEOUT,
+    LIBLOONG_EXCEPTION_OUT_OF_MEMORY,
+    LIBLOONG_EXCEPTION_INVALID_PROGRAM,
+    LIBLOONG_EXCEPTION_FEATURE_DISABLED,
+    LIBLOONG_EXCEPTION_UNIMPLEMENTED_SYSCALL,
+    LIBLOONG_EXCEPTION_GUEST_ABORT,
+}
+
+#[repr(C)]
+#[derive(Debug, Clone)]
+pub struct LibLoongErrorInfo {
+    pub error_code: LibLoongError,
+    pub exception_type: LibLoongExceptionType,
+    pub data: u64,
+    pub message: [i8; 256],
+}
+
+/// Exception details from the guest
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ExceptionType {
+    IllegalOpcode,
+    IllegalOperation,
+    ProtectionFault,
+    ExecutionSpaceProtectionFault,
+    MisalignedInstruction,
+    UnimplementedInstruction,
+    MachineTimeout,
+    OutOfMemory,
+    InvalidProgram,
+    FeatureDisabled,
+    UnimplementedSyscall,
+    GuestAbort,
+}
+
+impl From<LibLoongExceptionType> for ExceptionType {
+    fn from(ex: LibLoongExceptionType) -> Self {
+        match ex {
+            LibLoongExceptionType::LIBLOONG_EXCEPTION_ILLEGAL_OPCODE => {
+                ExceptionType::IllegalOpcode
+            }
+            LibLoongExceptionType::LIBLOONG_EXCEPTION_ILLEGAL_OPERATION => {
+                ExceptionType::IllegalOperation
+            }
+            LibLoongExceptionType::LIBLOONG_EXCEPTION_PROTECTION_FAULT => {
+                ExceptionType::ProtectionFault
+            }
+            LibLoongExceptionType::LIBLOONG_EXCEPTION_EXECUTION_SPACE_PROTECTION_FAULT => {
+                ExceptionType::ExecutionSpaceProtectionFault
+            }
+            LibLoongExceptionType::LIBLOONG_EXCEPTION_MISALIGNED_INSTRUCTION => {
+                ExceptionType::MisalignedInstruction
+            }
+            LibLoongExceptionType::LIBLOONG_EXCEPTION_UNIMPLEMENTED_INSTRUCTION => {
+                ExceptionType::UnimplementedInstruction
+            }
+            LibLoongExceptionType::LIBLOONG_EXCEPTION_MACHINE_TIMEOUT => {
+                ExceptionType::MachineTimeout
+            }
+            LibLoongExceptionType::LIBLOONG_EXCEPTION_OUT_OF_MEMORY => ExceptionType::OutOfMemory,
+            LibLoongExceptionType::LIBLOONG_EXCEPTION_INVALID_PROGRAM => {
+                ExceptionType::InvalidProgram
+            }
+            LibLoongExceptionType::LIBLOONG_EXCEPTION_FEATURE_DISABLED => {
+                ExceptionType::FeatureDisabled
+            }
+            LibLoongExceptionType::LIBLOONG_EXCEPTION_UNIMPLEMENTED_SYSCALL => {
+                ExceptionType::UnimplementedSyscall
+            }
+            LibLoongExceptionType::LIBLOONG_EXCEPTION_GUEST_ABORT => ExceptionType::GuestAbort,
+            _ => ExceptionType::IllegalOperation,
+        }
+    }
+}
+
+/// Error type for libloong operations
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {
     /// Invalid ELF binary
-    InvalidElf,
-    /// Execution error
-    Execution,
+    InvalidElf(String),
+    /// Execution error with exception details
+    Execution {
+        exception_type: Option<ExceptionType>,
+        data: u64,
+        message: String,
+    },
     /// Instruction limit exceeded (timeout)
-    Timeout,
+    Timeout { data: u64, message: String },
     /// Invalid memory address
-    InvalidAddress,
+    InvalidAddress { address: u64, message: String },
     /// Symbol not found
-    SymbolNotFound,
+    SymbolNotFound(String),
     /// Out of memory
-    OutOfMemory,
+    OutOfMemory(String),
     /// Unknown error
-    Unknown,
+    Unknown(String),
 }
 
 impl From<LibLoongError> for Error {
     fn from(err: LibLoongError) -> Self {
         match err {
             LibLoongError::LIBLOONG_OK => unreachable!("Cannot convert OK to Error"),
-            LibLoongError::LIBLOONG_ERROR_INVALID_ELF => Error::InvalidElf,
-            LibLoongError::LIBLOONG_ERROR_EXECUTION => Error::Execution,
-            LibLoongError::LIBLOONG_ERROR_TIMEOUT => Error::Timeout,
-            LibLoongError::LIBLOONG_ERROR_INVALID_ADDRESS => Error::InvalidAddress,
-            LibLoongError::LIBLOONG_ERROR_SYMBOL_NOT_FOUND => Error::SymbolNotFound,
-            LibLoongError::LIBLOONG_ERROR_OUT_OF_MEMORY => Error::OutOfMemory,
-            LibLoongError::LIBLOONG_ERROR_UNKNOWN => Error::Unknown,
+            LibLoongError::LIBLOONG_ERROR_INVALID_ELF => {
+                Error::InvalidElf("Invalid ELF binary".to_string())
+            }
+            LibLoongError::LIBLOONG_ERROR_EXECUTION => Error::Execution {
+                exception_type: None,
+                data: 0,
+                message: "Execution error".to_string(),
+            },
+            LibLoongError::LIBLOONG_ERROR_TIMEOUT => Error::Timeout {
+                data: 0,
+                message: "Instruction limit exceeded".to_string(),
+            },
+            LibLoongError::LIBLOONG_ERROR_INVALID_ADDRESS => Error::InvalidAddress {
+                address: 0,
+                message: "Invalid memory address".to_string(),
+            },
+            LibLoongError::LIBLOONG_ERROR_SYMBOL_NOT_FOUND => {
+                Error::SymbolNotFound("Symbol not found".to_string())
+            }
+            LibLoongError::LIBLOONG_ERROR_OUT_OF_MEMORY => {
+                Error::OutOfMemory("Out of memory".to_string())
+            }
+            LibLoongError::LIBLOONG_ERROR_UNKNOWN => Error::Unknown("Unknown error".to_string()),
+        }
+    }
+}
+
+impl From<LibLoongErrorInfo> for Error {
+    fn from(info: LibLoongErrorInfo) -> Self {
+        // Convert C string to Rust String
+        let message = unsafe {
+            let bytes = std::slice::from_raw_parts(info.message.as_ptr() as *const u8, 256);
+            let len = bytes.iter().position(|&b| b == 0).unwrap_or(256);
+            String::from_utf8_lossy(&bytes[..len]).to_string()
+        };
+
+        match info.error_code {
+            LibLoongError::LIBLOONG_OK => unreachable!("Cannot convert OK to Error"),
+            LibLoongError::LIBLOONG_ERROR_INVALID_ELF => Error::InvalidElf(message),
+            LibLoongError::LIBLOONG_ERROR_EXECUTION => Error::Execution {
+                exception_type: if info.exception_type
+                    != LibLoongExceptionType::LIBLOONG_EXCEPTION_NONE
+                {
+                    Some(info.exception_type.into())
+                } else {
+                    None
+                },
+                data: info.data,
+                message,
+            },
+            LibLoongError::LIBLOONG_ERROR_TIMEOUT => Error::Timeout {
+                data: info.data,
+                message,
+            },
+            LibLoongError::LIBLOONG_ERROR_INVALID_ADDRESS => Error::InvalidAddress {
+                address: info.data,
+                message,
+            },
+            LibLoongError::LIBLOONG_ERROR_SYMBOL_NOT_FOUND => Error::SymbolNotFound(message),
+            LibLoongError::LIBLOONG_ERROR_OUT_OF_MEMORY => Error::OutOfMemory(message),
+            LibLoongError::LIBLOONG_ERROR_UNKNOWN => Error::Unknown(message),
         }
     }
 }
@@ -68,13 +212,29 @@ impl From<LibLoongError> for Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Error::InvalidElf => write!(f, "Invalid ELF binary"),
-            Error::Execution => write!(f, "Execution error"),
-            Error::Timeout => write!(f, "Instruction limit exceeded"),
-            Error::InvalidAddress => write!(f, "Invalid memory address"),
-            Error::SymbolNotFound => write!(f, "Symbol not found"),
-            Error::OutOfMemory => write!(f, "Out of memory"),
-            Error::Unknown => write!(f, "Unknown error"),
+            Error::InvalidElf(msg) => write!(f, "Invalid ELF binary: {}", msg),
+            Error::Execution {
+                exception_type,
+                data,
+                message,
+            } => {
+                write!(f, "Execution error")?;
+                if let Some(ex) = exception_type {
+                    write!(f, " ({:?})", ex)?;
+                }
+                write!(f, ": {} (data: 0x{:x})", message, data)
+            }
+            Error::Timeout { data, message } => write!(
+                f,
+                "Instruction limit exceeded: {} (at PC: 0x{:x})",
+                message, data
+            ),
+            Error::InvalidAddress { address, message } => {
+                write!(f, "Invalid memory address 0x{:x}: {}", address, message)
+            }
+            Error::SymbolNotFound(msg) => write!(f, "Symbol not found: {}", msg),
+            Error::OutOfMemory(msg) => write!(f, "Out of memory: {}", msg),
+            Error::Unknown(msg) => write!(f, "Unknown error: {}", msg),
         }
     }
 }
@@ -90,7 +250,7 @@ extern "C" {
         binary_data: *const u8,
         binary_size: usize,
         options: *const LibLoongMachineOptions,
-        error: *mut LibLoongError,
+        error_info: *mut LibLoongErrorInfo,
     ) -> *mut LibLoongMachine;
 
     pub fn libloong_machine_destroy(machine: *mut LibLoongMachine);
@@ -120,6 +280,7 @@ extern "C" {
         machine: *mut LibLoongMachine,
         max_instructions: u64,
         counter: u64,
+        error_info: *mut LibLoongErrorInfo,
     ) -> LibLoongError;
 
     pub fn libloong_machine_stop(machine: *mut LibLoongMachine);
@@ -146,6 +307,7 @@ extern "C" {
         args: *const u64,
         arg_count: usize,
         return_value: *mut u64,
+        error_info: *mut LibLoongErrorInfo,
     ) -> LibLoongError;
 
     pub fn libloong_machine_vmcall_by_name(
@@ -155,6 +317,27 @@ extern "C" {
         args: *const u64,
         arg_count: usize,
         return_value: *mut u64,
+        error_info: *mut LibLoongErrorInfo,
+    ) -> LibLoongError;
+
+    pub fn libloong_machine_vmcall_float(
+        machine: *mut LibLoongMachine,
+        func_addr: u64,
+        max_instructions: u64,
+        args: *const u64,
+        arg_count: usize,
+        return_value: *mut f32,
+        error_info: *mut LibLoongErrorInfo,
+    ) -> LibLoongError;
+
+    pub fn libloong_machine_vmcall_double(
+        machine: *mut LibLoongMachine,
+        func_addr: u64,
+        max_instructions: u64,
+        args: *const u64,
+        arg_count: usize,
+        return_value: *mut f64,
+        error_info: *mut LibLoongErrorInfo,
     ) -> LibLoongError;
 
     pub fn libloong_machine_address_of(machine: *const LibLoongMachine, name: *const i8) -> u64;

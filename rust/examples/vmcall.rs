@@ -9,7 +9,10 @@ fn main() {
     // Get ELF path from command line
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
-        eprintln!("Usage: {} <loongarch_elf_file> [function_name] [args...]", args[0]);
+        eprintln!(
+            "Usage: {} <loongarch_elf_file> [function_name] [args...]",
+            args[0]
+        );
         eprintln!();
         eprintln!("Example:");
         eprintln!("  {} ../tests/programs/cxx_test.elf test_addition", args[0]);
@@ -20,10 +23,7 @@ fn main() {
     let func_name = args.get(2).map(|s| s.as_str()).unwrap_or("main");
 
     // Parse remaining arguments as u64
-    let func_args: Vec<u64> = args[3..]
-        .iter()
-        .filter_map(|s| s.parse().ok())
-        .collect();
+    let func_args: Vec<u64> = args[3..].iter().filter_map(|s| s.parse().ok()).collect();
 
     // Read the ELF binary
     let binary = match fs::read(elf_path) {
@@ -65,7 +65,10 @@ fn main() {
     }
 
     let func_addr = machine.address_of(func_name);
-    println!("Calling function '{}' at address 0x{:x}", func_name, func_addr);
+    println!(
+        "Calling function '{}' at address 0x{:x}",
+        func_name, func_addr
+    );
     println!("Arguments: {:?}", func_args);
     println!();
 

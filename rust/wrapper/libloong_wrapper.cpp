@@ -6,8 +6,27 @@
 
 using namespace loongarch;
 
+// Helper to convert exception type to LibLoongExceptionType
+static LibLoongExceptionType to_libloong_exception_type(ExceptionType type) {
+    switch (type) {
+        case ILLEGAL_OPCODE: return LIBLOONG_EXCEPTION_ILLEGAL_OPCODE;
+        case ILLEGAL_OPERATION: return LIBLOONG_EXCEPTION_ILLEGAL_OPERATION;
+        case PROTECTION_FAULT: return LIBLOONG_EXCEPTION_PROTECTION_FAULT;
+        case EXECUTION_SPACE_PROTECTION_FAULT: return LIBLOONG_EXCEPTION_EXECUTION_SPACE_PROTECTION_FAULT;
+        case MISALIGNED_INSTRUCTION: return LIBLOONG_EXCEPTION_MISALIGNED_INSTRUCTION;
+        case UNIMPLEMENTED_INSTRUCTION: return LIBLOONG_EXCEPTION_UNIMPLEMENTED_INSTRUCTION;
+        case MACHINE_TIMEOUT: return LIBLOONG_EXCEPTION_MACHINE_TIMEOUT;
+        case OUT_OF_MEMORY: return LIBLOONG_EXCEPTION_OUT_OF_MEMORY;
+        case INVALID_PROGRAM: return LIBLOONG_EXCEPTION_INVALID_PROGRAM;
+        case FEATURE_DISABLED: return LIBLOONG_EXCEPTION_FEATURE_DISABLED;
+        case UNIMPLEMENTED_SYSCALL: return LIBLOONG_EXCEPTION_UNIMPLEMENTED_SYSCALL;
+        case GUEST_ABORT: return LIBLOONG_EXCEPTION_GUEST_ABORT;
+        default: return LIBLOONG_EXCEPTION_NONE;
+    }
+}
+
 // Helper to catch C++ exceptions and convert to error codes
-template<typename F>
+template<typename F> static
 LibLoongError safe_call(F&& func, LibLoongError default_error = LIBLOONG_ERROR_UNKNOWN) {
     try {
         func();
@@ -19,6 +38,66 @@ LibLoongError safe_call(F&& func, LibLoongError default_error = LIBLOONG_ERROR_U
     } catch (const std::bad_alloc&) {
         return LIBLOONG_ERROR_OUT_OF_MEMORY;
     } catch (...) {
+        return default_error;
+    }
+}
+
+// Helper to catch C++ exceptions and convert to extended error info
+template<typename F> static
+LibLoongError safe_call_ex(F&& func, LibLoongErrorInfo* error_info, LibLoongError default_error = LIBLOONG_ERROR_UNKNOWN) {
+    try {
+        func();
+        if (error_info) {
+            error_info->error_code = LIBLOONG_OK;
+            error_info->exception_type = LIBLOONG_EXCEPTION_NONE;
+            error_info->data = 0;
+            error_info->message[0] = '\0';
+        }
+        return LIBLOONG_OK;
+    } catch (const MachineTimeoutException& e) {
+        if (error_info) {
+            error_info->error_code = LIBLOONG_ERROR_TIMEOUT;
+            error_info->exception_type = LIBLOONG_EXCEPTION_MACHINE_TIMEOUT;
+            error_info->data = e.data();
+            std::strncpy(error_info->message, e.what(), sizeof(error_info->message) - 1);
+            error_info->message[sizeof(error_info->message) - 1] = '\0';
+        }
+        return LIBLOONG_ERROR_TIMEOUT;
+    } catch (const MachineException& e) {
+        if (error_info) {
+            error_info->error_code = LIBLOONG_ERROR_EXECUTION;
+            error_info->exception_type = to_libloong_exception_type(e.type());
+            error_info->data = e.data();
+            std::strncpy(error_info->message, e.what(), sizeof(error_info->message) - 1);
+            error_info->message[sizeof(error_info->message) - 1] = '\0';
+        }
+        return LIBLOONG_ERROR_EXECUTION;
+    } catch (const std::bad_alloc& e) {
+        if (error_info) {
+            error_info->error_code = LIBLOONG_ERROR_OUT_OF_MEMORY;
+            error_info->exception_type = LIBLOONG_EXCEPTION_OUT_OF_MEMORY;
+            error_info->data = 0;
+            std::strncpy(error_info->message, e.what(), sizeof(error_info->message) - 1);
+            error_info->message[sizeof(error_info->message) - 1] = '\0';
+        }
+        return LIBLOONG_ERROR_OUT_OF_MEMORY;
+    } catch (const std::exception& e) {
+        if (error_info) {
+            error_info->error_code = default_error;
+            error_info->exception_type = LIBLOONG_EXCEPTION_NONE;
+            error_info->data = 0;
+            std::strncpy(error_info->message, e.what(), sizeof(error_info->message) - 1);
+            error_info->message[sizeof(error_info->message) - 1] = '\0';
+        }
+        return default_error;
+    } catch (...) {
+        if (error_info) {
+            error_info->error_code = default_error;
+            error_info->exception_type = LIBLOONG_EXCEPTION_NONE;
+            error_info->data = 0;
+            std::strncpy(error_info->message, "Unknown exception", sizeof(error_info->message) - 1);
+            error_info->message[sizeof(error_info->message) - 1] = '\0';
+        }
         return default_error;
     }
 }
@@ -43,10 +122,16 @@ LibLoongMachine* libloong_machine_create(
     const uint8_t* binary_data,
     size_t binary_size,
     const LibLoongMachineOptions* options,
-    LibLoongError* error)
+    LibLoongErrorInfo* error_info)
 {
     if (!binary_data || binary_size == 0) {
-        if (error) *error = LIBLOONG_ERROR_INVALID_ELF;
+        if (error_info) {
+            error_info->error_code = LIBLOONG_ERROR_INVALID_ELF;
+            error_info->exception_type = LIBLOONG_EXCEPTION_NONE;
+            error_info->data = 0;
+            std::strncpy(error_info->message, "Invalid binary data", sizeof(error_info->message) - 1);
+            error_info->message[sizeof(error_info->message) - 1] = '\0';
+        }
         return nullptr;
     }
 
@@ -55,13 +140,39 @@ LibLoongMachine* libloong_machine_create(
         MachineOptions opts = to_machine_options(options);
 
         Machine* machine = new Machine(binary, opts);
-        if (error) *error = LIBLOONG_OK;
+        if (error_info) {
+            error_info->error_code = LIBLOONG_OK;
+            error_info->exception_type = LIBLOONG_EXCEPTION_NONE;
+            error_info->data = 0;
+            error_info->message[0] = '\0';
+        }
         return reinterpret_cast<LibLoongMachine*>(machine);
-    } catch (const std::bad_alloc&) {
-        if (error) *error = LIBLOONG_ERROR_OUT_OF_MEMORY;
+    } catch (const std::bad_alloc& e) {
+        if (error_info) {
+            error_info->error_code = LIBLOONG_ERROR_OUT_OF_MEMORY;
+            error_info->exception_type = LIBLOONG_EXCEPTION_OUT_OF_MEMORY;
+            error_info->data = 0;
+            std::strncpy(error_info->message, e.what(), sizeof(error_info->message) - 1);
+            error_info->message[sizeof(error_info->message) - 1] = '\0';
+        }
+        return nullptr;
+    } catch (const std::exception& e) {
+        if (error_info) {
+            error_info->error_code = LIBLOONG_ERROR_INVALID_ELF;
+            error_info->exception_type = LIBLOONG_EXCEPTION_NONE;
+            error_info->data = 0;
+            std::strncpy(error_info->message, e.what(), sizeof(error_info->message) - 1);
+            error_info->message[sizeof(error_info->message) - 1] = '\0';
+        }
         return nullptr;
     } catch (...) {
-        if (error) *error = LIBLOONG_ERROR_INVALID_ELF;
+        if (error_info) {
+            error_info->error_code = LIBLOONG_ERROR_INVALID_ELF;
+            error_info->exception_type = LIBLOONG_EXCEPTION_NONE;
+            error_info->data = 0;
+            std::strncpy(error_info->message, "Unknown exception", sizeof(error_info->message) - 1);
+            error_info->message[sizeof(error_info->message) - 1] = '\0';
+        }
         return nullptr;
     }
 }
@@ -79,8 +190,6 @@ LibLoongError libloong_machine_setup_linux(
     const char** env,
     size_t envc)
 {
-    if (!machine) return LIBLOONG_ERROR_EXECUTION;
-
     Machine* m = reinterpret_cast<Machine*>(machine);
 
     std::vector<std::string> args_vec;
@@ -107,7 +216,6 @@ void libloong_machine_setup_linux_syscalls(void) {
 }
 
 LibLoongError libloong_machine_setup_accelerated_syscalls(LibLoongMachine* machine) {
-    if (!machine) return LIBLOONG_ERROR_EXECUTION;
     Machine* m = reinterpret_cast<Machine*>(machine);
 
     return safe_call([&]() {
@@ -120,7 +228,6 @@ LibLoongError libloong_machine_setup_accelerated_heap(
     uint64_t arena_base,
     size_t arena_size)
 {
-    if (!machine) return LIBLOONG_ERROR_EXECUTION;
     Machine* m = reinterpret_cast<Machine*>(machine);
 
     return safe_call([&]() {
@@ -131,14 +238,14 @@ LibLoongError libloong_machine_setup_accelerated_heap(
 LibLoongError libloong_machine_simulate(
     LibLoongMachine* machine,
     uint64_t max_instructions,
-    uint64_t counter)
+    uint64_t counter,
+    LibLoongErrorInfo* error_info)
 {
-    if (!machine) return LIBLOONG_ERROR_EXECUTION;
     Machine* m = reinterpret_cast<Machine*>(machine);
 
-    return safe_call([&]() {
+    return safe_call_ex([&]() {
         m->simulate(max_instructions, counter);
-    });
+    }, error_info);
 }
 
 void libloong_machine_stop(LibLoongMachine* machine) {
@@ -184,7 +291,7 @@ void libloong_machine_set_max_instructions(LibLoongMachine* machine, uint64_t va
 void libloong_install_syscall_handler(unsigned sysnum, LibLoongSyscallHandler handler) {
     if (handler) {
         Machine::install_syscall_handler(sysnum,
-            reinterpret_cast<Machine::syscall_t*>(handler));
+            reinterpret_cast<Machine::syscall_t*>(*(void(**)(Machine&))&handler));
     }
 }
 
@@ -216,38 +323,29 @@ LibLoongError libloong_machine_vmcall(
     uint64_t max_instructions,
     const uint64_t* args,
     size_t arg_count,
-    uint64_t* return_value)
+    uint64_t* return_value,
+    LibLoongErrorInfo* error_info)
 {
-    if (!machine) return LIBLOONG_ERROR_EXECUTION;
     Machine* m = reinterpret_cast<Machine*>(machine);
 
-    LibLoongError result = LIBLOONG_OK;
+    return safe_call_ex([&]() {
+        const address_t exit_addr = m->memory.exit_address();
 
-    try {
-        // Call with up to 8 arguments
-        uint64_t ret = 0;
-        switch (arg_count) {
-            case 0: ret = m->vmcall<uint64_t, UINT64_MAX>(func_addr); break;
-            case 1: ret = m->vmcall<uint64_t, UINT64_MAX>(func_addr, args[0]); break;
-            case 2: ret = m->vmcall<uint64_t, UINT64_MAX>(func_addr, args[0], args[1]); break;
-            case 3: ret = m->vmcall<uint64_t, UINT64_MAX>(func_addr, args[0], args[1], args[2]); break;
-            case 4: ret = m->vmcall<uint64_t, UINT64_MAX>(func_addr, args[0], args[1], args[2], args[3]); break;
-            case 5: ret = m->vmcall<uint64_t, UINT64_MAX>(func_addr, args[0], args[1], args[2], args[3], args[4]); break;
-            case 6: ret = m->vmcall<uint64_t, UINT64_MAX>(func_addr, args[0], args[1], args[2], args[3], args[4], args[5]); break;
-            case 7: ret = m->vmcall<uint64_t, UINT64_MAX>(func_addr, args[0], args[1], args[2], args[3], args[4], args[5], args[6]); break;
-            case 8: ret = m->vmcall<uint64_t, UINT64_MAX>(func_addr, args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7]); break;
-            default: return LIBLOONG_ERROR_EXECUTION;
+        auto& cpu = m->cpu;
+        cpu.reg(REG_RA) = exit_addr;
+        for (size_t i = 0; i < arg_count && i < 8; i++) {
+            cpu.reg(REG_A0 + i) = args[i];
         }
-        if (return_value) *return_value = ret;
-    } catch (const MachineTimeoutException&) {
-        result = LIBLOONG_ERROR_TIMEOUT;
-    } catch (const MachineException&) {
-        result = LIBLOONG_ERROR_EXECUTION;
-    } catch (...) {
-        result = LIBLOONG_ERROR_UNKNOWN;
-    }
+        cpu.registers().pc = func_addr;
 
-    return result;
+        m->simulate(max_instructions, 0);
+        if (m->instruction_limit_reached()) {
+            throw MachineTimeoutException();
+        }
+
+        if (return_value)
+            *return_value = cpu.reg(REG_A0);
+    }, error_info);
 }
 
 LibLoongError libloong_machine_vmcall_by_name(
@@ -256,17 +354,85 @@ LibLoongError libloong_machine_vmcall_by_name(
     uint64_t max_instructions,
     const uint64_t* args,
     size_t arg_count,
-    uint64_t* return_value)
+    uint64_t* return_value,
+    LibLoongErrorInfo* error_info)
 {
-    if (!machine || !func_name) return LIBLOONG_ERROR_EXECUTION;
     Machine* m = reinterpret_cast<Machine*>(machine);
 
     uint64_t addr = m->address_of(func_name);
     if (addr == 0) {
+        if (error_info) {
+            error_info->error_code = LIBLOONG_ERROR_SYMBOL_NOT_FOUND;
+            error_info->exception_type = LIBLOONG_EXCEPTION_NONE;
+            error_info->data = 0;
+            std::snprintf(error_info->message, sizeof(error_info->message), "Symbol not found: %s", func_name);
+        }
         return LIBLOONG_ERROR_SYMBOL_NOT_FOUND;
     }
 
-    return libloong_machine_vmcall(machine, addr, max_instructions, args, arg_count, return_value);
+    return libloong_machine_vmcall(machine, addr, max_instructions, args, arg_count, return_value, error_info);
+}
+
+LibLoongError libloong_machine_vmcall_float(
+    LibLoongMachine* machine,
+    uint64_t func_addr,
+    uint64_t max_instructions,
+    const uint64_t* args,
+    size_t arg_count,
+    float* return_value,
+    LibLoongErrorInfo* error_info)
+{
+    Machine* m = reinterpret_cast<Machine*>(machine);
+
+    return safe_call_ex([&]() {
+        const address_t exit_addr = m->memory.exit_address();
+
+        auto& cpu = m->cpu;
+        cpu.reg(REG_RA) = exit_addr;
+        for (size_t i = 0; i < arg_count && i < 8; i++) {
+            cpu.reg(REG_A0 + i) = args[i];
+        }
+        cpu.registers().pc = func_addr;
+
+        m->simulate(max_instructions, 0);
+        if (m->instruction_limit_reached()) {
+            throw MachineTimeoutException();
+        }
+
+        if (return_value)
+            *return_value = cpu.registers().getfl32(REG_FA0);
+    }, error_info);
+}
+
+LibLoongError libloong_machine_vmcall_double(
+    LibLoongMachine* machine,
+    uint64_t func_addr,
+    uint64_t max_instructions,
+    const uint64_t* args,
+    size_t arg_count,
+    double* return_value,
+    LibLoongErrorInfo* error_info)
+{
+    Machine* m = reinterpret_cast<Machine*>(machine);
+
+    return safe_call_ex([&]() {
+        const address_t exit_addr = m->memory.exit_address();
+
+        auto& cpu = m->cpu;
+        cpu.reg(REG_RA) = exit_addr;
+        for (size_t i = 0; i < arg_count && i < 8; i++) {
+            cpu.reg(REG_A0 + i) = args[i];
+        }
+        cpu.registers().pc = func_addr;
+
+        m->simulate(max_instructions, 0);
+        if (m->instruction_limit_reached()) {
+            throw MachineTimeoutException();
+        }
+
+        if (return_value)
+            *return_value = cpu.registers().getfl64(REG_FA0);
+    }, error_info);
 }
 
 uint64_t libloong_machine_address_of(const LibLoongMachine* machine, const char* name) {
@@ -285,7 +451,6 @@ LibLoongError libloong_machine_read_memory(
     void* data,
     size_t size)
 {
-    if (!machine || !data) return LIBLOONG_ERROR_EXECUTION;
     const Machine* m = reinterpret_cast<const Machine*>(machine);
 
     return safe_call([&]() {
@@ -299,7 +464,6 @@ LibLoongError libloong_machine_write_memory(
     const void* data,
     size_t size)
 {
-    if (!machine || !data) return LIBLOONG_ERROR_EXECUTION;
     Machine* m = reinterpret_cast<Machine*>(machine);
 
     return safe_call([&]() {
@@ -314,7 +478,6 @@ LibLoongError libloong_machine_read_string(
     size_t max_len,
     size_t* actual_len)
 {
-    if (!machine || !buffer || max_len == 0) return LIBLOONG_ERROR_EXECUTION;
     const Machine* m = reinterpret_cast<const Machine*>(machine);
 
     return safe_call([&]() {

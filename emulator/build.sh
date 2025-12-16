@@ -15,6 +15,7 @@ MASKED_MEMORY_BITS=""
 LA_DEBUG=""
 LA_THREADED="-DLA_THREADED=ON"
 LA_TAILCALL="-DLA_TAILCALL_DISPATCH=OFF"
+LA_LASX="-DLA_LASX=OFF"
 LA_EMBED_BINTR="-DLA_EMBED_BINTR=\"\""
 
 while [ $# -gt 0 ]; do
@@ -44,12 +45,24 @@ while [ $# -gt 0 ]; do
 			MASKED_MEMORY_BITS="-DLA_MASKED_MEMORY_BITS=$2"
 			shift 2
 			;;
+		--threaded)
+			LA_THREADED="-DLA_THREADED=ON"
+			shift
+			;;
 		--no-threaded)
 			LA_THREADED="-DLA_THREADED=OFF"
 			shift
 			;;
 		--tailcall-dispatch)
 			LA_TAILCALL="-DLA_TAILCALL_DISPATCH=ON"
+			shift
+			;;
+		--lasx)
+			LA_LASX="-DLA_LASX=ON"
+			shift
+			;;
+		--no-lasx)
+			LA_LASX="-DLA_LASX=OFF"
 			shift
 			;;
 		--embed)
@@ -78,7 +91,11 @@ while [ $# -gt 0 ]; do
 			echo "Library Options:"
 			echo "  --masked-memory-bits N    Set masked memory arena size to 2^N bytes (0=disabled)"
 			echo "                            Example: --masked-memory-bits 32 (4GB arena)"
+			echo "  --threaded                Enable threaded dispatch"
 			echo "  --no-threaded             Disable threaded dispatch"
+			echo "  --tailcall-dispatch       Enable tailcall dispatch method"
+			echo "  --lasx                    Enable LASX instruction support"
+			echo "  --no-lasx                 Disable LASX instruction support"
 			echo "  --embed <file.c>          Embed pre-compiled binary translation from file"
 			echo ""
 			echo "Examples:"
@@ -148,6 +165,7 @@ cmake .. \
 	$LA_THREADED \
 	$MASKED_MEMORY_BITS \
 	$LA_TAILCALL \
+	$LA_LASX \
 	$LA_EMBED_BINTR
 
 # Build

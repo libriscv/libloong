@@ -148,7 +148,7 @@ namespace loongarch
 		// Print helper
 		void print(const char* data, size_t len);
 		void print(std::string_view str);
-		void set_print_callback(stdout_callback_t* callback) noexcept { m_stdout = callback; }
+		static void set_print_callback(stdout_callback_t* callback) noexcept { m_stdout = callback; }
 
 		// Bytecode statistics
 		struct BytecodeStats {

@@ -800,65 +800,55 @@ struct InstrImpl {
 
 	static void MOVFR2GR_S(cpu_t& cpu, la_instruction instr) {
 		// Move 32-bit float from FPR to GPR (sign-extended)
-		uint32_t rd = instr.whole & 0x1F;
-		if (rd == 0) return; // Writes to x0 are discarded
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
+		if (instr.r2.rd == 0) return; // Writes to x0 are discarded
 		// In LoongArch, FP registers share storage with LSX vector registers
 		// $fa0 is the low 64 bits of $vr0, so we read from the vector register
-		const auto& vr = cpu.registers().getvr(fj);
+		const auto& vr = cpu.registers().getvr(instr.r2.rj);
 		int32_t val = static_cast<int32_t>(vr.wu[0]);  // Low 32 bits
 		// Sign-extend to 64 bits
-		cpu.reg(rd) = static_cast<int64_t>(val);
+		cpu.reg(instr.r2.rd) = static_cast<int64_t>(val);
 	}
 
 	static void MOVFR2GR_D(cpu_t& cpu, la_instruction instr) {
 		// Move 64-bit value from FPR to GPR
-		uint32_t rd = instr.whole & 0x1F;
-		if (rd == 0) return; // Writes to x0 are discarded
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
+		if (instr.r2.rd == 0) return; // Writes to x0 are discarded
 		// In LoongArch, FP registers share storage with LSX vector registers
 		// $fa0 is the low 64 bits of $vr0, so we read from the vector register
-		const auto& vr = cpu.registers().getvr(fj);
-		cpu.reg(rd) = vr.du[0];  // Read 64-bit value from low doubleword
+		const auto& vr = cpu.registers().getvr(instr.r2.rj);
+		cpu.reg(instr.r2.rd) = vr.du[0];  // Read 64-bit value from low doubleword
 	}
 
 	static void MOVGR2FR_W(cpu_t& cpu, la_instruction instr) {
 		// Move 32-bit value from GPR to FPR (word)
-		uint32_t fd = instr.whole & 0x1F;
-		uint32_t rj = (instr.whole >> 5) & 0x1F;
 		// In LoongArch, FP registers share storage with LSX vector registers
 		// $fa0 is the low 64 bits of $vr0, so we write to the vector register
 		// For .w variant, write 32-bit value to low word and sign-extend to 64 bits
-		auto& vr = cpu.registers().getvr(fd);
-		uint32_t value = cpu.reg(rj) & 0xFFFFFFFF;
+		auto& vr = cpu.registers().getvr(instr.r2.rd);
+		uint32_t value = cpu.reg(instr.r2.rj) & 0xFFFFFFFF;
 		vr.wu[0] = value;  // Write 32-bit value to low word
 		vr.wu[1] = 0;      // Clear upper 32 bits of low doubleword
 	}
 
 	static void MOVGR2FR_D(cpu_t& cpu, la_instruction instr) {
 		// Move 64-bit value from GPR to FPR
-		uint32_t fd = instr.whole & 0x1F;
-		uint32_t rj = (instr.whole >> 5) & 0x1F;
 		// In LoongArch, FP registers share storage with LSX vector registers
 		// $fa0 is the low 64 bits of $vr0, so we write to the vector register
-		auto& vr = cpu.registers().getvr(fd);
-		vr.du[0] = cpu.reg(rj);  // Write 64-bit value to low doubleword
+		auto& vr = cpu.registers().getvr(instr.r2.rd);
+		vr.du[0] = cpu.reg(instr.r2.rj);  // Write 64-bit value to low doubleword
 	}
 
 	static void MOVFCSR2GR(cpu_t& cpu, la_instruction instr) {
 		// Move FCSR (floating-point control/status register) to GPR
-		uint32_t rd = instr.whole & 0x1F;
-		if (rd == 0) return; // Writes to x0 are discarded
+		if (instr.r2.rd == 0) return; // Writes to x0 are discarded
 		// Note: fcsr index is in bits [9:5] but for FCSR0 it's always 0
-		cpu.reg(rd) = cpu.registers().fcsr();
+		cpu.reg(instr.r2.rd) = cpu.registers().fcsr();
 	}
 
 	static void MOVFR2CF(cpu_t& cpu, la_instruction instr) {
 		// Move lowest bit of FPR to condition flag
 		// Format: movfr2cf cd, fj
 		uint32_t cd = instr.whole & 0x7;         // FCC register index (3 bits)
-		uint32_t fj = (instr.whole >> 5) & 0x1F; // Source FP register
-		const auto& vr = cpu.registers().getvr(fj);
+		const auto& vr = cpu.registers().getvr(instr.r2.rj);
 		uint8_t bit = vr.du[0] & 1;  // Get lowest bit
 		cpu.registers().set_cf(cd, bit);
 	}
@@ -866,9 +856,8 @@ struct InstrImpl {
 	static void MOVCF2FR(cpu_t& cpu, la_instruction instr) {
 		// Move condition flag to lowest bit of FPR
 		// Format: movcf2fr fd, cj
-		uint32_t fd = instr.whole & 0x1F;        // Destination FP register
 		uint32_t cj = (instr.whole >> 5) & 0x7;  // Source FCC register (3 bits)
-		auto& vr = cpu.registers().getvr(fd);
+		auto& vr = cpu.registers().getvr(instr.r2.rd);
 		vr.du[0] = cpu.registers().cf(cj);  // Write condition flag to lowest bit
 	}
 
@@ -876,30 +865,26 @@ struct InstrImpl {
 		// Move lowest bit of GPR to condition flag
 		// Format: movgr2cf cd, rj
 		uint32_t cd = instr.whole & 0x7;         // FCC register index (3 bits)
-		uint32_t rj = (instr.whole >> 5) & 0x1F; // Source general register
-		uint8_t bit = cpu.reg(rj) & 1;  // Get lowest bit
+		uint8_t bit = cpu.reg(instr.r2.rj) & 1;  // Get lowest bit
 		cpu.registers().set_cf(cd, bit);
 	}
 
 	static void MOVCF2GR(cpu_t& cpu, la_instruction instr) {
 		// Move condition flag to lowest bit of GPR, clear other bits
 		// Format: movcf2gr rd, cj
-		uint32_t rd = instr.whole & 0x1F;        // Destination general register
-		if (rd == 0) return; // Writes to x0 are discarded
+		if (instr.r2.rd == 0) return; // Writes to x0 are discarded
 		uint32_t cj = (instr.whole >> 5) & 0x7;  // Source FCC register (3 bits)
-		cpu.reg(rd) = cpu.registers().cf(cj);  // Write condition flag, zero-extended
+		cpu.reg(instr.r2.rd) = cpu.registers().cf(cj);  // Write condition flag, zero-extended
 	}
 
 	static void FCMP_COND_S(cpu_t& cpu, la_instruction instr) {
 		// Floating-point compare with condition (single precision)
 		// Format: fcmp.cond.s cc, fj, fk
 		uint32_t cd = instr.whole & 0x7;         // FCC register index (3 bits)
-		uint32_t fj = (instr.whole >> 5) & 0x1F; // Source register 1
-		uint32_t fk = (instr.whole >> 10) & 0x1F; // Source register 2
 		uint32_t cond = (instr.whole >> 15) & 0x1F; // Condition code (5 bits)
 
-		const auto& vr_j = cpu.registers().getvr(fj);
-		const auto& vr_k = cpu.registers().getvr(fk);
+		const auto& vr_j = cpu.registers().getvr(instr.r2.rj);
+		const auto& vr_k = cpu.registers().getvr(instr.r3.rk);
 		float fj_val = vr_j.f[0];
 		float fk_val = vr_k.f[0];
 
@@ -951,12 +936,10 @@ struct InstrImpl {
 		// Floating-point compare with condition (double precision)
 		// Format: fcmp.cond.d cc, fj, fk
 		uint32_t cd = instr.whole & 0x7;         // FCC register index (3 bits)
-		uint32_t fj = (instr.whole >> 5) & 0x1F; // Source register 1
-		uint32_t fk = (instr.whole >> 10) & 0x1F; // Source register 2
 		uint32_t cond = (instr.whole >> 15) & 0x1F; // Condition code (5 bits)
 
-		const auto& vr_j = cpu.registers().getvr(fj);
-		const auto& vr_k = cpu.registers().getvr(fk);
+		const auto& vr_j = cpu.registers().getvr(instr.r2.rj);
+		const auto& vr_k = cpu.registers().getvr(instr.r3.rk);
 		double fj_val = vr_j.df[0];
 		double fk_val = vr_k.df[0];
 
@@ -1007,14 +990,11 @@ struct InstrImpl {
 	static void VFCMP_COND_D(cpu_t& cpu, la_instruction instr) {
 		// Vector floating-point compare (double)
 		// Compares each double-precision element and sets result mask
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
 		uint32_t cond = (instr.whole >> 15) & 0x1F;
 
-		const auto& src1 = cpu.registers().getvr(vj);
-		const auto& src2 = cpu.registers().getvr(vk);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src1 = cpu.registers().getvr(instr.r2.rj);
+		const auto& src2 = cpu.registers().getvr(instr.r3.rk);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 
 		// For each double element: if src1[i] < src2[i] is TRUE, set to all 1s; if FALSE, set to 0
 		for (int i = 0; i < 2; i++) {
@@ -1078,14 +1058,11 @@ struct InstrImpl {
 	static void FSEL(cpu_t& cpu, la_instruction instr) {
 		// Floating-point conditional select: fd = (FCC[ca] != 0) ? fk : fj
 		// LoongArch semantics: when condition is true, select fk; when false, select fj
-		uint32_t fd = instr.whole & 0x1F;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
-		uint32_t fk = (instr.whole >> 10) & 0x1F;
 		uint32_t ca = (instr.whole >> 15) & 0x7;  // Condition flag index (3 bits)
 
-		const auto& vr_j = cpu.registers().getvr(fj);
-		const auto& vr_k = cpu.registers().getvr(fk);
-		auto& vr_d = cpu.registers().getvr(fd);
+		const auto& vr_j = cpu.registers().getvr(instr.r2.rj);
+		const auto& vr_k = cpu.registers().getvr(instr.r3.rk);
+		auto& vr_d = cpu.registers().getvr(instr.r2.rd);
 
 		// Select based on condition flag
 		bool cond = (cpu.registers().cf(ca) != 0);
@@ -1094,41 +1071,33 @@ struct InstrImpl {
 
 	static void FABS_D(cpu_t& cpu, la_instruction instr) {
 		// Floating-point absolute value (double precision)
-		uint32_t fd = instr.whole & 0x1F;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
 
-		const auto& vr_j = cpu.registers().getvr(fj);
-		auto& vr_d = cpu.registers().getvr(fd);
+		const auto& vr_j = cpu.registers().getvr(instr.r2.rj);
+		auto& vr_d = cpu.registers().getvr(instr.r2.rd);
 		vr_d.df[0] = std::fabs(vr_j.df[0]);
 	}
 
 	static void FNEG_D(cpu_t& cpu, la_instruction instr) {
 		// Floating-point negate (double precision)
-		uint32_t fd = instr.whole & 0x1F;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
 
-		const auto& vr_j = cpu.registers().getvr(fj);
-		auto& vr_d = cpu.registers().getvr(fd);
+		const auto& vr_j = cpu.registers().getvr(instr.r2.rj);
+		auto& vr_d = cpu.registers().getvr(instr.r2.rd);
 		vr_d.df[0] = -vr_j.df[0];
 	}
 
 	static void FMOV_D(cpu_t& cpu, la_instruction instr) {
 		// Floating-point move (double precision)
-		uint32_t fd = instr.whole & 0x1F;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
 
-		const auto& vr_j = cpu.registers().getvr(fj);
-		auto& vr_d = cpu.registers().getvr(fd);
+		const auto& vr_j = cpu.registers().getvr(instr.r2.rj);
+		auto& vr_d = cpu.registers().getvr(instr.r2.rd);
 		vr_d.du[0] = vr_j.du[0];
 	}
 
 	static void FCLASS_S(cpu_t& cpu, la_instruction instr) {
 		// Classify single-precision floating-point value
-		uint32_t fd = instr.whole & 0x1F;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
 
-		const auto& vr_j = cpu.registers().getvr(fj);
-		auto& vr_d = cpu.registers().getvr(fd);
+		const auto& vr_j = cpu.registers().getvr(instr.r2.rj);
+		auto& vr_d = cpu.registers().getvr(instr.r2.rd);
 
 		float val = vr_j.f[0];
 		int fpclass = std::fpclassify(val);
@@ -1152,11 +1121,9 @@ struct InstrImpl {
 
 	static void FCLASS_D(cpu_t& cpu, la_instruction instr) {
 		// Classify double-precision floating-point value
-		uint32_t fd = instr.whole & 0x1F;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
 
-		const auto& vr_j = cpu.registers().getvr(fj);
-		auto& vr_d = cpu.registers().getvr(fd);
+		const auto& vr_j = cpu.registers().getvr(instr.r2.rj);
+		auto& vr_d = cpu.registers().getvr(instr.r2.rd);
 
 		double val = vr_j.df[0];
 		int fpclass = std::fpclassify(val);
@@ -1180,75 +1147,61 @@ struct InstrImpl {
 
 	static void FFINT_D_L(cpu_t& cpu, la_instruction instr) {
 		// Convert 64-bit signed integer to double-precision float
-		uint32_t fd = instr.whole & 0x1F;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
 
-		const auto& vr_j = cpu.registers().getvr(fj);
-		auto& vr_d = cpu.registers().getvr(fd);
+		const auto& vr_j = cpu.registers().getvr(instr.r2.rj);
+		auto& vr_d = cpu.registers().getvr(instr.r2.rd);
 		int64_t int_val = static_cast<int64_t>(vr_j.du[0]);
 		vr_d.df[0] = static_cast<double>(int_val);
 	}
 
 	static void FFINT_D_W(cpu_t& cpu, la_instruction instr) {
 		// Convert 32-bit signed integer to double-precision float
-		uint32_t fd = instr.whole & 0x1F;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
 
-		const auto& vr_j = cpu.registers().getvr(fj);
-		auto& vr_d = cpu.registers().getvr(fd);
+		const auto& vr_j = cpu.registers().getvr(instr.r2.rj);
+		auto& vr_d = cpu.registers().getvr(instr.r2.rd);
 		int32_t int_val = static_cast<int32_t>(vr_j.wu[0]);
 		vr_d.df[0] = static_cast<double>(int_val);
 	}
 
 	static void FFINT_S_W(cpu_t& cpu, la_instruction instr) {
 		// Convert 32-bit signed integer to single-precision float
-		uint32_t fd = instr.whole & 0x1F;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
 
-		const auto& vr_j = cpu.registers().getvr(fj);
-		auto& vr_d = cpu.registers().getvr(fd);
+		const auto& vr_j = cpu.registers().getvr(instr.r2.rj);
+		auto& vr_d = cpu.registers().getvr(instr.r2.rd);
 		int32_t int_val = static_cast<int32_t>(vr_j.wu[0]);
 		vr_d.f[0] = static_cast<float>(int_val);
 	}
 
 	static void FFINT_S_L(cpu_t& cpu, la_instruction instr) {
 		// Convert 64-bit signed integer to single-precision float
-		uint32_t fd = instr.whole & 0x1F;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
 
-		const auto& vr_j = cpu.registers().getvr(fj);
-		auto& vr_d = cpu.registers().getvr(fd);
+		const auto& vr_j = cpu.registers().getvr(instr.r2.rj);
+		auto& vr_d = cpu.registers().getvr(instr.r2.rd);
 		int64_t int_val = static_cast<int64_t>(vr_j.du[0]);
 		vr_d.f[0] = static_cast<float>(int_val);
 	}
 
 	static void FCVT_S_D(cpu_t& cpu, la_instruction instr) {
 		// Convert double-precision to single-precision float
-		uint32_t fd = instr.whole & 0x1F;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
 
-		const auto& vr_j = cpu.registers().getvr(fj);
-		auto& vr_d = cpu.registers().getvr(fd);
+		const auto& vr_j = cpu.registers().getvr(instr.r2.rj);
+		auto& vr_d = cpu.registers().getvr(instr.r2.rd);
 		vr_d.f[0] = static_cast<float>(vr_j.df[0]);
 	}
 
 	static void FCVT_D_S(cpu_t& cpu, la_instruction instr) {
 		// Convert single-precision to double-precision float
-		uint32_t fd = instr.whole & 0x1F;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
 
-		const auto& vr_j = cpu.registers().getvr(fj);
-		auto& vr_d = cpu.registers().getvr(fd);
+		const auto& vr_j = cpu.registers().getvr(instr.r2.rj);
+		auto& vr_d = cpu.registers().getvr(instr.r2.rd);
 		vr_d.df[0] = static_cast<double>(vr_j.f[0]);
 	}
 
 	static void FTINTRZ_W_S(cpu_t& cpu, la_instruction instr) {
 		// Convert single to 32-bit integer with truncation (round towards zero)
-		uint32_t fd = instr.whole & 0x1F;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
 
-		const auto& vr_j = cpu.registers().getvr(fj);
-		auto& vr_d = cpu.registers().getvr(fd);
+		const auto& vr_j = cpu.registers().getvr(instr.r2.rj);
+		auto& vr_d = cpu.registers().getvr(instr.r2.rd);
 		// Truncate towards zero (trunc)
 		int32_t int_val = static_cast<int32_t>(std::trunc(vr_j.f[0]));
 		vr_d.w[0] = int_val;
@@ -1256,11 +1209,9 @@ struct InstrImpl {
 
 	static void FTINTRZ_W_D(cpu_t& cpu, la_instruction instr) {
 		// Convert double to 32-bit integer with truncation (round towards zero)
-		uint32_t fd = instr.whole & 0x1F;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
 
-		const auto& vr_j = cpu.registers().getvr(fj);
-		auto& vr_d = cpu.registers().getvr(fd);
+		const auto& vr_j = cpu.registers().getvr(instr.r2.rj);
+		auto& vr_d = cpu.registers().getvr(instr.r2.rd);
 		// Truncate towards zero (trunc)
 		int32_t int_val = static_cast<int32_t>(std::trunc(vr_j.df[0]));
 		vr_d.w[0] = int_val;
@@ -1268,11 +1219,9 @@ struct InstrImpl {
 
 	static void FTINTRZ_L_S(cpu_t& cpu, la_instruction instr) {
 		// Convert single to 64-bit integer with truncation (round towards zero)
-		uint32_t fd = instr.whole & 0x1F;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
 
-		const auto& vr_j = cpu.registers().getvr(fj);
-		auto& vr_d = cpu.registers().getvr(fd);
+		const auto& vr_j = cpu.registers().getvr(instr.r2.rj);
+		auto& vr_d = cpu.registers().getvr(instr.r2.rd);
 		// Truncate towards zero (trunc)
 		int64_t int_val = static_cast<int64_t>(std::trunc(vr_j.f[0]));
 		vr_d.d[0] = int_val;
@@ -1280,11 +1229,9 @@ struct InstrImpl {
 
 	static void FTINTRZ_L_D(cpu_t& cpu, la_instruction instr) {
 		// Convert double to 64-bit integer with truncation (round towards zero)
-		uint32_t fd = instr.whole & 0x1F;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
 
-		const auto& vr_j = cpu.registers().getvr(fj);
-		auto& vr_d = cpu.registers().getvr(fd);
+		const auto& vr_j = cpu.registers().getvr(instr.r2.rj);
+		auto& vr_d = cpu.registers().getvr(instr.r2.rd);
 		// Truncate towards zero (trunc)
 		int64_t int_val = static_cast<int64_t>(std::trunc(vr_j.df[0]));
 		vr_d.d[0] = int_val;
@@ -1316,11 +1263,9 @@ struct InstrImpl {
 
 	static void FMOV_S(cpu_t& cpu, la_instruction instr) {
 		// Floating-point move (single precision)
-		uint32_t fd = instr.whole & 0x1F;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
 
-		const auto& vr_j = cpu.registers().getvr(fj);
-		auto& vr_d = cpu.registers().getvr(fd);
+		const auto& vr_j = cpu.registers().getvr(instr.r2.rj);
+		auto& vr_d = cpu.registers().getvr(instr.r2.rd);
 		vr_d.f[0] = vr_j.f[0];
 	}
 
@@ -1657,10 +1602,9 @@ struct InstrImpl {
 
 	static void VSETANYEQZ_B(cpu_t& cpu, la_instruction instr) {
 		// VSETANYEQZ.B: Set FCC[cd] if any byte in vj equals zero
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
 		uint32_t cd = instr.whole & 0x7;
 
-		const auto& vr = cpu.registers().getvr(vj);
+		const auto& vr = cpu.registers().getvr(instr.r2.rj);
 		bool any_zero = false;
 
 		// Check all 16 bytes for zero
@@ -1677,10 +1621,9 @@ struct InstrImpl {
 
 	static void VSETALLNEZ_B(cpu_t& cpu, la_instruction instr) {
 		// VSETALLNEZ.B: Set FCC[cd] if all bytes in vj are non-zero
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
 		uint32_t cd = instr.whole & 0x7;
 
-		const auto& vr = cpu.registers().getvr(vj);
+		const auto& vr = cpu.registers().getvr(instr.r2.rj);
 		bool all_nonzero = true;
 
 		for (int i = 0; i < 16; i++) {
@@ -1696,11 +1639,9 @@ struct InstrImpl {
 
 	static void VMSKNZ_B(cpu_t& cpu, la_instruction instr) {
 		// VMSKNZ.B: Create bitmask of non-zero bytes
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vd = instr.whole & 0x1F;
 
-		const auto& src = cpu.registers().getvr(vj);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src = cpu.registers().getvr(instr.r2.rj);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 
 		uint16_t mask = 0;
 		for (int i = 0; i < 16; i++) {
@@ -1717,97 +1658,81 @@ struct InstrImpl {
 	static void VPICKVE2GR_D(cpu_t& cpu, la_instruction instr) {
 		// VPICKVE2GR.D: Pick vector element to general register (double-word)
 		// Encoding: 0111 0001 0001 1010 10 ui1 vj5 rd5
-		uint32_t rd = instr.whole & 0x1F;
-		if (rd == 0) return; // Writes to x0 are discarded
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
+		if (instr.r2.rd == 0) return; // Writes to x0 are discarded
 		uint32_t ui1 = (instr.whole >> 10) & 0x1;
 
-		const auto& src = cpu.registers().getvr(vj);
-		cpu.reg(rd) = src.du[ui1];
+		const auto& src = cpu.registers().getvr(instr.r2.rj);
+		cpu.reg(instr.r2.rd) = src.du[ui1];
 	}
 
 	static void VPICKVE2GR_DU(cpu_t& cpu, la_instruction instr) {
 		// VPICKVE2GR.DU: Pick vector element to general register (unsigned double-word)
 		// Same operation as signed for 64-bit
-		uint32_t rd = instr.whole & 0x1F;
-		if (rd == 0) return; // Writes to x0 are discarded
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
+		if (instr.r2.rd == 0) return; // Writes to x0 are discarded
 		uint32_t ui1 = (instr.whole >> 10) & 0x1;
 
-		const auto& src = cpu.registers().getvr(vj);
-		cpu.reg(rd) = src.du[ui1];
+		const auto& src = cpu.registers().getvr(instr.r2.rj);
+		cpu.reg(instr.r2.rd) = src.du[ui1];
 	}
 
 	static void VPICKVE2GR_W(cpu_t& cpu, la_instruction instr) {
 		// VPICKVE2GR.W: Pick vector element to general register (word)
 		// Sign extends to 64 bits
-		uint32_t rd = instr.whole & 0x1F;
-		if (rd == 0) return; // Writes to x0 are discarded
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
+		if (instr.r2.rd == 0) return; // Writes to x0 are discarded
 		uint32_t ui2 = (instr.whole >> 10) & 0x3;
 
-		const auto& src = cpu.registers().getvr(vj);
-		cpu.reg(rd) = static_cast<int64_t>(static_cast<int32_t>(src.wu[ui2]));
+		const auto& src = cpu.registers().getvr(instr.r2.rj);
+		cpu.reg(instr.r2.rd) = static_cast<int64_t>(static_cast<int32_t>(src.wu[ui2]));
 	}
 
 	static void VPICKVE2GR_WU(cpu_t& cpu, la_instruction instr) {
 		// VPICKVE2GR.WU: Pick vector element to general register (unsigned word)
 		// Zero extends to 64 bits
-		uint32_t rd = instr.whole & 0x1F;
-		if (rd == 0) return; // Writes to x0 are discarded
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
+		if (instr.r2.rd == 0) return; // Writes to x0 are discarded
 		uint32_t ui2 = (instr.whole >> 10) & 0x3;
 
-		const auto& src = cpu.registers().getvr(vj);
-		cpu.reg(rd) = src.wu[ui2];
+		const auto& src = cpu.registers().getvr(instr.r2.rj);
+		cpu.reg(instr.r2.rd) = src.wu[ui2];
 	}
 
 	static void VPICKVE2GR_H(cpu_t& cpu, la_instruction instr) {
 		// VPICKVE2GR.H: Pick vector element to general register (halfword)
 		// Sign extends to 64 bits
-		uint32_t rd = instr.whole & 0x1F;
-		if (rd == 0) return; // Writes to x0 are discarded
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
+		if (instr.r2.rd == 0) return; // Writes to x0 are discarded
 		uint32_t ui3 = (instr.whole >> 10) & 0x7;
 
-		const auto& src = cpu.registers().getvr(vj);
-		cpu.reg(rd) = static_cast<int64_t>(static_cast<int16_t>(src.hu[ui3]));
+		const auto& src = cpu.registers().getvr(instr.r2.rj);
+		cpu.reg(instr.r2.rd) = static_cast<int64_t>(static_cast<int16_t>(src.hu[ui3]));
 	}
 
 	static void VPICKVE2GR_HU(cpu_t& cpu, la_instruction instr) {
 		// VPICKVE2GR.HU: Pick vector element to general register (unsigned halfword)
 		// Zero extends to 64 bits
-		uint32_t rd = instr.whole & 0x1F;
-		if (rd == 0) return; // Writes to x0 are discarded
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
+		if (instr.r2.rd == 0) return; // Writes to x0 are discarded
 		uint32_t ui3 = (instr.whole >> 10) & 0x7;
 
-		const auto& src = cpu.registers().getvr(vj);
-		cpu.reg(rd) = src.hu[ui3];
+		const auto& src = cpu.registers().getvr(instr.r2.rj);
+		cpu.reg(instr.r2.rd) = src.hu[ui3];
 	}
 
 	static void VPICKVE2GR_B(cpu_t& cpu, la_instruction instr) {
 		// VPICKVE2GR.B: Pick vector element to general register (byte)
 		// Sign extends to 64 bits
-		uint32_t rd = instr.whole & 0x1F;
-		if (rd == 0) return; // Writes to x0 are discarded
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
+		if (instr.r2.rd == 0) return; // Writes to x0 are discarded
 		uint32_t ui4 = (instr.whole >> 10) & 0xF;
 
-		const auto& src = cpu.registers().getvr(vj);
-		cpu.reg(rd) = static_cast<int64_t>(static_cast<int8_t>(src.bu[ui4]));
+		const auto& src = cpu.registers().getvr(instr.r2.rj);
+		cpu.reg(instr.r2.rd) = static_cast<int64_t>(static_cast<int8_t>(src.bu[ui4]));
 	}
 
 	static void VPICKVE2GR_BU(cpu_t& cpu, la_instruction instr) {
 		// VPICKVE2GR.BU: Pick vector element to general register (unsigned byte)
 		// Zero extends to 64 bits
-		uint32_t rd = instr.whole & 0x1F;
-		if (rd == 0) return; // Writes to x0 are discarded
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
+		if (instr.r2.rd == 0) return; // Writes to x0 are discarded
 		uint32_t ui4 = (instr.whole >> 10) & 0xF;
 
-		const auto& src = cpu.registers().getvr(vj);
-		cpu.reg(rd) = src.bu[ui4];
+		const auto& src = cpu.registers().getvr(instr.r2.rj);
+		cpu.reg(instr.r2.rd) = src.bu[ui4];
 	}
 
 	// === LSX Vector Arithmetic Instructions ===
@@ -1948,12 +1873,10 @@ struct InstrImpl {
 
 	static void VADDI_HU(cpu_t& cpu, la_instruction instr) {
 		// VADDI.HU: Vector add immediate unsigned halfwords
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
 		uint32_t uk5 = (instr.whole >> 10) & 0x1F; // Unsigned 5-bit immediate
 
-		const auto& src = cpu.registers().getvr(vj);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src = cpu.registers().getvr(instr.r2.rj);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 
 		for (int i = 0; i < 8; i++) {
 			dst.hu[i] = src.hu[i] + uk5;
@@ -1962,12 +1885,10 @@ struct InstrImpl {
 
 	static void VADDI_WU(cpu_t& cpu, la_instruction instr) {
 		// VADDI.WU: Vector add immediate unsigned words
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
 		uint32_t uk5 = (instr.whole >> 10) & 0x1F; // Unsigned 5-bit immediate
 
-		const auto& src = cpu.registers().getvr(vj);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src = cpu.registers().getvr(instr.r2.rj);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 
 		dst.wu[0] = src.wu[0] + uk5;
 		dst.wu[1] = src.wu[1] + uk5;
@@ -1977,12 +1898,10 @@ struct InstrImpl {
 
 	static void VADDI_DU(cpu_t& cpu, la_instruction instr) {
 		// VADDI.DU: Vector add immediate unsigned doublewords
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
 		uint32_t uk5 = (instr.whole >> 10) & 0x1F; // Unsigned 5-bit immediate
 
-		const auto& src = cpu.registers().getvr(vj);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src = cpu.registers().getvr(instr.r2.rj);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 
 		dst.du[0] = src.du[0] + uk5;
 		dst.du[1] = src.du[1] + uk5;
@@ -2119,14 +2038,11 @@ struct InstrImpl {
 	static void VILVL_D(cpu_t& cpu, la_instruction instr) {
 		// VILVL.D: Vector Interleave Low Double-word
 		// Interleaves the low 64-bit double-words from two vectors
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
 
 		// Make sure to avoid aliasing issues by reading sources first
-		const auto src1_du = cpu.registers().getvr(vj).du[0];
-		const auto src2_du = cpu.registers().getvr(vk).du[0];
-		auto& dst = cpu.registers().getvr(vd);
+		const auto src1_du = cpu.registers().getvr(instr.r2.rj).du[0];
+		const auto src2_du = cpu.registers().getvr(instr.r3.rk).du[0];
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 
 		// Interleave: dst[0] = src2[0], dst[1] = src1[0]
 		// For double-words (64-bit), we interleave the low element (1 element) from each source
@@ -2137,13 +2053,10 @@ struct InstrImpl {
 	static void VILVH_D(cpu_t& cpu, la_instruction instr) {
 		// VILVH.D: Vector Interleave High Double-word
 		// Interleaves the high 64-bit elements from two vectors
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
 
-		const auto& src_j = cpu.registers().getvr(vj);
-		const auto& src_k = cpu.registers().getvr(vk);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src_j = cpu.registers().getvr(instr.r2.rj);
+		const auto& src_k = cpu.registers().getvr(instr.r3.rk);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 
 		// Interleave: dst[0] = src_k[1], dst[1] = src_j[1]
 		dst.du[0] = src_k.du[1];
@@ -2153,15 +2066,12 @@ struct InstrImpl {
 	static void VPICKEV_W(cpu_t& cpu, la_instruction instr) {
 		// VPICKEV.W: Vector Pick Even Word
 		// Picks even-indexed 32-bit words from two vectors
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
 
-		const auto& src_j = cpu.registers().getvr(vj);
-		const auto& src_k = cpu.registers().getvr(vk);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src_j = cpu.registers().getvr(instr.r2.rj);
+		const auto& src_k = cpu.registers().getvr(instr.r3.rk);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 
-		// Pick even words: dst = [vk[0], vk[2], vj[0], vj[2]]
+		// Pick even words: dst = [instr.r3.rk[0], instr.r3.rk[2], instr.r2.rj[0], instr.r2.rj[2]]
 		dst.wu[0] = src_k.wu[0];
 		dst.wu[1] = src_k.wu[2];
 		dst.wu[2] = src_j.wu[0];
@@ -2201,12 +2111,10 @@ struct InstrImpl {
 	static void VBITREVI_D(cpu_t& cpu, la_instruction instr) {
 		// VBITREVI.D: Vector Bit Reverse Immediate (double)
 		// XORs (toggles) a specific bit in each 64-bit element
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
 		uint32_t imm = (instr.whole >> 10) & 0x3F;  // 6-bit immediate for bit position (0-63)
 
-		const auto& src = cpu.registers().getvr(vj);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src = cpu.registers().getvr(instr.r2.rj);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 
 		// Toggle the specified bit in each 64-bit element
 		uint64_t mask = 1ULL << imm;
@@ -2217,12 +2125,10 @@ struct InstrImpl {
 	static void VSLLI_B(cpu_t& cpu, la_instruction instr) {
 		// VSLLI.B: Vector Shift Left Logical Immediate (byte)
 		// Shifts each byte element left by immediate amount
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
 		uint32_t imm = (instr.whole >> 10) & 0x7;  // 3-bit immediate (0-7)
 
-		const auto& src = cpu.registers().getvr(vj);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src = cpu.registers().getvr(instr.r2.rj);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 
 		for (int i = 0; i < 16; i++) {
 			dst.bu[i] = src.bu[i] << imm;
@@ -2232,12 +2138,10 @@ struct InstrImpl {
 	static void VSLLI_H(cpu_t& cpu, la_instruction instr) {
 		// VSLLI.H: Vector Shift Left Logical Immediate (halfword)
 		// Shifts each 16-bit element left by immediate amount
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
 		uint32_t imm = (instr.whole >> 10) & 0xF;  // 4-bit immediate (0-15)
 
-		const auto& src = cpu.registers().getvr(vj);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src = cpu.registers().getvr(instr.r2.rj);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 
 		for (int i = 0; i < 8; i++) {
 			dst.hu[i] = src.hu[i] << imm;
@@ -2247,12 +2151,10 @@ struct InstrImpl {
 	static void VSLLI_W(cpu_t& cpu, la_instruction instr) {
 		// VSLLI.W: Vector Shift Left Logical Immediate (word)
 		// Shifts each 32-bit element left by immediate amount
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
 		uint32_t imm = (instr.whole >> 10) & 0x1F;  // 5-bit immediate (0-31)
 
-		const auto& src = cpu.registers().getvr(vj);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src = cpu.registers().getvr(instr.r2.rj);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 
 		for (int i = 0; i < 4; i++) {
 			dst.wu[i] = src.wu[i] << imm;
@@ -2262,12 +2164,10 @@ struct InstrImpl {
 	static void VSLLI_D(cpu_t& cpu, la_instruction instr) {
 		// VSLLI.D: Vector Shift Left Logical Immediate (double)
 		// Shifts each 64-bit element left by immediate amount
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
 		uint32_t imm = (instr.whole >> 10) & 0x3F;  // 6-bit immediate (0-63)
 
-		const auto& src = cpu.registers().getvr(vj);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src = cpu.registers().getvr(instr.r2.rj);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 
 		dst.du[0] = src.du[0] << imm;
 		dst.du[1] = src.du[1] << imm;
@@ -2276,11 +2176,9 @@ struct InstrImpl {
 	static void VPCNT_B(cpu_t& cpu, la_instruction instr) {
 		// VPCNT.B: Vector Population Count (byte)
 		// Counts the number of 1 bits in each byte element
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
 
-		const auto& src = cpu.registers().getvr(vj);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src = cpu.registers().getvr(instr.r2.rj);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 
 		for (int i = 0; i < 16; i++) {
 			dst.bu[i] = __builtin_popcount(src.bu[i]);
@@ -2290,11 +2188,9 @@ struct InstrImpl {
 	static void VPCNT_H(cpu_t& cpu, la_instruction instr) {
 		// VPCNT.H: Vector Population Count (halfword)
 		// Counts the number of 1 bits in each 16-bit element
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
 
-		const auto& src = cpu.registers().getvr(vj);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src = cpu.registers().getvr(instr.r2.rj);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 
 		for (int i = 0; i < 8; i++) {
 			dst.hu[i] = __builtin_popcount(src.hu[i]);
@@ -2304,11 +2200,9 @@ struct InstrImpl {
 	static void VPCNT_W(cpu_t& cpu, la_instruction instr) {
 		// VPCNT.W: Vector Population Count (word)
 		// Counts the number of 1 bits in each 32-bit element
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
 
-		const auto& src = cpu.registers().getvr(vj);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src = cpu.registers().getvr(instr.r2.rj);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 
 		for (int i = 0; i < 4; i++) {
 			dst.wu[i] = __builtin_popcount(src.wu[i]);
@@ -2318,11 +2212,9 @@ struct InstrImpl {
 	static void VPCNT_D(cpu_t& cpu, la_instruction instr) {
 		// VPCNT.D: Vector Population Count (doubleword)
 		// Counts the number of 1 bits in each 64-bit element
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
 
-		const auto& src = cpu.registers().getvr(vj);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src = cpu.registers().getvr(instr.r2.rj);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 
 		dst.du[0] = __builtin_popcountll(src.du[0]);
 		dst.du[1] = __builtin_popcountll(src.du[1]);
@@ -2332,10 +2224,9 @@ struct InstrImpl {
 		// VLDI vd, imm13
 		// LSX load immediate - loads immediate pattern into 128-bit vector
 		// Format: bits[4:0] = vd, bits[17:5] = imm13
-		uint32_t vd = instr.whole & 0x1F;
 		uint32_t imm13 = (instr.whole >> 5) & 0x1FFF;
 
-		auto& dst = cpu.registers().getvr(vd);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 
 		// Extract top bits to determine mode
 		uint32_t top3 = (imm13 >> 10) & 0x7;  // imm[12:10]
@@ -2435,12 +2326,10 @@ struct InstrImpl {
 
 	static void VORI_B(cpu_t& cpu, la_instruction instr) {
 		// VORI.B: Vector OR immediate (operate on each byte)
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
 		const uint8_t imm8 = (instr.whole >> 10) & 0xFF;
 
-		const auto& src = cpu.registers().getvr(vj);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src = cpu.registers().getvr(instr.r2.rj);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 
 		// OR immediate with each byte
 		for (int i = 0; i < 16; i++) {
@@ -2492,11 +2381,9 @@ struct InstrImpl {
 
 	static void VFTINTRZ_W_S(cpu_t& cpu, la_instruction instr) {
 		// VFTINTRZ.W.S: Vector float to int32 with truncation towards zero (4x single-precision)
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
 
-		const auto& src = cpu.registers().getvr(vj);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src = cpu.registers().getvr(instr.r2.rj);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 
 		// Convert each single-precision float to int32 with truncation towards zero
 		dst.w[0] = (int32_t)src.f[0];
@@ -2507,11 +2394,9 @@ struct InstrImpl {
 
 	static void VFTINTRZ_L_D(cpu_t& cpu, la_instruction instr) {
 		// VFTINTRZ.L.D: Vector double to int64 with truncation towards zero (2x double-precision)
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
 
-		const auto& src = cpu.registers().getvr(vj);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src = cpu.registers().getvr(instr.r2.rj);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 
 		// Convert each double-precision float to int64 with truncation towards zero
 		dst.d[0] = (int64_t)src.df[0];
@@ -2565,13 +2450,11 @@ struct InstrImpl {
 	static void VSEQI_B(cpu_t& cpu, la_instruction instr) {
 		// VSEQI.B vd, vj, si5
 		// Set each byte to 0xFF if equal to sign-extended immediate, else 0
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
 		int32_t si5 = (instr.whole >> 10) & 0x1F;
 		si5 = (si5 << 27) >> 27; // Sign extend from 5 bits
 
-		const auto& src = cpu.registers().getvr(vj);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src = cpu.registers().getvr(instr.r2.rj);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 
 		for (int i = 0; i < 2; i++) {
 			uint64_t result = 0;
@@ -2587,13 +2470,11 @@ struct InstrImpl {
 	static void VSEQI_H(cpu_t& cpu, la_instruction instr) {
 		// VSEQI.H vd, vj, si5
 		// Set each halfword to 0xFFFF if equal to sign-extended immediate, else 0
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
 		int32_t si5 = (instr.whole >> 10) & 0x1F;
 		si5 = (si5 << 27) >> 27; // Sign extend from 5 bits
 
-		const auto& src = cpu.registers().getvr(vj);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src = cpu.registers().getvr(instr.r2.rj);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 
 		for (int i = 0; i < 2; i++) {
 			uint64_t result = 0;
@@ -2609,13 +2490,11 @@ struct InstrImpl {
 	static void VSEQI_W(cpu_t& cpu, la_instruction instr) {
 		// VSEQI.W vd, vj, si5
 		// Set each word to 0xFFFFFFFF if equal to sign-extended immediate, else 0
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
 		int32_t si5 = (instr.whole >> 10) & 0x1F;
 		si5 = (si5 << 27) >> 27; // Sign extend from 5 bits
 
-		const auto& src = cpu.registers().getvr(vj);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src = cpu.registers().getvr(instr.r2.rj);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 
 		for (int i = 0; i < 2; i++) {
 			uint64_t result = 0;
@@ -2631,13 +2510,11 @@ struct InstrImpl {
 	static void VSEQI_D(cpu_t& cpu, la_instruction instr) {
 		// VSEQI.D vd, vj, si5
 		// Set each doubleword to 0xFFFFFFFFFFFFFFFF if equal to sign-extended immediate, else 0
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
 		int32_t si5 = (instr.whole >> 10) & 0x1F;
 		si5 = (si5 << 27) >> 27; // Sign extend from 5 bits
 
-		const auto& src = cpu.registers().getvr(vj);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src = cpu.registers().getvr(instr.r2.rj);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 
 		dst.du[0] = ((int64_t)src.du[0] == (int64_t)si5) ? UINT64_MAX : 0ULL;
 		dst.du[1] = ((int64_t)src.du[1] == (int64_t)si5) ? UINT64_MAX : 0ULL;
@@ -2647,12 +2524,10 @@ struct InstrImpl {
 		// VFRSTPI.B vd, vj, ui5
 		// Find first set position in vector (starting from ui5)
 		// Sets vd[0] to the position of first non-zero byte starting from position ui5
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
 		uint32_t ui5 = (instr.whole >> 10) & 0x1F;
 
-		const auto& src = cpu.registers().getvr(vj);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src = cpu.registers().getvr(instr.r2.rj);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 
 		// Find first non-zero byte starting from ui5
 		uint8_t pos = 16; // Default: not found
@@ -2664,7 +2539,7 @@ struct InstrImpl {
 			}
 		}
 
-		// Store result in first byte of vd, clear rest
+		// Store result in first byte of instr.r2.rd, clear rest
 		dst.du[0] = pos;
 		dst.du[1] = 0;
 	}
@@ -2702,12 +2577,10 @@ struct InstrImpl {
 	static void VREPLVEI_D(cpu_t& cpu, la_instruction instr) {
 		// VREPLVEI.D: Vector Replicate Vector Element Immediate (double)
 		// Replicates a specified 64-bit element to all elements in the destination vector
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
 		uint32_t idx = (instr.whole >> 10) & 0x1;  // Element index (0 or 1 for doubles)
 
-		const auto& src = cpu.registers().getvr(vj);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src = cpu.registers().getvr(instr.r2.rj);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 
 		// Replicate the selected element to both positions
 		dst.du[0] = src.du[idx];
@@ -2717,11 +2590,9 @@ struct InstrImpl {
 	static void VREPLGR2VR_B(cpu_t& cpu, la_instruction instr) {
 		// VREPLGR2VR.B vd, rj
 		// Replicate byte from GPR rj to all 16 bytes of vd
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t rj = (instr.whole >> 5) & 0x1F;
 
-		uint8_t value = cpu.reg(rj) & 0xFF;
-		auto& dst = cpu.registers().getvr(vd);
+		uint8_t value = cpu.reg(instr.r2.rj) & 0xFF;
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 
 		// Fill all 16 bytes with the same value
 		uint64_t replicated = 0;
@@ -2735,11 +2606,9 @@ struct InstrImpl {
 	static void VREPLGR2VR_H(cpu_t& cpu, la_instruction instr) {
 		// VREPLGR2VR.H vd, rj
 		// Replicate halfword from GPR rj to all 8 halfwords of vd
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t rj = (instr.whole >> 5) & 0x1F;
 
-		uint16_t value = cpu.reg(rj) & 0xFFFF;
-		auto& dst = cpu.registers().getvr(vd);
+		uint16_t value = cpu.reg(instr.r2.rj) & 0xFFFF;
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 
 		// Fill all 8 halfwords with the same value
 		for (int i = 0; i < 8; i++) {
@@ -2750,11 +2619,9 @@ struct InstrImpl {
 	static void VREPLGR2VR_W(cpu_t& cpu, la_instruction instr) {
 		// VREPLGR2VR.W vd, rj
 		// Replicate word from GPR rj to all 4 words of vd
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t rj = (instr.whole >> 5) & 0x1F;
 
-		uint32_t value = cpu.reg(rj) & 0xFFFFFFFF;
-		auto& dst = cpu.registers().getvr(vd);
+		uint32_t value = cpu.reg(instr.r2.rj) & 0xFFFFFFFF;
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 
 		// Fill all 4 words with the same value
 		for (int i = 0; i < 4; i++) {
@@ -2765,11 +2632,9 @@ struct InstrImpl {
 	static void VREPLGR2VR_D(cpu_t& cpu, la_instruction instr) {
 		// VREPLGR2VR.D vd, rj
 		// Replicate doubleword from GPR rj to both 64-bit elements of vd
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t rj = (instr.whole >> 5) & 0x1F;
 
-		uint64_t value = cpu.reg(rj);
-		auto& dst = cpu.registers().getvr(vd);
+		uint64_t value = cpu.reg(instr.r2.rj);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 
 		// Fill both doublewords with the same value
 		dst.du[0] = value;
@@ -2779,12 +2644,10 @@ struct InstrImpl {
 	static void VINSGR2VR_B(cpu_t& cpu, la_instruction instr) {
 		// VINSGR2VR.B vd, rj, idx
 		// Insert byte from GPR rj to byte element idx of vd
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t rj = (instr.whole >> 5) & 0x1F;
 		uint32_t idx = (instr.whole >> 10) & 0xF;
 
-		uint8_t value = cpu.reg(rj) & 0xFF;
-		auto& dst = cpu.registers().getvr(vd);
+		uint8_t value = cpu.reg(instr.r2.rj) & 0xFF;
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 
 		dst.bu[idx] = value;
 	}
@@ -2792,12 +2655,10 @@ struct InstrImpl {
 	static void VINSGR2VR_H(cpu_t& cpu, la_instruction instr) {
 		// VINSGR2VR.H vd, rj, idx
 		// Insert halfword from GPR rj to halfword element idx of vd
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t rj = (instr.whole >> 5) & 0x1F;
 		uint32_t idx = (instr.whole >> 10) & 0x7;
 
-		uint16_t value = cpu.reg(rj) & 0xFFFF;
-		auto& dst = cpu.registers().getvr(vd);
+		uint16_t value = cpu.reg(instr.r2.rj) & 0xFFFF;
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 
 		dst.hu[idx] = value;
 	}
@@ -2805,12 +2666,10 @@ struct InstrImpl {
 	static void VINSGR2VR_W(cpu_t& cpu, la_instruction instr) {
 		// VINSGR2VR.W vd, rj, idx
 		// Insert word from GPR rj to word element idx of vd
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t rj = (instr.whole >> 5) & 0x1F;
 		uint32_t idx = (instr.whole >> 10) & 0x3;
 
-		uint32_t value = cpu.reg(rj) & 0xFFFFFFFF;
-		auto& dst = cpu.registers().getvr(vd);
+		uint32_t value = cpu.reg(instr.r2.rj) & 0xFFFFFFFF;
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 
 		dst.wu[idx] = value;
 	}
@@ -2818,12 +2677,10 @@ struct InstrImpl {
 	static void VINSGR2VR_D(cpu_t& cpu, la_instruction instr) {
 		// VINSGR2VR.D vd, rj, idx
 		// Insert doubleword from GPR rj to doubleword element idx of vd
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t rj = (instr.whole >> 5) & 0x1F;
 		uint32_t idx = (instr.whole >> 10) & 0x1;
 
-		uint64_t value = cpu.reg(rj);
-		auto& dst = cpu.registers().getvr(vd);
+		uint64_t value = cpu.reg(instr.r2.rj);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 
 		dst.du[idx] = value;
 	}
@@ -2831,12 +2688,10 @@ struct InstrImpl {
 	static void VADDI_BU(cpu_t& cpu, la_instruction instr) {
 		// VADDI.BU vd, vj, ui5
 		// Add immediate to each unsigned byte
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
 		uint32_t imm = (instr.whole >> 10) & 0x1F;
 
-		const auto& src = cpu.registers().getvr(vj);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src = cpu.registers().getvr(instr.r2.rj);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 
 		// Add immediate to each byte (with unsigned wraparound)
 		for (int i = 0; i < 2; i++) {
@@ -2901,17 +2756,14 @@ struct InstrImpl {
 	static void VSHUF_B(cpu_t& cpu, la_instruction instr) {
 		// VSHUF.B vd, vj, vk, va
 		// Shuffle bytes: for each byte in va, use low 5 bits as index into concatenated vk:vj
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
 		uint32_t va = (instr.whole >> 15) & 0x1F;
 
-		const auto& src_j = cpu.registers().getvr(vj);
-		const auto& src_k = cpu.registers().getvr(vk);
+		const auto& src_j = cpu.registers().getvr(instr.r2.rj);
+		const auto& src_k = cpu.registers().getvr(instr.r3.rk);
 		const auto& idx = cpu.registers().getvr(va);
-		auto& dst = cpu.registers().getvr(vd);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 
-		// Build combined 32-byte array: [vk[15:0], vj[15:0]]
+		// Build combined 32-byte array: [instr.r3.rk[15:0], instr.r2.rj[15:0]]
 		uint8_t combined[32];
 		for (int i = 0; i < 8; i++) {
 			combined[i] = (src_k.du[0] >> (i * 8)) & 0xFF;
@@ -2936,17 +2788,14 @@ struct InstrImpl {
 		// VBITSEL.V: Vector bit select (4R-type)
 		// vd = (vk & va) | (vj & ~va)
 		// Inverted from typical SIMD: when mask bit is 1, take from vk; when 0, take from vj
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
 		uint32_t va = (instr.whole >> 15) & 0x1F;
 
-		const auto& src_j = cpu.registers().getvr(vj);
-		const auto& src_k = cpu.registers().getvr(vk);
+		const auto& src_j = cpu.registers().getvr(instr.r2.rj);
+		const auto& src_k = cpu.registers().getvr(instr.r3.rk);
 		const auto& src_a = cpu.registers().getvr(va);
-		auto& dst = cpu.registers().getvr(vd);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 
-		// Bit select: for each bit, if mask bit is 1, take from vk, else from vj
+		// Bit select: for each bit, if mask bit is 1, take from instr.r3.rk, else from instr.r2.rj
 		for (int i = 0; i < 2; i++) {
 			dst.du[i] = (src_k.du[i] & src_a.du[i]) | (src_j.du[i] & ~src_a.du[i]);
 		}
@@ -2955,177 +2804,129 @@ struct InstrImpl {
 	// === VMAX/VMIN instructions ===
 
 	static void VMAX_B(cpu_t& cpu, la_instruction instr) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
-		const auto& src1 = cpu.registers().getvr(vj);
-		const auto& src2 = cpu.registers().getvr(vk);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src1 = cpu.registers().getvr(instr.r2.rj);
+		const auto& src2 = cpu.registers().getvr(instr.r3.rk);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 		for (int i = 0; i < 16; i++)
 			dst.b[i] = (src1.b[i] > src2.b[i]) ? src1.b[i] : src2.b[i];
 	}
 
 	static void VMAX_H(cpu_t& cpu, la_instruction instr) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
-		const auto& src1 = cpu.registers().getvr(vj);
-		const auto& src2 = cpu.registers().getvr(vk);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src1 = cpu.registers().getvr(instr.r2.rj);
+		const auto& src2 = cpu.registers().getvr(instr.r3.rk);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 		for (int i = 0; i < 8; i++)
 			dst.h[i] = (src1.h[i] > src2.h[i]) ? src1.h[i] : src2.h[i];
 	}
 
 	static void VMAX_W(cpu_t& cpu, la_instruction instr) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
-		const auto& src1 = cpu.registers().getvr(vj);
-		const auto& src2 = cpu.registers().getvr(vk);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src1 = cpu.registers().getvr(instr.r2.rj);
+		const auto& src2 = cpu.registers().getvr(instr.r3.rk);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 		for (int i = 0; i < 4; i++)
 			dst.w[i] = (src1.w[i] > src2.w[i]) ? src1.w[i] : src2.w[i];
 	}
 
 	static void VMAX_D(cpu_t& cpu, la_instruction instr) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
-		const auto& src1 = cpu.registers().getvr(vj);
-		const auto& src2 = cpu.registers().getvr(vk);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src1 = cpu.registers().getvr(instr.r2.rj);
+		const auto& src2 = cpu.registers().getvr(instr.r3.rk);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 		for (int i = 0; i < 2; i++)
 			dst.d[i] = (src1.d[i] > src2.d[i]) ? src1.d[i] : src2.d[i];
 	}
 
 	static void VMAX_BU(cpu_t& cpu, la_instruction instr) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
-		const auto& src1 = cpu.registers().getvr(vj);
-		const auto& src2 = cpu.registers().getvr(vk);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src1 = cpu.registers().getvr(instr.r2.rj);
+		const auto& src2 = cpu.registers().getvr(instr.r3.rk);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 		for (int i = 0; i < 16; i++)
 			dst.bu[i] = (src1.bu[i] > src2.bu[i]) ? src1.bu[i] : src2.bu[i];
 	}
 
 	static void VMAX_HU(cpu_t& cpu, la_instruction instr) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
-		const auto& src1 = cpu.registers().getvr(vj);
-		const auto& src2 = cpu.registers().getvr(vk);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src1 = cpu.registers().getvr(instr.r2.rj);
+		const auto& src2 = cpu.registers().getvr(instr.r3.rk);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 		for (int i = 0; i < 8; i++)
 			dst.hu[i] = (src1.hu[i] > src2.hu[i]) ? src1.hu[i] : src2.hu[i];
 	}
 
 	static void VMAX_WU(cpu_t& cpu, la_instruction instr) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
-		const auto& src1 = cpu.registers().getvr(vj);
-		const auto& src2 = cpu.registers().getvr(vk);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src1 = cpu.registers().getvr(instr.r2.rj);
+		const auto& src2 = cpu.registers().getvr(instr.r3.rk);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 		for (int i = 0; i < 4; i++)
 			dst.wu[i] = (src1.wu[i] > src2.wu[i]) ? src1.wu[i] : src2.wu[i];
 	}
 
 	static void VMAX_DU(cpu_t& cpu, la_instruction instr) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
-		const auto& src1 = cpu.registers().getvr(vj);
-		const auto& src2 = cpu.registers().getvr(vk);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src1 = cpu.registers().getvr(instr.r2.rj);
+		const auto& src2 = cpu.registers().getvr(instr.r3.rk);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 		for (int i = 0; i < 2; i++)
 			dst.du[i] = (src1.du[i] > src2.du[i]) ? src1.du[i] : src2.du[i];
 	}
 
 	static void VMIN_B(cpu_t& cpu, la_instruction instr) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
-		const auto& src1 = cpu.registers().getvr(vj);
-		const auto& src2 = cpu.registers().getvr(vk);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src1 = cpu.registers().getvr(instr.r2.rj);
+		const auto& src2 = cpu.registers().getvr(instr.r3.rk);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 		for (int i = 0; i < 16; i++)
 			dst.b[i] = (src1.b[i] < src2.b[i]) ? src1.b[i] : src2.b[i];
 	}
 
 	static void VMIN_H(cpu_t& cpu, la_instruction instr) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
-		const auto& src1 = cpu.registers().getvr(vj);
-		const auto& src2 = cpu.registers().getvr(vk);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src1 = cpu.registers().getvr(instr.r2.rj);
+		const auto& src2 = cpu.registers().getvr(instr.r3.rk);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 		for (int i = 0; i < 8; i++)
 			dst.h[i] = (src1.h[i] < src2.h[i]) ? src1.h[i] : src2.h[i];
 	}
 
 	static void VMIN_W(cpu_t& cpu, la_instruction instr) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
-		const auto& src1 = cpu.registers().getvr(vj);
-		const auto& src2 = cpu.registers().getvr(vk);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src1 = cpu.registers().getvr(instr.r2.rj);
+		const auto& src2 = cpu.registers().getvr(instr.r3.rk);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 		for (int i = 0; i < 4; i++)
 			dst.w[i] = (src1.w[i] < src2.w[i]) ? src1.w[i] : src2.w[i];
 	}
 
 	static void VMIN_D(cpu_t& cpu, la_instruction instr) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
-		const auto& src1 = cpu.registers().getvr(vj);
-		const auto& src2 = cpu.registers().getvr(vk);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src1 = cpu.registers().getvr(instr.r2.rj);
+		const auto& src2 = cpu.registers().getvr(instr.r3.rk);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 		for (int i = 0; i < 2; i++)
 			dst.d[i] = (src1.d[i] < src2.d[i]) ? src1.d[i] : src2.d[i];
 	}
 
 	static void VMIN_BU(cpu_t& cpu, la_instruction instr) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
-		const auto& src1 = cpu.registers().getvr(vj);
-		const auto& src2 = cpu.registers().getvr(vk);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src1 = cpu.registers().getvr(instr.r2.rj);
+		const auto& src2 = cpu.registers().getvr(instr.r3.rk);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 		for (int i = 0; i < 16; i++)
 			dst.bu[i] = (src1.bu[i] < src2.bu[i]) ? src1.bu[i] : src2.bu[i];
 	}
 
 	static void VMIN_HU(cpu_t& cpu, la_instruction instr) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
-		const auto& src1 = cpu.registers().getvr(vj);
-		const auto& src2 = cpu.registers().getvr(vk);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src1 = cpu.registers().getvr(instr.r2.rj);
+		const auto& src2 = cpu.registers().getvr(instr.r3.rk);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 		for (int i = 0; i < 8; i++)
 			dst.hu[i] = (src1.hu[i] < src2.hu[i]) ? src1.hu[i] : src2.hu[i];
 	}
 
 	static void VMIN_WU(cpu_t& cpu, la_instruction instr) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
-		const auto& src1 = cpu.registers().getvr(vj);
-		const auto& src2 = cpu.registers().getvr(vk);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src1 = cpu.registers().getvr(instr.r2.rj);
+		const auto& src2 = cpu.registers().getvr(instr.r3.rk);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 		for (int i = 0; i < 4; i++)
 			dst.wu[i] = (src1.wu[i] < src2.wu[i]) ? src1.wu[i] : src2.wu[i];
 	}
 
 	static void VMIN_DU(cpu_t& cpu, la_instruction instr) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
-		const auto& src1 = cpu.registers().getvr(vj);
-		const auto& src2 = cpu.registers().getvr(vk);
-		auto& dst = cpu.registers().getvr(vd);
+		const auto& src1 = cpu.registers().getvr(instr.r2.rj);
+		const auto& src2 = cpu.registers().getvr(instr.r3.rk);
+		auto& dst = cpu.registers().getvr(instr.r2.rd);
 		for (int i = 0; i < 2; i++)
 			dst.du[i] = (src1.du[i] < src2.du[i]) ? src1.du[i] : src2.du[i];
 	}
@@ -3140,4 +2941,4 @@ struct InstrImpl {
 
 }; // InstrImpl
 
-} // namespace loongarch
+} // loongarch

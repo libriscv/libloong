@@ -61,13 +61,12 @@ struct InstrImplLASX {
 	static void XVPICKVE2GR_W(cpu_t& cpu, la_instruction instr) {
 		// XVPICKVE2GR.W: Pick LASX vector element to general register (word, sign-extended)
 		// Selects one of 8 words from a 256-bit vector and sign-extends to 64 bits
-		uint32_t rd = instr.whole & 0x1F;
-		if (rd == 0) return; // Writes to x0 are discarded
+		if (instr.r2.rd == 0) return; // Writes to x0 are discarded
 		uint32_t xj = (instr.whole >> 5) & 0x1F;
 		uint32_t ui3 = (instr.whole >> 10) & 0x7; // 3-bit index for 8 words
 
 		const auto& src = cpu.registers().getvr(xj);
-		cpu.reg(rd) = static_cast<int64_t>(static_cast<int32_t>(src.wu[ui3]));
+		cpu.reg(instr.r2.rd) = static_cast<int64_t>(static_cast<int32_t>(src.wu[ui3]));
 	}
 
 	static void XVADD_D(cpu_t& cpu, la_instruction instr) {
@@ -217,9 +216,8 @@ struct InstrImplLASX {
 		// XVREPLGR2VR.B xd, rj
 		// Replicate byte from GPR rj to all 32 bytes of xd
 		uint32_t xd = instr.whole & 0x1F;
-		uint32_t rj = (instr.whole >> 5) & 0x1F;
 
-		uint8_t value = cpu.reg(rj) & 0xFF;
+		uint8_t value = cpu.reg(instr.r2.rj) & 0xFF;
 		auto& dst = cpu.registers().getvr(xd);
 
 		// Fill all 32 bytes with the same value
@@ -1052,10 +1050,9 @@ struct InstrPrintersLASX {
 	}
 
 	static int XVPICKVE2GR_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t rd = instr.whole & 0x1F;
 		uint32_t xj = (instr.whole >> 5) & 0x1F;
 		uint32_t ui3 = (instr.whole >> 10) & 0x7;
-		return snprintf(buf, len, "xvpickve2gr.w %s, $xr%u, %u", reg_name(rd), xj, ui3);
+		return snprintf(buf, len, "xvpickve2gr.w %s, $xr%u, %u", reg_name(instr.r2.rd), xj, ui3);
 	}
 
 	static int XVADD_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
@@ -1091,8 +1088,7 @@ struct InstrPrintersLASX {
 
 	static int XVREPLGR2VR_B(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		uint32_t xd = instr.whole & 0x1F;
-		uint32_t rj = (instr.whole >> 5) & 0x1F;
-		return snprintf(buf, len, "xvreplgr2vr.b $xr%u, %s", xd, reg_name(rj));
+		return snprintf(buf, len, "xvreplgr2vr.b $xr%u, %s", xd, reg_name(instr.r2.rj));
 	}
 
 	static int XVXOR_V(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
@@ -1384,13 +1380,12 @@ struct InstrPrintersLASX {
 	static void XVPICKVE2GR_W(cpu_t& cpu, la_instruction instr) {
 		// XVPICKVE2GR.W: Pick LASX vector element to general register (word, sign-extended)
 		// Selects one of 8 words from a 256-bit vector and sign-extends to 64 bits
-		uint32_t rd = instr.whole & 0x1F;
-		if (rd == 0) return; // Writes to x0 are discarded
+		if (instr.r2.rd == 0) return; // Writes to x0 are discarded
 		uint32_t xj = (instr.whole >> 5) & 0x1F;
 		uint32_t ui3 = (instr.whole >> 10) & 0x7; // 3-bit index for 8 words
 
 		const auto& src = cpu.registers().getvr(xj);
-		cpu.reg(rd) = static_cast<int64_t>(static_cast<int32_t>(src.wu[ui3]));
+		cpu.reg(instr.r2.rd) = static_cast<int64_t>(static_cast<int32_t>(src.wu[ui3]));
 	}
 
 	static void XVADD_D(cpu_t& cpu, la_instruction instr) {
@@ -1538,4 +1533,4 @@ struct InstrPrintersLASX {
 
 }; // InstrPrintersLASX
 
-} // namespace loongarch
+} // loongarch

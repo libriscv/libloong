@@ -257,9 +257,8 @@ struct InstrPrinters {
 	// === Byte Manipulation ===
 
 	static int BYTEPICK_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t sa2 = (instr.whole >> 15) & 0x7;
 		return snprintf(buf, len, "bytepick.d %s, %s, %s, 0x%x",
-			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk), sa2);
+			reg_name(instr.r3.rd), reg_name(instr.r3.rj), reg_name(instr.r3.rk), instr.r3sa2.sa2);
 	}
 
 	// === Shift Instructions ===
@@ -972,219 +971,158 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 
 	static int VSETANYEQZ_B(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		uint32_t cd = instr.whole & 0x7;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		return snprintf(buf, len, "vsetanyeqz.b $fcc%u, $vr%u", cd, vj);
+		return snprintf(buf, len, "vsetanyeqz.b $fcc%u, $vr%u", cd, instr.r2.rj);
 	}
 
 	static int VSETALLNEZ_B(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		uint32_t cd = instr.whole & 0x7;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		return snprintf(buf, len, "vsetallnez.b $fcc%u, $vr%u", cd, vj);
+		return snprintf(buf, len, "vsetallnez.b $fcc%u, $vr%u", cd, instr.r2.rj);
 	}
 
 	static int VMSKNZ_B(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		return snprintf(buf, len, "vmsknz.b $vr%u, $vr%u", vd, vj);
+		return snprintf(buf, len, "vmsknz.b $vr%u, $vr%u", instr.r2.rd, instr.r2.rj);
 	}
 
 	static int VSEQI(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		static constexpr char sizes[] = {'b', 'h', 'w', 'd'};
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
 		int32_t si5 = (instr.whole >> 10) & 0x1F;
 		if (si5 & 0x10) si5 |= 0xFFFFFFE0;
 		// Extract size from opcode: bits[16:15] encode the size (0=b, 1=h, 2=w, 3=d)
 		uint32_t size_idx = (instr.whole >> 15) & 0x3;
-		return snprintf(buf, len, "vseqi.%c $vr%u, $vr%u, %d", sizes[size_idx], vd, vj, si5);
+		return snprintf(buf, len, "vseqi.%c $vr%u, $vr%u, %d", sizes[size_idx], instr.r2.rd, instr.r2.rj, si5);
 	}
 
 	static int MOVFR2GR_S(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t rd = instr.whole & 0x1F;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
-		return snprintf(buf, len, "movfr2gr.s %s, $fa%u", reg_name(rd), fj);
+		return snprintf(buf, len, "movfr2gr.s %s, $fa%u", reg_name(instr.r2.rd), instr.r2.rj);
 	}
 
 	static int MOVFR2GR_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t rd = instr.whole & 0x1F;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
-		return snprintf(buf, len, "movfr2gr.d %s, $fa%u", reg_name(rd), fj);
+		return snprintf(buf, len, "movfr2gr.d %s, $fa%u", reg_name(instr.r2.rd), instr.r2.rj);
 	}
 
 	static int MOVGR2FR_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t fd = instr.whole & 0x1F;
-		uint32_t rj = (instr.whole >> 5) & 0x1F;
-		return snprintf(buf, len, "movgr2fr.w $fa%u, %s", fd, reg_name(rj));
+		return snprintf(buf, len, "movgr2fr.w $fa%u, %s", instr.r2.rd, reg_name(instr.r2.rj));
 	}
 
 	static int MOVGR2FR_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t fd = instr.whole & 0x1F;
-		uint32_t rj = (instr.whole >> 5) & 0x1F;
-		return snprintf(buf, len, "movgr2fr.d $fa%u, %s", fd, reg_name(rj));
+		return snprintf(buf, len, "movgr2fr.d $fa%u, %s", instr.r2.rd, reg_name(instr.r2.rj));
 	}
 
 	static int MOVFCSR2GR(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t rd = instr.whole & 0x1F;
 		uint32_t fcsr_idx = (instr.whole >> 5) & 0x1F;
-		return snprintf(buf, len, "movfcsr2gr %s, $fcsr%u", reg_name(rd), fcsr_idx);
+		return snprintf(buf, len, "movfcsr2gr %s, $fcsr%u", reg_name(instr.r2.rd), fcsr_idx);
 	}
 
 	static int MOVFR2CF(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		uint32_t cd = instr.whole & 0x7;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
-		return snprintf(buf, len, "movfr2cf $fcc%u, $fa%u", cd, fj);
+		return snprintf(buf, len, "movfr2cf $fcc%u, $fa%u", cd, instr.r2.rj);
 	}
 
 	static int MOVCF2FR(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t fd = instr.whole & 0x1F;
 		uint32_t cj = (instr.whole >> 5) & 0x7;
-		return snprintf(buf, len, "movcf2fr $fa%u, $fcc%u", fd, cj);
+		return snprintf(buf, len, "movcf2fr $fa%u, $fcc%u", instr.r2.rd, cj);
 	}
 
 	static int MOVGR2CF(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		uint32_t cd = instr.whole & 0x7;
-		uint32_t rj = (instr.whole >> 5) & 0x1F;
-		return snprintf(buf, len, "movgr2cf $fcc%u, %s", cd, reg_name(rj));
+		return snprintf(buf, len, "movgr2cf $fcc%u, %s", cd, reg_name(instr.r2.rj));
 	}
 
 	static int MOVCF2GR(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t rd = instr.whole & 0x1F;
 		uint32_t cj = (instr.whole >> 5) & 0x7;
-		return snprintf(buf, len, "movcf2gr %s, $fcc%u", reg_name(rd), cj);
+		return snprintf(buf, len, "movcf2gr %s, $fcc%u", reg_name(instr.r2.rd), cj);
 	}
 
 	static int VFCMP_COND_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
 		uint32_t cond = (instr.whole >> 15) & 0x1F;
 		const char* mnemonic = cond_names(cond);
-		return snprintf(buf, len, "vfcmp.%s.d $vr%u, $vr%u, $vr%u", mnemonic, vd, vj, vk);
+		return snprintf(buf, len, "vfcmp.%s.d $vr%u, $vr%u, $vr%u", mnemonic, instr.r2.rd, instr.r2.rj, instr.r3.rk);
 	}
 
 	static int FCMP_COND_S(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		uint32_t cd = instr.whole & 0x7;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
-		uint32_t fk = (instr.whole >> 10) & 0x1F;
 		const uint32_t cond = (instr.whole >> 15) & 0x1F;
 		const char* mnemonic = cond_names(cond);
-		return snprintf(buf, len, "fcmp.%s.s $fcc%u, $fa%u, $fa%u", mnemonic, cd, fj, fk);
+		return snprintf(buf, len, "fcmp.%s.s $fcc%u, $fa%u, $fa%u", mnemonic, cd, instr.r2.rj, instr.r3.rk);
 	}
 
 	static int FCMP_COND_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		uint32_t cd = instr.whole & 0x7;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
-		uint32_t fk = (instr.whole >> 10) & 0x1F;
 		const uint32_t cond = (instr.whole >> 15) & 0x1F;
 		const char* mnemonic = cond_names(cond);
-		return snprintf(buf, len, "fcmp.%s.d $fcc%u, $fa%u, $fa%u", mnemonic, cd, fj, fk);
+		return snprintf(buf, len, "fcmp.%s.d $fcc%u, $fa%u, $fa%u", mnemonic, cd, instr.r2.rj, instr.r3.rk);
 	}
 
 	static int FSEL(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t fd = instr.whole & 0x1F;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
-		uint32_t fk = (instr.whole >> 10) & 0x1F;
 		uint32_t ca = (instr.whole >> 15) & 0x7;
-		return snprintf(buf, len, "fsel $fa%u, $fa%u, $fa%u, $fcc%u", fd, fj, fk, ca);
+		return snprintf(buf, len, "fsel $fa%u, $fa%u, $fa%u, $fcc%u", instr.r2.rd, instr.r2.rj, instr.r3.rk, ca);
 	}
 
 	static int FABS_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t fd = instr.whole & 0x1F;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
-		return snprintf(buf, len, "fabs.d $fa%u, $fa%u", fd, fj);
+		return snprintf(buf, len, "fabs.d $fa%u, $fa%u", instr.r2.rd, instr.r2.rj);
 	}
 
 	static int FABS_S(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t fd = instr.whole & 0x1F;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
-		return snprintf(buf, len, "fabs.s $fa%u, $fa%u", fd, fj);
+		return snprintf(buf, len, "fabs.s $fa%u, $fa%u", instr.r2.rd, instr.r2.rj);
 	}
 
 	static int FNEG_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t fd = instr.whole & 0x1F;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
-		return snprintf(buf, len, "fneg.d $fa%u, $fa%u", fd, fj);
+		return snprintf(buf, len, "fneg.d $fa%u, $fa%u", instr.r2.rd, instr.r2.rj);
 	}
 
 	static int FMOV_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t fd = instr.whole & 0x1F;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
-		return snprintf(buf, len, "fmov.d $fa%u, $fa%u", fd, fj);
+		return snprintf(buf, len, "fmov.d $fa%u, $fa%u", instr.r2.rd, instr.r2.rj);
 	}
 
 	static int FMOV_S(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t fd = instr.whole & 0x1F;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
-		return snprintf(buf, len, "fmov.s $fa%u, $fa%u", fd, fj);
+		return snprintf(buf, len, "fmov.s $fa%u, $fa%u", instr.r2.rd, instr.r2.rj);
 	}
 
 	static int FCLASS(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		static constexpr char sizes[] = {'d', 's'};
-		uint32_t fd = instr.whole & 0x1F;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
 		// Extract size from opcode: bit[10] (0=d, 1=s)
 		uint32_t size_idx = (instr.whole >> 10) & 0x1;
-		return snprintf(buf, len, "fclass.%c $fa%u, $fa%u", sizes[size_idx], fd, fj);
+		return snprintf(buf, len, "fclass.%c $fa%u, $fa%u", sizes[size_idx], instr.r2.rd, instr.r2.rj);
 	}
 
 	static int FFINT_D_L(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t fd = instr.whole & 0x1F;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
-		return snprintf(buf, len, "ffint.d.l $fa%u, $fa%u", fd, fj);
+		return snprintf(buf, len, "ffint.d.l $fa%u, $fa%u", instr.r2.rd, instr.r2.rj);
 	}
 
 	static int FFINT_D_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t fd = instr.whole & 0x1F;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
-		return snprintf(buf, len, "ffint.d.w $fa%u, $fa%u", fd, fj);
+		return snprintf(buf, len, "ffint.d.w $fa%u, $fa%u", instr.r2.rd, instr.r2.rj);
 	}
 
 	static int FFINT_S_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t fd = instr.whole & 0x1F;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
-		return snprintf(buf, len, "ffint.s.w $fa%u, $fa%u", fd, fj);
+		return snprintf(buf, len, "ffint.s.w $fa%u, $fa%u", instr.r2.rd, instr.r2.rj);
 	}
 
 	static int FFINT_S_L(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t fd = instr.whole & 0x1F;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
-		return snprintf(buf, len, "ffint.s.l $fa%u, $fa%u", fd, fj);
+		return snprintf(buf, len, "ffint.s.l $fa%u, $fa%u", instr.r2.rd, instr.r2.rj);
 	}
 
 	static int FCVT_S_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t fd = instr.whole & 0x1F;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
-		return snprintf(buf, len, "fcvt.s.d $fa%u, $fa%u", fd, fj);
+		return snprintf(buf, len, "fcvt.s.d $fa%u, $fa%u", instr.r2.rd, instr.r2.rj);
 	}
 
 	static int FCVT_D_S(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t fd = instr.whole & 0x1F;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
-		return snprintf(buf, len, "fcvt.d.s $fa%u, $fa%u", fd, fj);
+		return snprintf(buf, len, "fcvt.d.s $fa%u, $fa%u", instr.r2.rd, instr.r2.rj);
 	}
 
 	static int FTINTRZ_W_S(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t fd = instr.whole & 0x1F;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
-		return snprintf(buf, len, "ftintrz.w.s $fa%u, $fa%u", fd, fj);
+		return snprintf(buf, len, "ftintrz.w.s $fa%u, $fa%u", instr.r2.rd, instr.r2.rj);
 	}
 
 	static int FTINTRZ_W_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t fd = instr.whole & 0x1F;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
-		return snprintf(buf, len, "ftintrz.w.d $fa%u, $fa%u", fd, fj);
+		return snprintf(buf, len, "ftintrz.w.d $fa%u, $fa%u", instr.r2.rd, instr.r2.rj);
 	}
 
 	static int FTINTRZ_L_S(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t fd = instr.whole & 0x1F;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
-		return snprintf(buf, len, "ftintrz.l.s $fa%u, $fa%u", fd, fj);
+		return snprintf(buf, len, "ftintrz.l.s $fa%u, $fa%u", instr.r2.rd, instr.r2.rj);
 	}
 
 	static int FTINTRZ_L_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t fd = instr.whole & 0x1F;
-		uint32_t fj = (instr.whole >> 5) & 0x1F;
-		return snprintf(buf, len, "ftintrz.l.d $fa%u, $fa%u", fd, fj);
+		return snprintf(buf, len, "ftintrz.l.d $fa%u, $fa%u", instr.r2.rd, instr.r2.rj);
 	}
 
 	static int FADD_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
@@ -1336,10 +1274,8 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 	}
 
 	static int VFRSTPI_B(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
 		uint32_t ui5 = (instr.whole >> 10) & 0x1F;
-		return snprintf(buf, len, "vfrstpi.b $vr%u, $vr%u, 0x%x", vd, vj, ui5);
+		return snprintf(buf, len, "vfrstpi.b $vr%u, $vr%u, 0x%x", instr.r2.rd, instr.r2.rj, ui5);
 	}
 
 	// === LSX Condition Branches ===
@@ -1365,8 +1301,6 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 	// === LSX Vector Element Extraction ===
 
 	static int VPICKVE2GR(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t rd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
 		uint32_t top16 = (instr.whole >> 16) & 0xFFFF;
 		uint32_t subop = (instr.whole >> 12) & 0xF;
 
@@ -1383,125 +1317,86 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 
 		uint32_t imm = (instr.whole >> 10) & imm_mask;
 		return snprintf(buf, len, "vpickve2gr%s %s, $vr%u, 0x%x",
-			size_suffix, reg_name(rd), vj, imm);
+			size_suffix, reg_name(instr.r2.rd), instr.r2.rj, imm);
 	}
 
 	// === LSX Vector Arithmetic/Logic ===
 
 	static int VSUB(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		static constexpr char sizes[] = {'b', 'h', 'w', 'd'};
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
 		// Extract size from opcode: bits[16:15] encode the size (0=b, 1=h, 2=w, 3=d)
 		uint32_t size_idx = (instr.whole >> 15) & 0x3;
-		return snprintf(buf, len, "vsub.%c $vr%u, $vr%u, $vr%u", sizes[size_idx], vd, vj, vk);
+		return snprintf(buf, len, "vsub.%c $vr%u, $vr%u, $vr%u", sizes[size_idx], instr.r2.rd, instr.r2.rj, instr.r3.rk);
 	}
 
 	static int VMUL(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		static constexpr char sizes[] = {'b', 'h', 'w', 'd'};
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
 		// Extract size from opcode: bits[16:15] encode the size (0=b, 1=h, 2=w, 3=d)
 		uint32_t size_idx = (instr.whole >> 15) & 0x3;
-		return snprintf(buf, len, "vmul.%c $vr%u, $vr%u, $vr%u", sizes[size_idx], vd, vj, vk);
+		return snprintf(buf, len, "vmul.%c $vr%u, $vr%u, $vr%u", sizes[size_idx], instr.r2.rd, instr.r2.rj, instr.r3.rk);
 	}
 
 	static int VMADD(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		static constexpr char sizes[] = {'b', 'h', 'w', 'd'};
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
 		// Extract size from opcode: bits[16:15] encode the size (0=b, 1=h, 2=w, 3=d)
 		uint32_t size_idx = (instr.whole >> 15) & 0x3;
-		return snprintf(buf, len, "vmadd.%c $vr%u, $vr%u, $vr%u", sizes[size_idx], vd, vj, vk);
+		return snprintf(buf, len, "vmadd.%c $vr%u, $vr%u, $vr%u", sizes[size_idx], instr.r2.rd, instr.r2.rj, instr.r3.rk);
 	}
 
 	static int VADDI(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		static constexpr const char* sizes[] = {"bu", "hu", "wu", "du"};
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
 		uint32_t uk5 = (instr.whole >> 10) & 0x1F; // Unsigned 5-bit immediate
 		// Extract size from opcode: bits[16:15] encode the size (0=bu, 1=hu, 2=wu, 3=du)
 		uint32_t size_idx = (instr.whole >> 15) & 0x3;
-		return snprintf(buf, len, "vaddi.%s $vr%u, $vr%u, 0x%x", sizes[size_idx], vd, vj, uk5);
+		return snprintf(buf, len, "vaddi.%s $vr%u, $vr%u, 0x%x", sizes[size_idx], instr.r2.rd, instr.r2.rj, uk5);
 	}
 
 	static int VSEQ_B(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
-		return snprintf(buf, len, "vseq.b $vr%u, $vr%u, $vr%u", vd, vj, vk);
+		return snprintf(buf, len, "vseq.b $vr%u, $vr%u, $vr%u", instr.r2.rd, instr.r2.rj, instr.r3.rk);
 	}
 
 	static int VSLT(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		static constexpr char sizes[] = {'b', 'h', 'w', 'd'};
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
 		// Extract size from opcode: bits[16:15] encode the size (0=b, 1=h, 2=w, 3=d)
 		uint32_t size_idx = (instr.whole >> 15) & 0x3;
-		return snprintf(buf, len, "vslt.%c $vr%u, $vr%u, $vr%u", sizes[size_idx], vd, vj, vk);
+		return snprintf(buf, len, "vslt.%c $vr%u, $vr%u, $vr%u", sizes[size_idx], instr.r2.rd, instr.r2.rj, instr.r3.rk);
 	}
 
 	static int VILVL(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		static constexpr char sizes[] = {'b', 'h', 'w', 'd'};
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
 		// Extract size from opcode: bits[16:15] encode the size (0=b, 1=h, 2=w, 3=d)
 		uint32_t size_idx = (instr.whole >> 15) & 0x3;
-		return snprintf(buf, len, "vilvl.%c $vr%u, $vr%u, $vr%u", sizes[size_idx], vd, vj, vk);
+		return snprintf(buf, len, "vilvl.%c $vr%u, $vr%u, $vr%u", sizes[size_idx], instr.r2.rd, instr.r2.rj, instr.r3.rk);
 	}
 
 	static int VILVH_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
-		return snprintf(buf, len, "vilvh.d $vr%u, $vr%u, $vr%u", vd, vj, vk);
+		return snprintf(buf, len, "vilvh.d $vr%u, $vr%u, $vr%u", instr.r2.rd, instr.r2.rj, instr.r3.rk);
 	}
 
 	static int VPICKEV_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
-		return snprintf(buf, len, "vpickev.w $vr%u, $vr%u, $vr%u", vd, vj, vk);
+		return snprintf(buf, len, "vpickev.w $vr%u, $vr%u, $vr%u", instr.r2.rd, instr.r2.rj, instr.r3.rk);
 	}
 
 	static int VNOR_V(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
-		return snprintf(buf, len, "vnor.v $vr%u, $vr%u, $vr%u", vd, vj, vk);
+		return snprintf(buf, len, "vnor.v $vr%u, $vr%u, $vr%u", instr.r2.rd, instr.r2.rj, instr.r3.rk);
 	}
 
 	static int VORN_V(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
-		return snprintf(buf, len, "vorn.v $vr%u, $vr%u, $vr%u", vd, vj, vk);
+		return snprintf(buf, len, "vorn.v $vr%u, $vr%u, $vr%u", instr.r2.rd, instr.r2.rj, instr.r3.rk);
 	}
 
 	static int VAND_V(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
-		return snprintf(buf, len, "vand.v $vr%u, $vr%u, $vr%u", vd, vj, vk);
+		return snprintf(buf, len, "vand.v $vr%u, $vr%u, $vr%u", instr.r2.rd, instr.r2.rj, instr.r3.rk);
 	}
 
 	static int VBITREVI_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
 		uint32_t imm = (instr.whole >> 10) & 0x3F;
-		return snprintf(buf, len, "vbitrevi.d $vr%u, $vr%u, 0x%x", vd, vj, imm);
+		return snprintf(buf, len, "vbitrevi.d $vr%u, $vr%u, 0x%x", instr.r2.rd, instr.r2.rj, imm);
 	}
 
 	static int VSLLI(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		static constexpr char sizes[] = {'b', 'h', 'w', 'd'};
 		static constexpr uint32_t imm_masks[] = {0x7, 0xF, 0x1F, 0x3F};  // 3, 4, 5, 6 bits
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
 
 		// Determine size based on bits[31:15]
 		uint32_t bits15 = instr.whole >> 15;
@@ -1517,72 +1412,51 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		}
 
 		uint32_t imm = (instr.whole >> 10) & imm_masks[size_idx];
-		return snprintf(buf, len, "vslli.%c $vr%u, $vr%u, 0x%x", sizes[size_idx], vd, vj, imm);
+		return snprintf(buf, len, "vslli.%c $vr%u, $vr%u, 0x%x", sizes[size_idx], instr.r2.rd, instr.r2.rj, imm);
 	}
 
 	static int VPCNT(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		static constexpr char sizes[] = {'b', 'h', 'w', 'd'};
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
 		// Extract size from opcode: bits[11:10] encode the size (0=b, 1=h, 2=w, 3=d)
 		uint32_t size_idx = (instr.whole >> 10) & 0x3;
-		return snprintf(buf, len, "vpcnt.%c $vr%u, $vr%u", sizes[size_idx], vd, vj);
+		return snprintf(buf, len, "vpcnt.%c $vr%u, $vr%u", sizes[size_idx], instr.r2.rd, instr.r2.rj);
 	}
 
 	static int VLDI(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t vd = instr.whole & 0x1F;
 		uint32_t imm13 = (instr.whole >> 5) & 0x1FFF;
-		return snprintf(buf, len, "vldi $vr%u, %d", vd, (int)(int16_t)(imm13 << 3) >> 3);
+		return snprintf(buf, len, "vldi $vr%u, %d", instr.r2.rd, (int)(int16_t)(imm13 << 3) >> 3);
 	}
 
 	static int VORI_B(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
 		uint32_t imm8 = (instr.whole >> 10) & 0xFF;
-		return snprintf(buf, len, "vori.b $vr%u, $vr%u, 0x%x", vd, vj, imm8);
+		return snprintf(buf, len, "vori.b $vr%u, $vr%u, 0x%x", instr.r2.rd, instr.r2.rj, imm8);
 	}
 
 	static int VFADD_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
-		return snprintf(buf, len, "vfadd.d $vr%u, $vr%u, $vr%u", vd, vj, vk);
+		return snprintf(buf, len, "vfadd.d $vr%u, $vr%u, $vr%u", instr.r2.rd, instr.r2.rj, instr.r3.rk);
 	}
 
 	static int VFDIV_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
-		return snprintf(buf, len, "vfdiv.d $vr%u, $vr%u, $vr%u", vd, vj, vk);
+		return snprintf(buf, len, "vfdiv.d $vr%u, $vr%u, $vr%u", instr.r2.rd, instr.r2.rj, instr.r3.rk);
 	}
 
 	static int VFMUL(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		static constexpr char sizes[] = {'s', 'd'};
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
 		// Extract size from opcode: bit[16] determines s/d (0=s, 1=d)
 		uint32_t size_idx = (instr.whole >> 16) & 0x1;
-		return snprintf(buf, len, "vfmul.%c $vr%u, $vr%u, $vr%u", sizes[size_idx], vd, vj, vk);
+		return snprintf(buf, len, "vfmul.%c $vr%u, $vr%u, $vr%u", sizes[size_idx], instr.r2.rd, instr.r2.rj, instr.r3.rk);
 	}
 
 	static int VFTINTRZ_W_S(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		return snprintf(buf, len, "vftintrz.w.s $vr%u, $vr%u", vd, vj);
+		return snprintf(buf, len, "vftintrz.w.s $vr%u, $vr%u", instr.r2.rd, instr.r2.rj);
 	}
 
 	static int VFTINTRZ_L_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		return snprintf(buf, len, "vftintrz.l.d $vr%u, $vr%u", vd, vj);
+		return snprintf(buf, len, "vftintrz.l.d $vr%u, $vr%u", instr.r2.rd, instr.r2.rj);
 	}
 
 	static int VHADDW_D_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
-		return snprintf(buf, len, "vhaddw.d.w $vr%u, $vr%u, $vr%u", vd, vj, vk);
+		return snprintf(buf, len, "vhaddw.d.w $vr%u, $vr%u, $vr%u", instr.r2.rd, instr.r2.rj, instr.r3.rk);
 	}
 
 	static int XVHADDW_D_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
@@ -1593,10 +1467,9 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 	}
 
 	static int XVPICKVE2GR_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t rd = instr.whole & 0x1F;
 		uint32_t xj = (instr.whole >> 5) & 0x1F;
 		uint32_t ui3 = (instr.whole >> 10) & 0x7;
-		return snprintf(buf, len, "xvpickve2gr.w %s, $xr%u, %u", reg_name(rd), xj, ui3);
+		return snprintf(buf, len, "xvpickve2gr.w %s, $xr%u, %u", reg_name(instr.r2.rd), xj, ui3);
 	}
 
 	static int XVADD_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
@@ -1631,56 +1504,38 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 	}
 
 	static int VFMADD_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
 		uint32_t va = (instr.whole >> 15) & 0x1F;
-		return snprintf(buf, len, "vfmadd.d $vr%u, $vr%u, $vr%u, $vr%u", vd, vj, vk, va);
+		return snprintf(buf, len, "vfmadd.d $vr%u, $vr%u, $vr%u, $vr%u", instr.r2.rd, instr.r2.rj, instr.r3.rk, va);
 	}
 
 	static int VFNMADD_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
 		uint32_t va = (instr.whole >> 15) & 0x1F;
-		return snprintf(buf, len, "vfnmadd.d $vr%u, $vr%u, $vr%u, $vr%u", vd, vj, vk, va);
+		return snprintf(buf, len, "vfnmadd.d $vr%u, $vr%u, $vr%u, $vr%u", instr.r2.rd, instr.r2.rj, instr.r3.rk, va);
 	}
 
 	static int VOR_V(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
-		return snprintf(buf, len, "vor.v $vr%u, $vr%u, $vr%u", vd, vj, vk);
+		return snprintf(buf, len, "vor.v $vr%u, $vr%u, $vr%u", instr.r2.rd, instr.r2.rj, instr.r3.rk);
 	}
 
 	static int VXOR_V(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
-		return snprintf(buf, len, "vxor.v $vr%u, $vr%u, $vr%u", vd, vj, vk);
+		return snprintf(buf, len, "vxor.v $vr%u, $vr%u, $vr%u", instr.r2.rd, instr.r2.rj, instr.r3.rk);
 	}
 
 	static int VREPLVEI_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
 		uint32_t idx = (instr.whole >> 10) & 0x1;
-		return snprintf(buf, len, "vreplvei.d $vr%u, $vr%u, 0x%x", vd, vj, idx);
+		return snprintf(buf, len, "vreplvei.d $vr%u, $vr%u, 0x%x", instr.r2.rd, instr.r2.rj, idx);
 	}
 
 	static int VREPLGR2VR(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		static constexpr char sizes[] = {'b', 'h', 'w', 'd'};
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t rj = (instr.whole >> 5) & 0x1F;
 		// Extract size from subop: bits[11:10] (0=b, 1=h, 2=w, 3=d)
 		uint32_t size_idx = (instr.whole >> 10) & 0x3;
-		return snprintf(buf, len, "vreplgr2vr.%c $vr%u, %s", sizes[size_idx], vd, reg_name(rj));
+		return snprintf(buf, len, "vreplgr2vr.%c $vr%u, %s", sizes[size_idx], instr.r2.rd, reg_name(instr.r2.rj));
 	}
 
 	static int VINSGR2VR(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		static constexpr char sizes[] = {'b', 'h', 'w', 'd'};
 		static constexpr uint32_t idx_masks[] = {0xF, 0x7, 0x3, 0x1};
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t rj = (instr.whole >> 5) & 0x1F;
 		// Determine size by checking bit patterns: .b=10, .h=110, .w=1110, .d=11110
 		uint32_t bits15_14 = (instr.whole >> 14) & 0x3;
 		uint32_t bits15_13 = (instr.whole >> 13) & 0x7;
@@ -1691,40 +1546,28 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		else if (bits15_12 == 0xE) size_idx = 2;  // .w: 1110
 		else size_idx = 3;                         // .d: 11110
 		uint32_t idx = (instr.whole >> 10) & idx_masks[size_idx];
-		return snprintf(buf, len, "vinsgr2vr.%c $vr%u, %s, 0x%x", sizes[size_idx], vd, reg_name(rj), idx);
+		return snprintf(buf, len, "vinsgr2vr.%c $vr%u, %s, 0x%x", sizes[size_idx], instr.r2.rd, reg_name(instr.r2.rj), idx);
 	}
 
 	static int VADD(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		static constexpr char sizes[] = {'b', 'h', 'w', 'd'};
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
 		// Extract size from opcode: bits[16:15] encode the size (0=b, 1=h, 2=w, 3=d)
 		uint32_t size_idx = (instr.whole >> 15) & 0x3;
-		return snprintf(buf, len, "vadd.%c $vr%u, $vr%u, $vr%u", sizes[size_idx], vd, vj, vk);
+		return snprintf(buf, len, "vadd.%c $vr%u, $vr%u, $vr%u", sizes[size_idx], instr.r2.rd, instr.r2.rj, instr.r3.rk);
 	}
 
 	static int VSHUF_B(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
 		uint32_t va = (instr.whole >> 15) & 0x1F;
-		return snprintf(buf, len, "vshuf.b $vr%u, $vr%u, $vr%u, $vr%u", vd, vj, vk, va);
+		return snprintf(buf, len, "vshuf.b $vr%u, $vr%u, $vr%u, $vr%u", instr.r2.rd, instr.r2.rj, instr.r3.rk, va);
 	}
 
 	static int VBITSEL_V(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
 		uint32_t va = (instr.whole >> 15) & 0x1F;
-		return snprintf(buf, len, "vbitsel.v $vr%u, $vr%u, $vr%u, $vr%u", vd, vj, vk, va);
+		return snprintf(buf, len, "vbitsel.v $vr%u, $vr%u, $vr%u, $vr%u", instr.r2.rd, instr.r2.rj, instr.r3.rk, va);
 	}
 
 	static int VMAX(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		static constexpr char sizes[] = {'b', 'h', 'w', 'd'};
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
 		uint32_t bits15 = instr.whole >> 15;
 
 		// Determine size and signedness
@@ -1742,14 +1585,11 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 			snprintf(buf_suffix, sizeof(buf_suffix), ".%cu", size);
 			suffix = buf_suffix;
 		}
-		return snprintf(buf, len, "vmax%s $vr%u, $vr%u, $vr%u", suffix, vd, vj, vk);
+		return snprintf(buf, len, "vmax%s $vr%u, $vr%u, $vr%u", suffix, instr.r2.rd, instr.r2.rj, instr.r3.rk);
 	}
 
 	static int VMIN(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		static constexpr char sizes[] = {'b', 'h', 'w', 'd'};
-		uint32_t vd = instr.whole & 0x1F;
-		uint32_t vj = (instr.whole >> 5) & 0x1F;
-		uint32_t vk = (instr.whole >> 10) & 0x1F;
 		uint32_t bits15 = instr.whole >> 15;
 
 		// Determine size and signedness
@@ -1767,15 +1607,14 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 			snprintf(buf_suffix, sizeof(buf_suffix), ".%cu", size);
 			suffix = buf_suffix;
 		}
-		return snprintf(buf, len, "vmin%s $vr%u, $vr%u, $vr%u", suffix, vd, vj, vk);
+		return snprintf(buf, len, "vmin%s $vr%u, $vr%u, $vr%u", suffix, instr.r2.rd, instr.r2.rj, instr.r3.rk);
 	}
 
 	// === LASX (256-bit) Instruction Printers ===
 
 	static int XVREPLGR2VR_B(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		uint32_t xd = instr.whole & 0x1F;
-		uint32_t rj = (instr.whole >> 5) & 0x1F;
-		return snprintf(buf, len, "xvreplgr2vr.b $xr%u, %s", xd, reg_name(rj));
+		return snprintf(buf, len, "xvreplgr2vr.b $xr%u, %s", xd, reg_name(instr.r2.rj));
 	}
 
 	static int XVXOR_V(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {

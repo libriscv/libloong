@@ -633,9 +633,6 @@ INSTRUCTION(LA64_BC_VHADDW_D_W, la64_vhaddw_d_w)
 	const int64_t res2 = (int64_t)(int32_t)src2.w[0] + (int64_t)(int32_t)src2.w[1];
 	dst.d[0] = res1;
 	dst.d[1] = res2;
-	// LSX instructions zero-extend to 256 bits (clear upper 128 bits for LASX compatibility)
-	dst.d[2] = 0;
-	dst.d[3] = 0;
 	NEXT_INSTR();
 }
 

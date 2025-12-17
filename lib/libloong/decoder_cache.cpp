@@ -151,7 +151,7 @@ extern bool try_translate(const Machine&, const MachineOptions&, std::shared_ptr
 		case InstrId::VLDX: return LA64_BC_VLDX;
 		case InstrId::VSTX: return LA64_BC_VSTX;
 		case InstrId::VFADD_D: return LA64_BC_VFADD_D;
-#ifdef LA_LASX_ENABLED
+#ifdef LA_LASX
 		case InstrId::XVLD: return LA64_BC_XVLD;
 		case InstrId::XVST: return LA64_BC_XVST;
 		case InstrId::XVLDX: return LA64_BC_XVLDX;

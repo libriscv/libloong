@@ -73,13 +73,6 @@ configure_file(libloong.pc.in ${CMAKE_CURRENT_BINARY_DIR}/libloong.pc)
 # Create loong library
 add_library(loong ${SOURCES})
 
-# LASX support
-if (LA_LASX)
-	target_compile_definitions(loong PUBLIC
-		LA_LASX_ENABLED=1
-	)
-endif()
-
 # Binary translation support
 if (LA_BINARY_TRANSLATION)
 	target_sources(loong PRIVATE

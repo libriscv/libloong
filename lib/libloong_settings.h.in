@@ -1,13 +1,10 @@
 #pragma once
 
-// LoongArch ISA width support
-#cmakedefine LA_32
-#cmakedefine LA_64
-
 // Features
 #cmakedefine LA_DEBUG
 #cmakedefine LA_BINARY_TRANSLATION
 #cmakedefine LA_THREADED
+#cmakedefine LA_LASX
 
 // Version
 #define LOONGARCH_VERSION_MAJOR @LOONGARCH_VERSION_MAJOR@

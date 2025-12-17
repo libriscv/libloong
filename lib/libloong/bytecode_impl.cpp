@@ -964,7 +964,7 @@ INSTRUCTION(LA64_BC_REVB_4H, la64_revb_4h)
 	NEXT_INSTR();
 }
 
-#ifdef LA_LASX_ENABLED
+#ifdef LA_LASX
 // LA64_BC_XVLD: LASX 256-bit vector load
 INSTRUCTION(LA64_BC_XVLD, la64_xvld)
 {
@@ -1004,7 +1004,7 @@ INSTRUCTION(LA64_BC_XVSTX, la64_xvstx)
 	MACHINE().memory.template write<remove_cvref_t<decltype(vr)>, true>(addr, vr);
 	NEXT_INSTR();
 }
-#endif // LA_LASX_ENABLED
+#endif // LA_LASX
 
 // LA64_BC_INVALID: Invalid instruction
 INSTRUCTION(LA64_BC_INVALID, execute_invalid)

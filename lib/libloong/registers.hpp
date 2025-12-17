@@ -39,7 +39,7 @@ namespace loongarch
 		auto& getvr128low(uint32_t idx) noexcept { return m_vr[idx].lsx_low; }
 		const auto& getvr128low(uint32_t idx) const noexcept { return m_vr[idx].lsx_low; }
 
-#ifdef LA_LASX_ENABLED
+#ifdef LA_LASX
 		// LASX vector registers (256-bit)
 		// These share the low 32- and 64-bits with floating-point registers
 		// as well as the low 128-bits with LSX vector registers.
@@ -71,7 +71,7 @@ namespace loongarch
 			double   df[2];
 			alignas(16) std::array<uint64_t, 2> lsx_low;
 		};
-#endif
+#endif // LA_LASX
 
 		// Floating-point condition flags (FCC)
 		uint8_t cf(uint32_t idx) const noexcept { return (m_fcc >> idx) & 1; }

@@ -8,7 +8,7 @@ using namespace loongarch::test;
 
 TEST_CASE("LASX vector load/add/store sequence", "[instructions][lasx]") {
 	InstructionTester tester;
-#ifndef LA_LASX_ENABLED
+#ifndef LA_LASX
 	return;
 #endif
 
@@ -97,7 +97,7 @@ TEST_CASE("Individual LASX instructions", "[instructions][lasx]") {
 	InstructionTester tester;
 
 	SECTION("xvld - load 256-bit vector") {
-#ifndef LA_LASX_ENABLED
+#ifndef LA_LASX
 	return;
 #endif
 		auto guest_addr = tester.allocate_guest_memory(64, 32);
@@ -124,7 +124,7 @@ TEST_CASE("Individual LASX instructions", "[instructions][lasx]") {
 	}
 
 	SECTION("xvfadd.d - add two 256-bit vectors of doubles") {
-#ifndef LA_LASX_ENABLED
+#ifndef LA_LASX
 	return;
 #endif
 		std::vector<double> vec1 = {1.0, 2.0, 3.0, 4.0};
@@ -148,7 +148,7 @@ TEST_CASE("Individual LASX instructions", "[instructions][lasx]") {
 	}
 
 	SECTION("xvst - store 256-bit vector") {
-#ifndef LA_LASX_ENABLED
+#ifndef LA_LASX
 	return;
 #endif
 		auto guest_addr = tester.allocate_guest_memory(64, 32);
@@ -333,7 +333,7 @@ TEST_CASE("vfcmp and xvfcmp - vector FP comparisons", "[instructions][vector][fc
 	}
 
 	SECTION("xvfcmp.slt.d - LASX less than comparison") {
-#ifndef LA_LASX_ENABLED
+#ifndef LA_LASX
 	return;
 #endif
 		// Set up two LASX vectors with doubles
@@ -363,7 +363,7 @@ TEST_CASE("vfcmp and xvfcmp - vector FP comparisons", "[instructions][vector][fc
 
 TEST_CASE("Complex instruction sequence from real code", "[instructions][complex]") {
 	InstructionTester tester;
-#ifndef LA_LASX_ENABLED
+#ifndef LA_LASX
 	return;
 #endif
 

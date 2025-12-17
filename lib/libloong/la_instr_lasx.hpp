@@ -1,7 +1,6 @@
 #pragma once
 // LASX (Loongson Advanced SIMD eXtension) 256-bit vector instructions
 // This file contains LASX instruction implementations and printers
-// It should be included with #ifdef LA_LASX_ENABLED guard
 
 #include "cpu.hpp"
 #include "la_instr.hpp"

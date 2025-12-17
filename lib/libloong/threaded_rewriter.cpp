@@ -765,7 +765,7 @@ uint32_t DecodedExecuteSegment::optimize_bytecode(uint8_t& bytecode, address_t p
 				return original.whole;
 			}
 		} break;
-#ifdef LA_LASX_ENABLED
+#ifdef LA_LASX
 		case LA64_BC_XVLD: {
 			// XVLD xd, rj, si12 - uses RI12 format
 			auto fi = *(FasterLA64_RI12 *)&instruction_bits;
@@ -798,7 +798,7 @@ uint32_t DecodedExecuteSegment::optimize_bytecode(uint8_t& bytecode, address_t p
 			fi.rk = original.r3.rk;
 			return fi.whole;
 		} break;
-#endif // LA_LASX_ENABLED
+#endif // LA_LASX
 	}
 	return instruction_bits;
 }

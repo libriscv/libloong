@@ -3,7 +3,7 @@
 #include "la_instr_impl.hpp"
 #include "la_instr_printers.hpp"
 #include "la_instr_atomic.hpp"
-#ifdef LA_LASX_ENABLED
+#ifdef LA_LASX
 #include "la_instr_lasx.hpp"
 #endif
 
@@ -13,7 +13,7 @@ namespace loongarch
 	using Printers = InstrPrinters;
 	using AtomicI = AtomicImpl;
 	using AtomicP = AtomicPrinters;
-#ifdef LA_LASX_ENABLED
+#ifdef LA_LASX
 	using LasxImpl = InstrImplLASX;
 	using LasxPrinters = InstrPrintersLASX;
 #endif
@@ -27,7 +27,7 @@ namespace loongarch
 	#define INSTRUCTION_P(name, printer) \
 		static constexpr CPU::instruction_t instr64_##name { Impl::name, Printers::printer, InstrId::name }
 
-#ifdef LA_LASX_ENABLED
+#ifdef LA_LASX
 	// Macro for LASX instructions (from la_instr_lasx.hpp)
 	#define LASX_INSTRUCTION(name) \
 		static constexpr CPU::instruction_t instr64_##name { LasxImpl::name, LasxPrinters::name, InstrId::name }
@@ -41,7 +41,7 @@ namespace loongarch
 
 	#define LASX_INSTRUCTION_P(name, printer) \
 		static constexpr CPU::instruction_t instr64_##name { Impl::UNIMPLEMENTED, Printers::UNIMPLEMENTED, InstrId::name }
-#endif
+#endif // LA_LASX
 
 	#define DECODED_INSTR(name) instr64_##name
 

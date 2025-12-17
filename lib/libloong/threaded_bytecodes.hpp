@@ -94,7 +94,7 @@ namespace loongarch
 		LA64_BC_VFMADD_D,          // Vector fused multiply-add double
 		LA64_BC_VHADDW_D_W,        // Vector horizontal add with widening (word to doubleword)
 
-#ifdef LA_LASX_ENABLED
+#ifdef LA_LASX
 		// LASX (256-bit) instructions
 		LA64_BC_XVLD,              // Vector load 256-bit LASX
 		LA64_BC_XVST,              // Vector store 256-bit LASX
@@ -225,7 +225,7 @@ namespace loongarch
 		case LA64_BC_VSTX: return "VSTX";
 		case LA64_BC_VFMADD_D: return "VFMADD.D";
 		case LA64_BC_VHADDW_D_W: return "VHADDW.D.W";
-#ifdef LA_LASX_ENABLED
+#ifdef LA_LASX
 		case LA64_BC_XVLD: return "XVLD";
 		case LA64_BC_XVST: return "XVST";
 		case LA64_BC_XVLDX: return "XVLDX";

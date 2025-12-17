@@ -3,6 +3,9 @@
 #include <cstring>
 #include <exception>
 #include <vector>
+#ifdef LA_BINARY_TRANSLATION
+#include <thread>
+#endif
 
 using namespace loongarch;
 
@@ -112,6 +115,13 @@ static MachineOptions to_machine_options(const LibLoongMachineOptions* opts) {
         result.verbose_loader = opts->verbose_loader;
         result.verbose_syscalls = opts->verbose_syscalls;
         result.use_shared_execute_segments = opts->use_shared_execute_segments;
+#ifdef LA_BINARY_TRANSLATION
+        result.translate_background_callback =
+            [](const std::function<void()>& step) {
+                // Simple background compilation in a detached thread
+                std::thread(step).detach();
+            };
+#endif
     }
     return result;
 }
@@ -140,8 +150,8 @@ LibLoongMachine* libloong_machine_create(
         MachineOptions opts = to_machine_options(options);
 
         Machine* machine = new Machine(binary, opts);
-		auto exit_addr = machine->address_of("_exit");
-		machine->memory.set_exit_address(exit_addr);
+        auto exit_addr = machine->address_of("_exit");
+        machine->memory.set_exit_address(exit_addr);
         if (error_info) {
             error_info->error_code = LIBLOONG_OK;
             error_info->exception_type = LIBLOONG_EXCEPTION_NONE;
@@ -246,7 +256,11 @@ LibLoongError libloong_machine_simulate(
     Machine* m = reinterpret_cast<Machine*>(machine);
 
     return safe_call_ex([&]() {
-        m->simulate(max_instructions, counter);
+        if (max_instructions == UINT64_MAX) {
+            m->cpu.simulate_inaccurate(m->cpu.pc());
+        } else {
+            m->simulate(max_instructions, counter);
+        }
     }, error_info);
 }
 

@@ -19,7 +19,7 @@ cd build
 
 if [ ! -f "Makefile" ] && [ ! -f "build.ninja" ]; then
     echo "Configuring CMake..."
-    cmake .. -DCMAKE_BUILD_TYPE=Release
+    cmake .. -DCMAKE_BUILD_TYPE=Release -DLA_BINARY_TRANSLATION=ON
 fi
 
 echo "Building libloong..."

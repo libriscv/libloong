@@ -4,6 +4,7 @@ use libloong::{Machine, MachineOptions};
 use std::env;
 use std::fs;
 use std::process;
+use std::time::Instant;
 
 fn main() {
     // Get ELF path from command line
@@ -51,17 +52,36 @@ fn main() {
         process::exit(1);
     }
 
-    println!("Starting execution...\n");
-
     // Execute the program (unlimited instructions)
-    match machine.simulate(u64::MAX) {
+    let start_time = Instant::now();
+    let max_instructions = u64::MAX;
+
+    match machine.simulate(max_instructions) {
         Ok(_) => {
-            println!("\n\nExecution completed successfully!");
-            println!("Instructions executed: {}", machine.instruction_counter());
+            let elapsed = start_time.elapsed();
+            let exit_code = machine.return_value() as i32; // $a0 (r4) contains exit code
+
+            println!("Exit code: {}", exit_code);
+            println!("Time: {:.3} seconds", elapsed.as_secs_f64());
+
+            // Only show instruction count if we used a limited instruction count
+            // (unlimited uses faster inaccurate dispatch with no counting)
+            if max_instructions != u64::MAX {
+                let instr_count = machine.instruction_counter();
+                let mips = instr_count as f64 / (elapsed.as_secs_f64() * 1_000_000.0);
+                println!("Instructions: {} ({:.2} MI/s)", instr_count, mips);
+            }
+
+            process::exit(exit_code);
         }
         Err(e) => {
+            let elapsed = start_time.elapsed();
             eprintln!("\nExecution failed: {}", e);
-            eprintln!("Instructions executed: {}", machine.instruction_counter());
+            eprintln!("Time: {:.3} seconds", elapsed.as_secs_f64());
+
+            if max_instructions != u64::MAX {
+                eprintln!("Instructions executed: {}", machine.instruction_counter());
+            }
             eprintln!("PC: 0x{:016x}", machine.get_pc());
             process::exit(1);
         }

@@ -463,6 +463,12 @@ impl Machine {
         Ok(return_value)
     }
 
+    /// Get the return value of the last execution
+    /// This is typically the value in register $a0 (r4)
+    pub fn return_value(&self) -> u64 {
+        unsafe { ffi::libloong_machine_return_value(self.handle) }
+    }
+
     /// Get the address of a symbol by name
     ///
     /// Returns 0 if the symbol is not found

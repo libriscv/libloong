@@ -370,6 +370,25 @@ extern "C" {
     pub fn libloong_machine_get_pc(machine: *const LibLoongMachine) -> u64;
     pub fn libloong_machine_set_pc(machine: *mut LibLoongMachine, pc: u64);
 
+    pub fn libloong_machine_get_float_register(
+        machine: *const LibLoongMachine,
+        reg_num: u32,
+    ) -> f32;
+    pub fn libloong_machine_set_float_register(
+        machine: *mut LibLoongMachine,
+        reg_num: u32,
+        value: f32,
+    );
+    pub fn libloong_machine_get_double_register(
+        machine: *const LibLoongMachine,
+        reg_num: u32,
+    ) -> f64;
+    pub fn libloong_machine_set_double_register(
+        machine: *mut LibLoongMachine,
+        reg_num: u32,
+        value: f64,
+    );
+
     pub fn libloong_machine_copy_to_guest(
         machine: *mut LibLoongMachine,
         dest: u64,

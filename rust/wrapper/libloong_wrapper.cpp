@@ -527,6 +527,28 @@ void libloong_machine_set_pc(LibLoongMachine* machine, uint64_t pc) {
     }
 }
 
+float libloong_machine_get_float_register(const LibLoongMachine* machine, unsigned reg_num) {
+    if (!machine || reg_num >= 32) return 0.0f;
+    return reinterpret_cast<const Machine*>(machine)->cpu.registers().getfl32(reg_num);
+}
+
+void libloong_machine_set_float_register(LibLoongMachine* machine, unsigned reg_num, float value) {
+    if (machine && reg_num < 32) {
+        reinterpret_cast<Machine*>(machine)->cpu.registers().getfl32(reg_num) = value;
+    }
+}
+
+double libloong_machine_get_double_register(const LibLoongMachine* machine, unsigned reg_num) {
+    if (!machine || reg_num >= 32) return 0.0;
+    return reinterpret_cast<const Machine*>(machine)->cpu.registers().getfl64(reg_num);
+}
+
+void libloong_machine_set_double_register(LibLoongMachine* machine, unsigned reg_num, double value) {
+    if (machine && reg_num < 32) {
+        reinterpret_cast<Machine*>(machine)->cpu.registers().getfl64(reg_num) = value;
+    }
+}
+
 LibLoongError libloong_machine_copy_to_guest(LibLoongMachine* machine, uint64_t dest, const void* src, size_t len) {
     Machine* m = reinterpret_cast<Machine*>(machine);
     return safe_call([&]() {

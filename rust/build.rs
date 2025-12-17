@@ -48,6 +48,36 @@ fn main() {
         panic!("CMake is required to build libloong. Please install CMake and try again.");
     }
 
+    // Check for stale CMake cache and clean if necessary
+    let cmake_cache = build_dir.join("CMakeCache.txt");
+    if cmake_cache.exists() {
+        // Read the cache to check if the source directory has changed
+        if let Ok(cache_content) = std::fs::read_to_string(&cmake_cache) {
+            // Look for CMAKE_HOME_DIRECTORY in the cache
+            let expected_source = libloong_root.canonicalize().ok();
+            let mut cache_is_stale = false;
+
+            for line in cache_content.lines() {
+                if line.starts_with("CMAKE_HOME_DIRECTORY:") {
+                    if let Some(cached_dir) = line.split('=').nth(1) {
+                        let cached_path = PathBuf::from(cached_dir).canonicalize().ok();
+                        if cached_path != expected_source {
+                            println!("cargo:warning=Detected stale CMake cache (source dir changed), cleaning build directory");
+                            cache_is_stale = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Remove stale cache
+            if cache_is_stale {
+                std::fs::remove_dir_all(&build_dir).ok();
+                std::fs::create_dir_all(&build_dir).expect("Failed to recreate build directory");
+            }
+        }
+    }
+
     // Configure CMake
     let mut cmake_config = Command::new("cmake");
     cmake_config

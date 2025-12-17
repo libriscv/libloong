@@ -34,6 +34,26 @@ pub use ffi::{Error, ExceptionType};
 use std::ffi::CString;
 use std::marker::PhantomData;
 
+/// Represents either a function address or function name for vmcall operations
+pub enum FunctionRef<'a> {
+    /// Call function by address
+    Address(u64),
+    /// Call function by name
+    Name(&'a str),
+}
+
+impl<'a> From<u64> for FunctionRef<'a> {
+    fn from(addr: u64) -> Self {
+        FunctionRef::Address(addr)
+    }
+}
+
+impl<'a> From<&'a str> for FunctionRef<'a> {
+    fn from(name: &'a str) -> Self {
+        FunctionRef::Name(name)
+    }
+}
+
 /// Machine options for configuring the emulator
 #[derive(Debug, Clone)]
 pub struct MachineOptions {
@@ -94,6 +114,24 @@ pub struct Machine {
 unsafe impl Send for Machine {}
 
 impl Machine {
+    /// Helper to resolve a FunctionRef to an address
+    fn resolve_function(&self, func: FunctionRef) -> Result<u64, Error> {
+        match func {
+            FunctionRef::Address(addr) => Ok(addr),
+            FunctionRef::Name(name) => {
+                let addr = self.address_of(name);
+                if addr == 0 {
+                    Err(Error::SymbolNotFound(format!(
+                        "Function '{}' not found",
+                        name
+                    )))
+                } else {
+                    Ok(addr)
+                }
+            }
+        }
+    }
+
     /// Create a new machine from a LoongArch ELF binary
     ///
     /// # Arguments
@@ -297,17 +335,40 @@ impl Machine {
         }
     }
 
-    /// Call a guest function by address
+    /// Call a guest function by address or name
     ///
     /// # Arguments
     ///
-    /// * `func_addr` - Address of the function to call
+    /// * `func` - Function to call (address or name)
     /// * `args` - Function arguments (up to 8 supported)
     ///
     /// # Returns
     ///
-    /// Returns the function's return value as u64
-    pub fn vmcall(&mut self, func_addr: u64, args: &[u64]) -> Result<u64, Error> {
+    /// Returns () on success. Use `return_value()`, `return_value_f32()`, or `return_value_f64()`
+    /// to retrieve the function's return value after calling.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # use libloong::{Machine, MachineOptions};
+    /// # let mut machine = Machine::new(&[], MachineOptions::default()).unwrap();
+    /// // Call by address
+    /// machine.vmcall(0x12000, &[42, 13]).unwrap();
+    /// let result = machine.return_value();
+    ///
+    /// // Call by name
+    /// machine.vmcall("factorial", &[5]).unwrap();
+    /// let result = machine.return_value();
+    ///
+    /// // Get float return value
+    /// machine.vmcall("sin_approx", &[]).unwrap();
+    /// let result = machine.return_value_f32();
+    /// ```
+    pub fn vmcall<'a>(
+        &mut self,
+        func: impl Into<FunctionRef<'a>>,
+        args: &[u64],
+    ) -> Result<(), Error> {
         if args.len() > 8 {
             return Err(Error::Execution {
                 exception_type: None,
@@ -316,6 +377,7 @@ impl Machine {
             });
         }
 
+        let func_addr = self.resolve_function(func.into())?;
         let mut return_value: u64 = 0;
         let mut error_info = std::mem::MaybeUninit::<ffi::LibLoongErrorInfo>::uninit();
         let error = unsafe {
@@ -334,139 +396,25 @@ impl Machine {
             return Err(unsafe { error_info.assume_init() }.into());
         }
 
-        Ok(return_value)
+        Ok(())
     }
 
-    /// Call a guest function by name
-    ///
-    /// # Arguments
-    ///
-    /// * `func_name` - Name of the function to call
-    /// * `args` - Function arguments (up to 8 supported)
-    ///
-    /// # Returns
-    ///
-    /// Returns the function's return value as u64
-    pub fn vmcall_by_name(&mut self, func_name: &str, args: &[u64]) -> Result<u64, Error> {
-        if args.len() > 8 {
-            return Err(Error::Execution {
-                exception_type: None,
-                data: 0,
-                message: "Too many arguments (max 8)".to_string(),
-            });
-        }
-
-        let func_name_cstr = CString::new(func_name).map_err(|_| Error::Execution {
-            exception_type: None,
-            data: 0,
-            message: "Invalid function name".to_string(),
-        })?;
-        let mut return_value: u64 = 0;
-        let mut error_info = std::mem::MaybeUninit::<ffi::LibLoongErrorInfo>::uninit();
-
-        let error = unsafe {
-            ffi::libloong_machine_vmcall_by_name(
-                self.handle,
-                func_name_cstr.as_ptr(),
-                u64::MAX,
-                args.as_ptr(),
-                args.len(),
-                &mut return_value,
-                error_info.as_mut_ptr(),
-            )
-        };
-
-        if error != ffi::LibLoongError::LIBLOONG_OK {
-            return Err(unsafe { error_info.assume_init() }.into());
-        }
-
-        Ok(return_value)
-    }
-
-    /// Call a guest function that returns a float
-    ///
-    /// # Arguments
-    ///
-    /// * `func_addr` - Address of the function to call
-    /// * `args` - Function arguments (up to 8 supported)
-    ///
-    /// # Returns
-    ///
-    /// Returns the function's return value as f32
-    pub fn vmcall_float(&mut self, func_addr: u64, args: &[u64]) -> Result<f32, Error> {
-        if args.len() > 8 {
-            return Err(Error::Execution {
-                exception_type: None,
-                data: 0,
-                message: "Too many arguments (max 8)".to_string(),
-            });
-        }
-
-        let mut return_value: f32 = 0.0;
-        let mut error_info = std::mem::MaybeUninit::<ffi::LibLoongErrorInfo>::uninit();
-        let error = unsafe {
-            ffi::libloong_machine_vmcall_float(
-                self.handle,
-                func_addr,
-                u64::MAX,
-                args.as_ptr(),
-                args.len(),
-                &mut return_value,
-                error_info.as_mut_ptr(),
-            )
-        };
-
-        if error != ffi::LibLoongError::LIBLOONG_OK {
-            return Err(unsafe { error_info.assume_init() }.into());
-        }
-
-        Ok(return_value)
-    }
-
-    /// Call a guest function that returns a double
-    ///
-    /// # Arguments
-    ///
-    /// * `func_addr` - Address of the function to call
-    /// * `args` - Function arguments (up to 8 supported)
-    ///
-    /// # Returns
-    ///
-    /// Returns the function's return value as f64
-    pub fn vmcall_double(&mut self, func_addr: u64, args: &[u64]) -> Result<f64, Error> {
-        if args.len() > 8 {
-            return Err(Error::Execution {
-                exception_type: None,
-                data: 0,
-                message: "Too many arguments (max 8)".to_string(),
-            });
-        }
-
-        let mut return_value: f64 = 0.0;
-        let mut error_info = std::mem::MaybeUninit::<ffi::LibLoongErrorInfo>::uninit();
-        let error = unsafe {
-            ffi::libloong_machine_vmcall_double(
-                self.handle,
-                func_addr,
-                u64::MAX,
-                args.as_ptr(),
-                args.len(),
-                &mut return_value,
-                error_info.as_mut_ptr(),
-            )
-        };
-
-        if error != ffi::LibLoongError::LIBLOONG_OK {
-            return Err(unsafe { error_info.assume_init() }.into());
-        }
-
-        Ok(return_value)
-    }
-
-    /// Get the return value of the last execution
-    /// This is typically the value in register $a0 (r4)
+    /// Get the integer return value of the last vmcall or execution
+    /// This is the value in register $a0 (r4)
     pub fn return_value(&self) -> u64 {
         unsafe { ffi::libloong_machine_return_value(self.handle) }
+    }
+
+    /// Get the 32-bit float return value of the last vmcall
+    /// This is the value in register $fa0
+    pub fn return_value_f32(&self) -> f32 {
+        unsafe { ffi::libloong_machine_get_float_register(self.handle, 0) } // FA0 = FPR 0
+    }
+
+    /// Get the 64-bit float return value of the last vmcall
+    /// This is the value in register $fa0
+    pub fn return_value_f64(&self) -> f64 {
+        unsafe { ffi::libloong_machine_get_double_register(self.handle, 0) } // FA0 = FPR 0
     }
 
     /// Get the address of a symbol by name
@@ -595,6 +543,30 @@ impl Machine {
     pub fn set_register(&mut self, reg_num: u32, value: u64) {
         unsafe {
             ffi::libloong_machine_set_register(self.handle, reg_num, value);
+        }
+    }
+
+    /// Get a floating-point register value as f32 (0-31)
+    pub fn get_float_register(&self, reg_num: u32) -> f32 {
+        unsafe { ffi::libloong_machine_get_float_register(self.handle, reg_num) }
+    }
+
+    /// Set a floating-point register value as f32 (0-31)
+    pub fn set_float_register(&mut self, reg_num: u32, value: f32) {
+        unsafe {
+            ffi::libloong_machine_set_float_register(self.handle, reg_num, value);
+        }
+    }
+
+    /// Get a floating-point register value as f64 (0-31)
+    pub fn get_double_register(&self, reg_num: u32) -> f64 {
+        unsafe { ffi::libloong_machine_get_double_register(self.handle, reg_num) }
+    }
+
+    /// Set a floating-point register value as f64 (0-31)
+    pub fn set_double_register(&mut self, reg_num: u32, value: f64) {
+        unsafe {
+            ffi::libloong_machine_set_double_register(self.handle, reg_num, value);
         }
     }
 

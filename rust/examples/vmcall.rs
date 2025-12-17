@@ -64,17 +64,14 @@ fn main() {
         process::exit(1);
     }
 
-    let func_addr = machine.address_of(func_name);
-    println!(
-        "Calling function '{}' at address 0x{:x}",
-        func_name, func_addr
-    );
+    println!("Calling function '{}'", func_name);
     println!("Arguments: {:?}", func_args);
     println!();
 
     // Call the guest function
-    match machine.vmcall_by_name(func_name, &func_args) {
-        Ok(result) => {
+    match machine.vmcall(func_name, &func_args) {
+        Ok(()) => {
+            let result = machine.return_value();
             println!("\nFunction returned: {} (0x{:x})", result, result);
             println!("Instructions executed: {}", machine.instruction_counter());
         }

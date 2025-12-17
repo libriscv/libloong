@@ -195,6 +195,12 @@ void libloong_machine_set_register(LibLoongMachine* machine, unsigned reg_num, u
 uint64_t libloong_machine_get_pc(const LibLoongMachine* machine);
 void libloong_machine_set_pc(LibLoongMachine* machine, uint64_t pc);
 
+// Floating-point register access
+float libloong_machine_get_float_register(const LibLoongMachine* machine, unsigned reg_num);
+void libloong_machine_set_float_register(LibLoongMachine* machine, unsigned reg_num, float value);
+double libloong_machine_get_double_register(const LibLoongMachine* machine, unsigned reg_num);
+void libloong_machine_set_double_register(LibLoongMachine* machine, unsigned reg_num, double value);
+
 // Memory operations
 LibLoongError libloong_machine_copy_to_guest(LibLoongMachine* machine, uint64_t dest, const void* src, size_t len);
 LibLoongError libloong_machine_copy_from_guest(const LibLoongMachine* machine, void* dest, uint64_t src, size_t len);

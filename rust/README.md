@@ -34,8 +34,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 ### Calling Guest Functions
 
 ```rust
-let result = machine.vmcall_by_name("factorial", &[5])?;
+// Call by name and get integer return value
+machine.vmcall("factorial", &[5])?;
+let result = machine.return_value();
 println!("factorial(5) = {}", result);
+
+// Call by address
+let func_addr = machine.address_of("factorial");
+machine.vmcall(func_addr, &[5])?;
+let result = machine.return_value();
+
+// For functions returning floats:
+machine.vmcall("sin_approx", &[])?;
+let result_f32 = machine.return_value_f32();
+let result_f64 = machine.return_value_f64();
 ```
 
 ## Building

@@ -31,8 +31,12 @@ fn main() {
     println!("Loading LoongArch ELF: {}", elf_path);
     println!("Binary size: {} bytes", binary.len());
 
-    // Create machine with default options
-    let mut machine = match Machine::new(&binary, MachineOptions::default()) {
+    // Create machine with custom options
+    let options = MachineOptions {
+        memory_max: 600 * 1024 * 1024,
+        ..Default::default()
+    };
+    let mut machine = match Machine::new(&binary, options) {
         Ok(m) => m,
         Err(e) => {
             eprintln!("Failed to create machine: {}", e);
@@ -61,8 +65,11 @@ fn main() {
             let elapsed = start_time.elapsed();
             let exit_code = machine.return_value() as i32; // $a0 (r4) contains exit code
 
-            println!("Exit code: {}", exit_code);
-            println!("Time: {:.3} seconds", elapsed.as_secs_f64());
+            println!(
+                "Exit code: {}  Time: {:.3} seconds",
+                exit_code,
+                elapsed.as_secs_f64()
+            );
 
             // Only show instruction count if we used a limited instruction count
             // (unlimited uses faster inaccurate dispatch with no counting)

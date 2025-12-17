@@ -5,6 +5,6 @@ includedir=${prefix}/include
 
 Name: libloong
 Description: LoongArch userspace emulator library
-Version: @LOONGARCH_VERSION_MAJOR@.@LOONGARCH_VERSION_MINOR@
+Version: @loong_VERSION_MAJOR@.@loong_VERSION_MINOR@
 Cflags: -I${includedir}
-Libs: -L${libdir} -lloongarch
+Libs: -L${libdir} -lloong

@@ -68,7 +68,7 @@ endif()
 
 # Generate settings header
 configure_file(libloong_settings.h.in ${CMAKE_CURRENT_BINARY_DIR}/libloong_settings.h)
-configure_file(libloong.pc.in ${CMAKE_CURRENT_BINARY_DIR}/libloong.pc)
+configure_file(libloong.pc.in ${CMAKE_CURRENT_BINARY_DIR}/libloong.pc @ONLY)
 
 # Create loong library
 add_library(loong ${SOURCES})
@@ -185,15 +185,17 @@ install(TARGETS loong
 
 install(FILES
 	${CMAKE_CURRENT_BINARY_DIR}/libloong_settings.h
-	DESTINATION include/${PROJECT_NAME}
+	DESTINATION include/lib${PROJECT_NAME}
 )
 
 install(FILES
 	libloong/common.hpp
 	libloong/cpu.hpp
 	libloong/cpu_inline.hpp
+	libloong/guest_datatypes.hpp
 	libloong/machine.hpp
 	libloong/machine_inline.hpp
+	libloong/machine_vmcall.hpp
 	libloong/memory.hpp
 	libloong/memory_inline.hpp
 	libloong/registers.hpp
@@ -206,9 +208,16 @@ install(FILES
 	libloong/page.hpp
 	libloong/instruction.hpp
 	libloong/la_instr.hpp
+	libloong/la_instr_enum.hpp
 	libloong/debug.hpp
 
-	DESTINATION include/${PROJECT_NAME}
+	DESTINATION include/lib${PROJECT_NAME}
+)
+
+install(FILES
+	libloong/native/heap.hpp
+
+	DESTINATION include/lib${PROJECT_NAME}/native
 )
 
 install(FILES

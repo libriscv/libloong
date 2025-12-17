@@ -1,0 +1,94 @@
+name: DEB Packaging
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-deb-package:
+    name: Build DEB Package
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install build dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          cmake \
+          g++ \
+          pkg-config \
+          dpkg-dev
+
+    - name: Configure CMake
+      run: |
+        mkdir -p build
+        cd build
+        cmake .. \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_C_COMPILER=gcc \
+          -DCMAKE_CXX_COMPILER=g++ \
+          -DCMAKE_INSTALL_PREFIX=/usr \
+          -DBUILD_TESTING=OFF
+
+    - name: Install library
+      run: |
+        cd build
+        cmake --build . --config Release -- -j4
+        cpack -G DEB
+        cd ../packages
+        sudo dpkg -i libloong-dev_*.deb
+
+        # Verify installation
+        dpkg -L libloong-dev
+        pkg-config --modversion libloong || echo "pkg-config file not found"
+
+    - name: Install LoongArch cross-compiler for test binaries
+      run: |
+        sudo apt-get install -y g++-14-loongarch64-linux-gnu
+
+    - name: Build test ELF binary
+      run: |
+        # Create a simple test binary
+        mkdir -p /tmp/test_elf
+        cd /tmp/test_elf
+
+        cat > return_42.c << 'EOF'
+        int main() {
+            return 42;
+        }
+        EOF
+
+        loongarch64-linux-gnu-gcc-14 -static -o return_42.elf return_42.c \
+          -Wl,-Ttext-segment=0x200000
+
+        ls -lh return_42.elf
+
+    - name: Build installed example
+      run: |
+        cd examples/installed
+        mkdir -p build
+        cd build
+        cmake .. \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_C_COMPILER=gcc \
+          -DCMAKE_CXX_COMPILER=g++
+        make VERBOSE=1
+
+    - name: Run installed example with test binary
+      run: |
+        cd examples/installed/build
+        ./installed_example /tmp/test_elf/return_42.elf
+
+    - name: Upload DEB package as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: libloong-dev-deb
+        path: build/packages/libloong-dev_*.deb
+        retention-days: 30

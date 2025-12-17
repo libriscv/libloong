@@ -4,7 +4,7 @@
 #include <functional>
 #include <stdexcept>
 #include <string>
-#include <libloong_settings.h>
+#include "libloong_settings.h"
 
 namespace loongarch
 {

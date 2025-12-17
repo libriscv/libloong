@@ -1,10 +1,12 @@
 #pragma once
 #include "common.hpp"
 #include "decoder_cache.hpp"
-#include "tr_types.hpp"
 #include <vector>
 #include <mutex>
 #include <condition_variable>
+#ifdef LA_BINARY_TRANSLATION
+#include "tr_types.hpp"
+#endif
 
 namespace loongarch
 {

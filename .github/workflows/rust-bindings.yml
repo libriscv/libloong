@@ -50,26 +50,21 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-cargo-
 
-    - name: Build libloong C++ library
-      run: |
-        mkdir -p build
-        cd build
-        cmake .. \
-          -G Ninja \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DCMAKE_C_COMPILER=gcc-14 \
-          -DCMAKE_CXX_COMPILER=g++-14
-        ninja loong
-
-    - name: Build Rust bindings
+    - name: Build Rust bindings (includes C++ library build)
       run: |
         cd rust
         cargo build --release --verbose
+      env:
+        CC: gcc-14
+        CXX: g++-14
 
     - name: Run Rust tests
       run: |
         cd rust
         cargo test --release --verbose
+      env:
+        CC: gcc-14
+        CXX: g++-14
 
     - name: Check code formatting
       run: |

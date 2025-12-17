@@ -1,13 +1,67 @@
 use std::env;
 use std::path::PathBuf;
+use std::process::Command;
 
 fn main() {
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
     let libloong_root = manifest_dir.parent().unwrap();
+    let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
 
+    // Set rerun-if-changed for wrapper files
     println!("cargo:rerun-if-changed=wrapper/libloong_wrapper.cpp");
     println!("cargo:rerun-if-changed=wrapper/libloong_wrapper.h");
+
+    // Watch for changes in the C++ library source
     println!("cargo:rerun-if-changed=../lib/libloong");
+    println!("cargo:rerun-if-changed=../CMakeLists.txt");
+
+    // Build libloong C++ library using CMake
+    let build_dir = out_dir.join("libloong_build");
+    std::fs::create_dir_all(&build_dir).expect("Failed to create build directory");
+
+    // Check if CMake is available
+    let cmake_available = Command::new("cmake").arg("--version").output().is_ok();
+
+    if !cmake_available {
+        panic!("CMake is required to build libloong. Please install CMake and try again.");
+    }
+
+    // Configure CMake
+    let mut cmake_config = Command::new("cmake");
+    cmake_config
+        .current_dir(&build_dir)
+        .arg(libloong_root)
+        .arg("-DCMAKE_BUILD_TYPE=Release")
+        .arg("-DLA_BINARY_TRANSLATION=ON");
+
+    // Use Ninja if available for faster builds
+    if Command::new("ninja").arg("--version").output().is_ok() {
+        cmake_config.arg("-GNinja");
+    }
+
+    let status = cmake_config
+        .status()
+        .expect("Failed to run CMake configuration");
+    if !status.success() {
+        panic!("CMake configuration failed");
+    }
+
+    // Build libloong
+    let status = Command::new("cmake")
+        .current_dir(&build_dir)
+        .arg("--build")
+        .arg(".")
+        .arg("--target")
+        .arg("loong")
+        .arg("--config")
+        .arg("Release")
+        .arg("--parallel")
+        .status()
+        .expect("Failed to build libloong");
+
+    if !status.success() {
+        panic!("Failed to build libloong C++ library");
+    }
 
     // Build the C++ wrapper library
     let mut build = cc::Build::new();
@@ -18,7 +72,7 @@ fn main() {
         // and convert them to error codes for Rust. The wrapper acts as
         // an exception boundary - Rust code never sees C++ exceptions.
         .include(libloong_root.join("lib"))
-        .include(libloong_root.join("build/lib")) // For libloong_settings.h
+        .include(build_dir.join("lib")) // For libloong_settings.h
         .file("wrapper/libloong_wrapper.cpp");
 
     // Add optimization flags for release builds
@@ -26,10 +80,13 @@ fn main() {
         build.opt_level(2);
     }
 
-    // Link against the pre-built libloong static library
+    // Compile the wrapper
+    build.compile("loong_wrapper");
+
+    // Link against the libloong static library we just built
     println!(
         "cargo:rustc-link-search=native={}",
-        libloong_root.join("build/lib").display()
+        build_dir.join("lib").display()
     );
     println!("cargo:rustc-link-lib=static=loong");
 
@@ -39,9 +96,10 @@ fn main() {
         println!("cargo:rustc-link-lib=c++");
     } else if target.contains("linux") {
         println!("cargo:rustc-link-lib=stdc++");
+    } else if target.contains("windows") {
+        // Windows MSVC uses different C++ runtime
+        println!("cargo:rustc-link-lib=msvcrt");
     }
-
-    build.compile("loong_wrapper");
 
     println!("cargo:warning=Rust bindings for libloong compiled successfully");
 }

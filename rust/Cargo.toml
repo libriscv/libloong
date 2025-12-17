@@ -3,11 +3,18 @@ name = "libloong"
 version = "0.1.0"
 edition = "2021"
 authors = ["LibLoong Contributors"]
-description = "Rust bindings for the libloong LoongArch emulator"
+description = "Rust bindings for the libloong LoongArch emulator - a high-performance 64-bit LoongArch virtual machine"
 license = "MIT"
 repository = "https://github.com/fwsGonzo/libloong"
-categories = ["emulators", "simulation"]
-keywords = ["loongarch", "emulator", "vm", "sandbox"]
+documentation = "https://docs.rs/libloong"
+readme = "README.md"
+categories = ["emulators", "simulation", "virtualization"]
+keywords = ["loongarch", "emulator", "vm", "sandbox", "virtualization"]
+exclude = [
+    "test_programs/*",
+    "target/*",
+    ".gitignore"
+]
 
 [lib]
 name = "libloong"
@@ -18,14 +25,13 @@ path = "src/lib.rs"
 
 [build-dependencies]
 cc = "1.0"
-pkg-config = "0.3"
 
 [dev-dependencies]
 # For testing
 
 [features]
-default = []
-# Enable binary translation support (requires LA_BINARY_TRANSLATION)
+default = ["binary-translation"]
+# Enable binary translation support (JIT compilation for better performance)
 binary-translation = []
 
 [[example]]
@@ -35,3 +41,18 @@ path = "examples/hello_world.rs"
 [[example]]
 name = "vmcall"
 path = "examples/vmcall.rs"
+
+[[example]]
+name = "memory_ops"
+path = "examples/memory_ops.rs"
+
+[package.metadata.docs.rs]
+# Docs.rs configuration
+default-target = "x86_64-unknown-linux-gnu"
+all-features = true
+
+# System requirements note
+[package.metadata.system-requirements]
+cmake = "3.15+"
+ninja = "optional, recommended for faster builds"
+gcc = "14+ or clang 18+ (C++20 support required)"

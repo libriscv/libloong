@@ -1,0 +1,31 @@
+# Cargo configuration for libloong Rust bindings
+
+[build]
+# Increase parallel build jobs for faster compilation
+jobs = 8
+
+[target.x86_64-unknown-linux-gnu]
+# Linux x86_64 linker settings
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+
+[target.x86_64-apple-darwin]
+# macOS linker settings
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+
+[target.aarch64-apple-darwin]
+# macOS ARM64 linker settings
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+
+# Profile settings for optimized builds
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = false  # Keep symbols for debugging if needed
+
+[profile.dev]
+opt-level = 0
+debug = true
+
+[profile.test]
+opt-level = 2  # Optimize tests for faster execution

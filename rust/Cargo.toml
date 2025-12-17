@@ -4,17 +4,22 @@ version = "0.1.0"
 edition = "2021"
 authors = ["LibLoong Contributors"]
 description = "Rust bindings for the libloong LoongArch emulator - a high-performance 64-bit LoongArch virtual machine"
-license = "BSD-3-Clause"
 license-file = "LICENSE"
 repository = "https://github.com/libriscv/libloong"
 documentation = "https://docs.rs/libloong"
 readme = "README.md"
 categories = ["emulators", "simulation", "virtualization"]
 keywords = ["loongarch", "emulator", "vm", "sandbox", "virtualization"]
-exclude = [
-    "test_programs/*",
-    "target/*",
-    ".gitignore"
+include = [
+    "src/**/*",
+    "wrapper/**/*",
+    "examples/**/*",
+    "README.md",
+    "LICENSE",
+    "Cargo.toml",
+    "build.rs",
+    "_vendor/**/*",
+    "!_vendor/**/*.bak"
 ]
 
 [lib]

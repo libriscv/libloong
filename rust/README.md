@@ -69,7 +69,3 @@ loongarch64-linux-gnu-gcc -O2 -static \
 ```
 
 The `-Wl,-Ttext-segment=0x200000` flag is required for the flat memory model.
-
-## License
-
-MIT

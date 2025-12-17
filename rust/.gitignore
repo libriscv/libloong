@@ -6,3 +6,4 @@ Cargo.lock
 *.so
 *.dylib
 *.dll
+_vendor/

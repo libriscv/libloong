@@ -4,16 +4,38 @@ use std::process::Command;
 
 fn main() {
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
-    let libloong_root = manifest_dir.parent().unwrap();
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+
+    // Determine the libloong root directory
+    // Priority: _vendor (for published crates) > parent directory (for development)
+    let libloong_root = if manifest_dir.join("_vendor").exists() {
+        // Published crate structure: sources are vendored in _vendor
+        println!("cargo:warning=Using vendored sources from _vendor/");
+        manifest_dir.join("_vendor")
+    } else if let Some(parent) = manifest_dir.parent() {
+        if parent.join("CMakeLists.txt").exists() && parent.join("lib").exists() {
+            // Development structure: sources are in parent directory
+            parent.to_path_buf()
+        } else {
+            panic!(
+                "Cannot find libloong sources. \n\
+                For publishing: run ./vendor-sources.sh first\n\
+                For development: ensure this is in the libloong repository"
+            );
+        }
+    } else {
+        panic!("Cannot determine libloong root directory");
+    };
 
     // Set rerun-if-changed for wrapper files
     println!("cargo:rerun-if-changed=wrapper/libloong_wrapper.cpp");
     println!("cargo:rerun-if-changed=wrapper/libloong_wrapper.h");
 
-    // Watch for changes in the C++ library source
-    println!("cargo:rerun-if-changed=../lib/libloong");
-    println!("cargo:rerun-if-changed=../CMakeLists.txt");
+    // Watch for changes in the C++ library source (development mode only)
+    if !manifest_dir.join("_vendor").exists() {
+        println!("cargo:rerun-if-changed=../lib/libloong");
+        println!("cargo:rerun-if-changed=../CMakeLists.txt");
+    }
 
     // Build libloong C++ library using CMake
     let build_dir = out_dir.join("libloong_build");
@@ -30,7 +52,7 @@ fn main() {
     let mut cmake_config = Command::new("cmake");
     cmake_config
         .current_dir(&build_dir)
-        .arg(libloong_root)
+        .arg(&libloong_root)
         .arg("-DCMAKE_BUILD_TYPE=Release")
         .arg("-DLA_BINARY_TRANSLATION=ON");
 
@@ -100,6 +122,4 @@ fn main() {
         // Windows MSVC uses different C++ runtime
         println!("cargo:rustc-link-lib=msvcrt");
     }
-
-    println!("cargo:warning=Rust bindings for libloong compiled successfully");
 }

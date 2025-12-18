@@ -115,7 +115,7 @@ uint32_t DecodedExecuteSegment::optimize_bytecode(uint8_t& bytecode, address_t p
 			fi.rd = original.r3sa2.rd;
 			fi.rj = original.r3sa2.rj;
 			fi.rk = original.r3sa2.rk;
-			fi.sa2 = original.r3sa2.sa2;
+			fi.sa2 = original.r3sa2.sa2 + 1;
 			NOP_IF_RD_ZERO(fi.rd, bytecode);
 			return fi.whole;
 		} break;

@@ -213,8 +213,7 @@ INSTRUCTION(LA64_BC_AND, la64_and)
 INSTRUCTION(LA64_BC_ALSL_D, la64_alsl_d)
 {
 	auto fi = *(FasterLA64_R3SA2 *)&DECODER().instr;
-	const uint32_t shift = fi.sa2 + 1;
-	REG(fi.rd) = (REG(fi.rj) << shift) + REG(fi.rk);
+	REG(fi.rd) = (REG(fi.rj) << fi.sa2) + REG(fi.rk);
 	NEXT_INSTR();
 }
 

@@ -28,7 +28,6 @@ namespace loongarch
 
 		address_t handler = SIG_UNSET;  // Handler address
 		bool altstack = false;          // Use alternate stack?
-		unsigned mask = 0x0;            // Signal mask
 	};
 
 	// Signal return state (stores registers for return)
@@ -42,6 +41,7 @@ namespace loongarch
 	{
 		SignalStack  stack;
 		SignalReturn sigret;
+		uint64_t mask = 0x0;
 	};
 
 	// Main signals manager

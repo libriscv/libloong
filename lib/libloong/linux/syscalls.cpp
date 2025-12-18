@@ -236,15 +236,11 @@ namespace loongarch
 	static void syscall_clock_gettime(Machine& machine)
 	{
 		auto [clockid, tp] =
-			machine.template sysargs<int, address_t>();
-		if (tp != 0) {
-			struct timespec ts;
-			clock_gettime(clockid, &ts);
-			machine.memory.copy_to_guest(tp, &ts, sizeof(ts));
-		}
+			machine.template sysargs<int, struct timespec*>();
+		clock_gettime(clockid, tp);
 		machine.set_result(0);
-		sysprint(machine, "clock_gettime(clockid=%d, tp=0x%llx) = %d\n",
-			clockid, static_cast<uint64_t>(tp),
+		sysprint(machine, "clock_gettime(clockid=%d, tp=0x%lx) = %d\n",
+			clockid, long(machine.cpu.reg(REG_A1)),
 			machine.template return_value<int>());
 	}
 
@@ -387,7 +383,8 @@ namespace loongarch
 			sa.sa_handler = sigact.handler & ~address_t(0x3);
 			sa.sa_flags   = (sigact.altstack ? LINUX_SA_ONSTACK : 0x0);
 			sa.sa_restorer = 0;
-			sa.sa_mask    = sigact.mask;
+			auto& pt = machine.signals().per_thread(machine.gettid());
+			sa.sa_mask    = pt.mask;
 			machine.memory.copy_to_guest(old_action, &sa, sizeof(sa));
 		}
 		// Set new action if provided
@@ -395,7 +392,8 @@ namespace loongarch
 			machine.memory.copy_from_guest(&sa, action, sizeof(sa));
 			sigact.handler  = sa.sa_handler & ~address_t(0x3);
 			sigact.altstack = (sa.sa_flags & LINUX_SA_ONSTACK) != 0;
-			sigact.mask     = sa.sa_mask;
+			auto& pt = machine.signals().per_thread(machine.gettid());
+			pt.mask         = sa.sa_mask;
 		}
 		machine.set_result(0);
 		sysprint(machine, "rt_sigaction(sig=%d, action=0x%llx, old_action=0x%llx) = 0\n",
@@ -404,9 +402,37 @@ namespace loongarch
 
 	static void syscall_rt_sigprocmask(Machine& machine)
 	{
-		// Stub: just return success
+		const int how = machine.sysarg<int>(0);
+		const auto set = machine.sysarg(address_t(1));
+		const auto oldset = machine.sysarg(address_t(2));
+
+		auto& pt = machine.signals().per_thread(machine.gettid());
+		if (oldset != 0x0) {
+			const uint64_t sigs = pt.mask;
+			machine.memory.copy_to_guest(oldset, &sigs, sizeof(sigs));
+		}
+		if (set != 0x0) {
+			uint64_t sigs = 0;
+			machine.memory.copy_from_guest(&sigs, set, sizeof(sigs));
+			switch (how) {
+				case 0: // SIG_BLOCK
+					pt.mask |= sigs;
+					break;
+				case 1: // SIG_UNBLOCK
+					pt.mask &= ~sigs;
+					break;
+				case 2: // SIG_SETMASK
+					pt.mask = sigs;
+					break;
+				default:
+					// Invalid 'how' value
+					machine.set_result(-LA_EINVAL);
+					return;
+			}
+		}
 		machine.set_result(0);
-		sysprint(machine, "rt_sigprocmask() = %d (stub)\n",
+		sysprint(machine, "rt_sigprocmask(how=%d, set=0x%llx, oldset=0x%llx) = 0\n",
+			how, static_cast<uint64_t>(set), static_cast<uint64_t>(oldset),
 			machine.template return_value<int>());
 	}
 

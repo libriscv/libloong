@@ -151,7 +151,17 @@ namespace loongarch
 				if (sig != 0 && machine.sigaction(sig).is_unset()) {
 					if (!thread->exit())
 						return;
+				} else if (sig == 0) {
+					// No signal to send
+					thprint(machine,
+						"<<< tgkill(tid=%d) signal=0 (no-op)\n", tid);
+					machine.set_result(0);
+					return;
 				} else {
+					// Change to the given thread if not current
+					if (machine.threads().get_tid() != tid) {
+						machine.threads().yield_to(tid, true, 0);
+					}
 					// Jump to signal handler and change to altstack, if set
 					machine.signals().enter(machine, sig);
 					thprint(machine,

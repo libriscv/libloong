@@ -19,8 +19,10 @@ namespace loongarch
 	void Signals::enter(Machine& machine, int sig)
 	{
 		// Ignore signal 0
-		if (sig == 0)
+		if (sig == 0) {
+			machine.set_result(0);
 			return;
+		}
 
 		auto& sigact = this->get(sig);
 

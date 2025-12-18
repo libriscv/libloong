@@ -81,7 +81,7 @@ namespace loongarch
 		LA64_BC_ORN,               // OR NOT (50 in coremark)
 		LA64_BC_MUL_W,             // Multiply word (38 in coremark)
 		LA64_BC_MOD_DU,            // Modulo doubleword unsigned (35 in coremark)
-		LA64_BC_REVB_4H,           // Reverse bytes in 4 halfwords (27 in coremark)
+		LA64_BC_SRAI_W,            // Shift right arithmetic immediate word
 		LA64_BC_LDX_H,             // Load halfword signed indexed
 		LA64_BC_STX_H,             // Store halfword indexed
 
@@ -217,7 +217,7 @@ namespace loongarch
 		case LA64_BC_ORN: return "ORN";
 		case LA64_BC_MUL_W: return "MUL.W";
 		case LA64_BC_MOD_DU: return "MOD.DU";
-		case LA64_BC_REVB_4H: return "REVB.4H";
+		case LA64_BC_SRAI_W: return "SRAI.W";
 		case LA64_BC_VLD: return "VLD";
 		case LA64_BC_VST: return "VST";
 		case LA64_BC_VFADD_D: return "VFADD.D";
@@ -357,11 +357,11 @@ namespace loongarch
 		struct {
 			uint8_t rd;     // bits [4:0]
 			uint8_t rj;     // bits [9:5]
-			int16_t imm14;  // bits [23:10] sign-extended 14-bit immediate
+			int16_t imm16;  // bits [23:10] sign-extended 14-bit immediate
 		};
 		void set_imm(uint16_t imm) {
 			// Sign-extend 14-bit immediate to int16_t
-			this->imm14 = int16_t(imm << 2) >> 2;
+			this->imm16 = int16_t(imm << 2);
 		}
 	};
 

@@ -74,7 +74,7 @@ static constexpr void *computed_opcode[] = {
 	[LA64_BC_ORN]       = &&la64_orn,
 	[LA64_BC_MUL_W]     = &&la64_mul_w,
 	[LA64_BC_MOD_DU]    = &&la64_mod_du,
-	[LA64_BC_REVB_4H]   = &&la64_revb_4h,
+	[LA64_BC_SRAI_W]    = &&la64_srai_w,
 	[LA64_BC_LDX_H]     = &&la64_ldx_h,
 	[LA64_BC_STX_H]     = &&la64_stx_h,
 

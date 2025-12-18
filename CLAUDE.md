@@ -48,7 +48,7 @@ A single bytecode means modifying 5 different places:
 2. Select which instruction the bytecode replaces in decoder_cache.cpp
 3. Implementing an optimized instruction layout in threaded_rewriter.cpp
 4. Implementing the actual bytecode handler in bytecode_impl.cpp
-5. Adding an entry connecting the bytecode to the handler in threaded_bytecode_array.hpp
+5. Adding an entry connecting the bytecode to the handler in threaded_bytecode_array.hpp as well as tailcall_bytecode_array.hpp
 
 Only once all 5 steps are complete can the CLI be tested. Bytecodes should be implemented according to popularity as LoongArch has very many instructions. Any bytecode where register zero could be written to can be rewritten in the optimizer to either NOP or INVALID (bytecode==0) when rd == 0, so that a pointless check for rd != 0 is avoided in hot-path.
 

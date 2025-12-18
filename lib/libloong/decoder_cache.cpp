@@ -140,7 +140,7 @@ extern bool try_translate(const Machine&, const MachineOptions&, std::shared_ptr
 		case InstrId::ANDN: return LA64_BC_ANDN;
 		case InstrId::STX_B: return LA64_BC_STX_B;
 		case InstrId::EXT_W_H: return LA64_BC_EXT_W_H;
-		case InstrId::REVB_4H: return LA64_BC_REVB_4H;
+		case InstrId::SRAI_W: return LA64_BC_SRAI_W;
 		case InstrId::LDX_B: return LA64_BC_LDX_B;
 		case InstrId::SLT: return LA64_BC_SLT;
 		case InstrId::ORN: return LA64_BC_ORN;

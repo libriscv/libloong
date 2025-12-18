@@ -745,11 +745,12 @@ uint32_t DecodedExecuteSegment::optimize_bytecode(uint8_t& bytecode, address_t p
 			NOP_IF_RD_ZERO(fi.rd, bytecode);
 			return fi.whole;
 		} break;
-		case LA64_BC_REVB_4H: {
-			// REVB.4H rd, rj - uses R2 format
-			auto fi = *(FasterLA64_R2 *)&instruction_bits;
-			fi.rd = original.r2.rd;
-			fi.rj = original.r2.rj;
+		case LA64_BC_SRAI_W: {
+			// SRAI.W rd, rj, ui5 - uses Shift format
+			auto fi = *(FasterLA64_Shift *)&instruction_bits;
+			fi.rd = original.r3.rd;
+			fi.rj = original.r3.rj;
+			fi.ui5 = (original.whole >> 10) & 0x1F;
 			NOP_IF_RD_ZERO(fi.rd, bytecode);
 			return fi.whole;
 		} break;

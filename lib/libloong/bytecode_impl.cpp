@@ -157,7 +157,7 @@ INSTRUCTION(LA64_BC_PCALAU12I, la64_pcalau12i)
 INSTRUCTION(LA64_BC_LDPTR_D, la64_ldptr_d)
 {
 	auto fi = *(FasterLA64_RI14 *)&DECODER().instr;
-	const auto addr = REG(fi.rj) + (saddress_t(fi.imm14) << 2);
+	const auto addr = REG(fi.rj) + saddress_t(fi.imm16);
 	REG(fi.rd) = MACHINE().memory.template read<uint64_t, true>(addr);
 	NEXT_INSTR();
 }
@@ -166,7 +166,7 @@ INSTRUCTION(LA64_BC_LDPTR_D, la64_ldptr_d)
 INSTRUCTION(LA64_BC_LDPTR_W, la64_ldptr_w)
 {
 	auto fi = *(FasterLA64_RI14 *)&DECODER().instr;
-	const auto addr = REG(fi.rj) + (saddress_t(fi.imm14) << 2);
+	const auto addr = REG(fi.rj) + saddress_t(fi.imm16);
 	REG(fi.rd) = (saddress_t)(int32_t)MACHINE().memory.template read<uint32_t, true>(addr);
 	NEXT_INSTR();
 }
@@ -175,7 +175,7 @@ INSTRUCTION(LA64_BC_LDPTR_W, la64_ldptr_w)
 INSTRUCTION(LA64_BC_STPTR_D, la64_stptr_d)
 {
 	auto fi = *(FasterLA64_RI14 *)&DECODER().instr;
-	const auto addr = REG(fi.rj) + (int64_t(fi.imm14) << 2);
+	const auto addr = REG(fi.rj) + saddress_t(fi.imm16);
 	MACHINE().memory.template write<uint64_t, true>(addr, REG(fi.rd));
 	NEXT_INSTR();
 }
@@ -239,7 +239,7 @@ INSTRUCTION(LA64_BC_LD_B, la64_ld_b)
 INSTRUCTION(LA64_BC_STPTR_W, la64_stptr_w)
 {
 	auto fi = *(FasterLA64_RI14 *)&DECODER().instr;
-	const auto addr = REG(fi.rj) + (saddress_t(fi.imm14) << 2);
+	const auto addr = REG(fi.rj) + saddress_t(fi.imm16);
 	MACHINE().memory.template write<uint32_t, true>(addr, REG(fi.rd));
 	NEXT_INSTR();
 }
@@ -939,21 +939,12 @@ INSTRUCTION(LA64_BC_MOD_DU, la64_mod_du)
 	NEXT_INSTR();
 }
 
-// LA64_BC_REVB_4H: Reverse bytes in 4 halfwords
-INSTRUCTION(LA64_BC_REVB_4H, la64_revb_4h)
+// LA64_BC_SRAI_W: Shift right arithmetic immediate word (rd = (int32_t)rj >> ui5)
+INSTRUCTION(LA64_BC_SRAI_W, la64_srai_w)
 {
-	auto fi = *(FasterLA64_R2 *)&DECODER().instr;
-	uint64_t val = REG(fi.rj);
-	uint64_t result = 0;
-	result |= ((val & 0x00000000000000FFull) << 8);
-	result |= ((val & 0x000000000000FF00ull) >> 8);
-	result |= ((val & 0x0000000000FF0000ull) << 8);
-	result |= ((val & 0x00000000FF000000ull) >> 8);
-	result |= ((val & 0x000000FF00000000ull) << 8);
-	result |= ((val & 0x0000FF0000000000ull) >> 8);
-	result |= ((val & 0x00FF000000000000ull) << 8);
-	result |= ((val & 0xFF00000000000000ull) >> 8);
-	REG(fi.rd) = result;
+	auto fi = *(FasterLA64_Shift *)&DECODER().instr;
+	int32_t val = static_cast<int32_t>(REG(fi.rj)) >> fi.ui5;
+	REG(fi.rd) = val;
 	NEXT_INSTR();
 }
 

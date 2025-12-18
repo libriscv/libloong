@@ -76,36 +76,25 @@ jobs:
         cd rust
         cargo clippy --all-targets --all-features -- -D warnings
 
-    - name: Build test program (return_42)
+    - name: Build test programs
       run: |
-        mkdir -p rust/test_programs
-        cat > rust/test_programs/return_42.c << 'EOF'
+        # Build centralized test programs
+        cd tests/programs
+
+        # Build simple programs for Rust bindings testing
+        loongarch64-linux-gnu-gcc-14 -O2 -static \
+          -Wl,-Ttext-segment=0x200000 \
+          -o return_42.elf \
+          -x c - << 'EOF'
         int main() {
             return 42;
         }
         EOF
+
         loongarch64-linux-gnu-gcc-14 -O2 -static \
           -Wl,-Ttext-segment=0x200000 \
-          -o rust/test_programs/return_42.elf \
-          rust/test_programs/return_42.c
-
-    - name: Build test program (hello_world)
-      run: |
-        cat > rust/test_programs/hello_world.c << 'EOF'
-        #include <stdio.h>
-        int main() {
-            printf("Hello from LoongArch!\n");
-            return 0;
-        }
-        EOF
-        loongarch64-linux-gnu-gcc-14 -O2 -static \
-          -Wl,-Ttext-segment=0x200000 \
-          -o rust/test_programs/hello_world.elf \
-          rust/test_programs/hello_world.c
-
-    - name: Build test program (factorial)
-      run: |
-        cat > rust/test_programs/factorial.c << 'EOF'
+          -o factorial.elf \
+          -x c - << 'EOF'
         unsigned long factorial(unsigned long n) {
             if (n <= 1) return 1;
             return n * factorial(n - 1);
@@ -114,15 +103,20 @@ jobs:
             return 0;
         }
         EOF
-        loongarch64-linux-gnu-gcc-14 -O2 -static \
-          -Wl,-Ttext-segment=0x200000 \
-          -o rust/test_programs/factorial.elf \
-          rust/test_programs/factorial.c
+
+        # Build hello_world if not already present
+        if [ ! -f hello_world.elf ]; then
+          loongarch64-linux-gnu-gcc-14 -O2 -static \
+            -Wl,-Ttext-segment=0x200000 \
+            -o hello_world.elf hello_world.c
+        fi
+
+        ls -lh *.elf | head -10
 
     - name: Test hello_world example
       run: |
         cd rust
-        cargo run --release --example hello_world -- test_programs/hello_world.elf 2>&1 | tee output.txt
+        cargo run --release --example hello_world -- ../tests/programs/hello_world.elf 2>&1 | tee output.txt
         if ! grep -q "Hello from LoongArch!" output.txt; then
           echo "ERROR: Expected output not found!"
           exit 1
@@ -132,7 +126,7 @@ jobs:
     - name: Test vmcall example with factorial
       run: |
         cd rust
-        cargo run --release --example vmcall -- test_programs/factorial.elf factorial 5 2>&1 | tee output.txt
+        cargo run --release --example vmcall -- ../tests/programs/factorial.elf factorial 5 2>&1 | tee output.txt
         if ! grep -q "120" output.txt; then
           echo "ERROR: Expected factorial(5) = 120 not found!"
           exit 1
@@ -142,7 +136,7 @@ jobs:
     - name: Test vmcall example with return_42
       run: |
         cd rust
-        cargo run --release --example vmcall -- test_programs/return_42.elf main 2>&1 | tee output.txt
+        cargo run --release --example vmcall -- ../tests/programs/return_42.elf main 2>&1 | tee output.txt
         if ! grep -q "42" output.txt; then
           echo "ERROR: Expected return value 42 not found!"
           exit 1
@@ -154,15 +148,57 @@ jobs:
         cd rust
         cargo doc --no-deps --release
 
+    - name: Test cargo package (vendored sources)
+      run: |
+        cd rust
+        echo "Testing vendored source packaging..."
+        ./vendor-sources.sh
+
+        # Test that the package builds correctly
+        cargo package --allow-dirty --verbose
+
+        # Extract and verify package contents
+        PKG_FILE=$(ls target/package/libloong-*.crate | head -1)
+        echo "Package file: $PKG_FILE"
+
+        # Verify vendored directory is included
+        tar -tzf "$PKG_FILE" | grep "_vendor/" || {
+          echo "ERROR: _vendor directory not found in package!"
+          exit 1
+        }
+
+        echo "✓ Package test passed"
+
+    - name: Test package installation from tarball
+      run: |
+        cd rust
+        PKG_FILE=$(ls target/package/libloong-*.crate | head -1)
+
+        # Extract to temp directory
+        mkdir -p /tmp/libloong_test
+        tar -xzf "$PKG_FILE" -C /tmp/libloong_test
+
+        # Try building from extracted package
+        cd /tmp/libloong_test/libloong-*
+        cargo build --release --verbose
+
+        echo "✓ Package installation test passed"
+      env:
+        CC: gcc-14
+        CXX: g++-14
+
     - name: Summary
       if: success()
       run: |
-        echo "================================"
+        echo "======================================="
         echo "✓ All Rust binding tests passed!"
-        echo "================================"
+        echo "======================================="
         echo ""
         echo "Build artifacts:"
         ls -lh rust/target/release/examples/ 2>/dev/null || true
         echo ""
         echo "Test programs:"
-        ls -lh rust/test_programs/*.elf 2>/dev/null || true
+        ls -lh tests/programs/*.elf 2>/dev/null | head -5 || true
+        echo ""
+        echo "Package:"
+        ls -lh rust/target/package/*.crate 2>/dev/null || true

@@ -65,11 +65,11 @@ The build script automatically builds the C++ library using CMake.
 
 ## Examples
 
-Run the examples:
+Run the examples (test programs are located in `../tests/programs/`):
 
 ```bash
-cargo run --example hello_world -- test_programs/hello_world.elf
-cargo run --example vmcall -- test_programs/factorial.elf factorial 5
+cargo run --example hello_world -- ../tests/programs/hello_world.elf
+cargo run --example vmcall -- ../tests/programs/factorial.elf factorial 5
 ```
 
 ## Building LoongArch Programs

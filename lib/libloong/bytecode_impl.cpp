@@ -136,19 +136,20 @@ INSTRUCTION(LA64_BC_ST_W, la64_st_w)
 // LA64_BC_PCADDI: PC-relative add immediate (rd = PC + sign_ext(imm20 << 2))
 INSTRUCTION(LA64_BC_PCADDI, la64_pcaddi)
 {
-	VIEW_INSTR();
-	const int32_t si20 = InstructionHelpers::sign_extend_20(instr.ri20.imm);
-	const int64_t offset = (si20 << 2);
-	REG(instr.ri20.rd) = RECONSTRUCT_PC() + offset;
+	auto fi = *(FasterLA64_RI20 *)&DECODER().instr;
+	// get_pcaddi_offset() returns sign-extended (imm20 << 2) directly
+	const int64_t offset = fi.get_pcaddi_offset();
+	REG(fi.get_rd()) = RECONSTRUCT_PC() + offset;
 	NEXT_INSTR();
 }
 
 // LA64_BC_PCALAU12I: PC-aligned add upper immediate (rd = (PC & ~0xFFF) + (imm20 << 12))
 INSTRUCTION(LA64_BC_PCALAU12I, la64_pcalau12i)
 {
-	VIEW_INSTR();
-	const int64_t offset = (int32_t)(instr.ri20.imm << 12);
-	REG(instr.ri20.rd) = (RECONSTRUCT_PC() & ~address_t(0xFFF)) + offset;
+	auto fi = *(FasterLA64_RI20 *)&DECODER().instr;
+	// get_lu12i_offset() returns sign-extended (imm20 << 12) directly
+	const int64_t offset = fi.get_lu12i_offset();
+	REG(fi.get_rd()) = (RECONSTRUCT_PC() & ~address_t(0xFFF)) + offset;
 	NEXT_INSTR();
 }
 
@@ -182,9 +183,10 @@ INSTRUCTION(LA64_BC_STPTR_D, la64_stptr_d)
 // LA64_BC_LU12I_W: Load upper 12-bit immediate word (rd = sign_ext(imm20 << 12))
 INSTRUCTION(LA64_BC_LU12I_W, la64_lu12i_w)
 {
-	VIEW_INSTR();
-	int32_t result = (int32_t)(instr.ri20.imm << 12);
-	REG(instr.ri20.rd) = (saddress_t)result;
+	auto fi = *(FasterLA64_RI20 *)&DECODER().instr;
+	// get_lu12i_offset() returns sign-extended (imm20 << 12) directly
+	int32_t result = fi.get_lu12i_offset();
+	REG(fi.get_rd()) = (saddress_t)result;
 	NEXT_INSTR();
 }
 
@@ -430,13 +432,13 @@ INSTRUCTION(LA64_BC_BSTRINS_D, la64_bstrins_d)
 INSTRUCTION(LA64_BC_LU32I_D, la64_lu32i_d)
 {
 	auto fi = *(FasterLA64_RI20 *)&DECODER().instr;
-	const uint32_t lower = REG(fi.rd);
+	const uint32_t lower = REG(fi.get_rd());
 
-	// Sign-extend the 20-bit immediate to 32 bits, then place at bits [51:32]
-	int32_t si20 = fi.get_imm();
+	// get_lu32i_imm() returns sign-extended 20-bit immediate
+	int32_t si20 = fi.get_lu32i_imm();
 	uint64_t imm_ext = ((uint64_t)(uint32_t)si20) << 32;
 
-	REG(fi.rd) = imm_ext | lower;
+	REG(fi.get_rd()) = imm_ext | lower;
 	NEXT_INSTR();
 }
 

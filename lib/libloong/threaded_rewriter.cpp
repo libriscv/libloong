@@ -223,11 +223,27 @@ uint32_t DecodedExecuteSegment::optimize_bytecode(uint8_t& bytecode, address_t p
 			NOP_IF_RD_ZERO(fi.rd, bytecode);
 			return fi.whole;
 		} break;
-		case LA64_BC_PCADDI:
-		case LA64_BC_PCALAU12I:
-		case LA64_BC_LU12I_W:
-			// No optimization needed - use original instruction bits
-			return instruction_bits;
+		case LA64_BC_PCADDI: {
+			auto fi = *(FasterLA64_RI20 *)&instruction_bits;
+			fi.set_rd(original.ri20.rd);
+			fi.set_pcaddi_offset(original.ri20.imm);
+			NOP_IF_RD_ZERO(fi.get_rd(), bytecode);
+			return fi.whole;
+		} break;
+		case LA64_BC_PCALAU12I: {
+			auto fi = *(FasterLA64_RI20 *)&instruction_bits;
+			fi.set_rd(original.ri20.rd);
+			fi.set_lu12i_offset(original.ri20.imm);
+			NOP_IF_RD_ZERO(fi.get_rd(), bytecode);
+			return fi.whole;
+		} break;
+		case LA64_BC_LU12I_W: {
+			auto fi = *(FasterLA64_RI20 *)&instruction_bits;
+			fi.set_rd(original.ri20.rd);
+			fi.set_lu12i_offset(original.ri20.imm);
+			NOP_IF_RD_ZERO(fi.get_rd(), bytecode);
+			return fi.whole;
+		} break;
 		case LA64_BC_LDPTR_D: {
 			auto fi = *(FasterLA64_RI14 *)&instruction_bits;
 			fi.rd = original.ri14.rd;
@@ -427,9 +443,9 @@ uint32_t DecodedExecuteSegment::optimize_bytecode(uint8_t& bytecode, address_t p
 		} break;
 		case LA64_BC_LU32I_D: {
 			auto fi = *(FasterLA64_RI20 *)&instruction_bits;
-			fi.rd = original.ri20.rd;
-			fi.set_imm(original.ri20.imm);
-			NOP_IF_RD_ZERO(fi.rd, bytecode);
+			fi.set_rd(original.ri20.rd);
+			fi.set_lu32i_imm(original.ri20.imm);
+			NOP_IF_RD_ZERO(fi.get_rd(), bytecode);
 			return fi.whole;
 		} break;
 		case LA64_BC_REVB_2H: {

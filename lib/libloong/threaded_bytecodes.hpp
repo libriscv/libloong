@@ -304,26 +304,51 @@ namespace loongarch
 
 	union FasterLA64_RI20 {
 		uint32_t whole;
-		struct {
-			uint8_t rd;      // bits [7:0] - only bits [4:0] used
-			uint8_t imm_lo;  // bits [15:8] - imm[7:0]
-			int16_t imm_hi;  // bits [31:16] - imm[19:8] sign-extended
-		};
+		// rd is stored in bits [4:0]
+		// The pre-shifted immediate value is stored in the upper bits
+		// This allows extraction with just a single mask operation!
 
-		// Get the full sign-extended immediate
-		int32_t get_imm() const {
-			// Combine imm_hi (12 bits) and imm_lo (8 bits) to form 20-bit immediate
-			// imm_hi already contains sign-extended bits [19:8]
-			// imm_lo contains bits [7:0]
-			return (int32_t(imm_hi) << 8) | imm_lo;
+		uint8_t get_rd() const { return whole & 0x1F; }
+		void set_rd(uint8_t rd) { whole = (whole & ~0x1F) | (rd & 0x1F); }
+
+		// For PCADDI: result = sign_ext(imm20 << 2)
+		// The final shifted value fits in bits [31:2], rd in [4:0]
+		// Bits [1:0] are guaranteed to be zero after the shift
+		int32_t get_pcaddi_offset() const {
+			// Just mask off rd, the value is already pre-shifted!
+			return int32_t(whole) >> 10;
+		}
+		void set_pcaddi_offset(uint32_t imm20) {
+			uint8_t rd = get_rd();
+			// Sign-extend 20-bit immediate, shift left by 2
+			int32_t si20 = (int32_t(imm20 << 12) >> 12);
+			int32_t offset = si20 << 12; // Fill 32-bits
+			// Store the complete offset value, preserving rd
+			whole = uint32_t(offset) | rd;
 		}
 
-		void set_imm(uint32_t imm20) {
-			// imm20 is 20 bits: [19:0]
-			// Store bits [7:0] in imm_lo
-			imm_lo = uint8_t(imm20 & 0xFF);
-			// Store bits [19:8] in imm_hi, sign-extended to 16 bits
-			imm_hi = int16_t(int32_t(imm20 << 12) >> 20);  // Sign-extend from bit 19
+		// For LU12I_W / PCALAU12I: result = sign_ext(imm20 << 12)
+		// The final shifted value fits in bits [31:12], rd in [4:0]
+		// Bits [11:5] will be zero, but that's fine - we just mask off rd
+		int32_t get_lu12i_offset() const {
+			// Just mask off rd, the value is already pre-shifted!
+			return int32_t(whole & ~0x1F);
+		}
+		void set_lu12i_offset(uint32_t imm20) {
+			uint8_t rd = get_rd();
+			// Store the complete offset value, preserving rd
+			whole = (imm20 << 12) | rd;
+		}
+
+		// For LU32I_D: need the raw sign-extended imm20 value
+		int32_t get_lu32i_imm() const {
+			return int32_t(whole) >> 12;
+		}
+		void set_lu32i_imm(uint32_t imm20) {
+			uint8_t rd = get_rd();
+			// Store in bits [31:12], preserving rd
+			int32_t si20 = (int32_t(imm20 << 12) >> 12);
+			whole = (uint32_t(si20) << 12) | rd;
 		}
 	};
 

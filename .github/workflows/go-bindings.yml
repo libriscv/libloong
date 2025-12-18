@@ -1,0 +1,107 @@
+name: Go Bindings CI
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'go/**'
+      - 'lib/**'
+      - 'rust/wrapper/**'
+      - '.github/workflows/go-bindings.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'go/**'
+      - 'lib/**'
+      - 'rust/wrapper/**'
+      - '.github/workflows/go-bindings.yml'
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Test Go Bindings
+    runs-on: ubuntu-24.04
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          cmake \
+          g++-14 \
+          gcc-14-loongarch64-linux-gnu
+
+    - name: Build native libraries with go generate
+      working-directory: go
+      env:
+        CXX: g++-14
+      run: |
+        go generate
+
+    - name: Verify Go module
+      working-directory: go
+      run: |
+        go mod tidy
+        go mod verify
+
+    - name: Build Go package
+      working-directory: go
+      run: |
+        go build -v .
+
+    - name: Run Go tests
+      working-directory: go
+      run: |
+        go test -v .
+
+    - name: Check formatting
+      working-directory: go
+      run: |
+        if [ "$(gofmt -l . | wc -l)" -gt 0 ]; then
+          echo "The following files are not formatted:"
+          gofmt -l .
+          exit 1
+        fi
+
+    - name: Run go vet
+      working-directory: go
+      run: |
+        go vet .
+
+    - name: Build test programs
+      run: |
+        # Build simple test programs for examples
+        loongarch64-linux-gnu-gcc-14 -static -O2 -Wl,-Ttext-segment=0x200000 \
+          -o tests/programs/stream.elf tests/programs/stream.c
+
+        loongarch64-linux-gnu-gcc-14 -static -O2 -Wl,-Ttext-segment=0x200000 \
+          -o tests/programs/hello_world.elf tests/programs/hello_world.c
+
+    - name: Build examples
+      working-directory: go
+      run: |
+        go build -v -o ../build/go_hello_world ./examples/hello_world.go
+        go build -v -o ../build/go_vmcall ./examples/vmcall.go
+        go build -v -o ../build/go_memory_ops ./examples/memory_ops.go
+
+    - name: Test hello_world example
+      run: |
+        cd build
+        timeout 10 ./go_hello_world ../tests/programs/hello_world.elf
+
+    - name: STREAM benchmark
+      run: |
+        cd build
+        timeout 10 ./go_hello_world ../tests/programs/stream.elf
+
+    - name: Test memory_ops example
+      run: |
+        cd build
+        timeout 10 ./go_memory_ops ../tests/programs/hello_world.elf

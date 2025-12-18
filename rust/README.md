@@ -8,7 +8,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-libloong = "0.1"
+libloong = "0.6"
 ```
 
 ### Example: Running a LoongArch ELF
@@ -91,5 +91,5 @@ Enables JIT compilation for better performance. This feature requires network ac
 To disable:
 ```toml
 [dependencies]
-libloong = { version = "0.1", default-features = false }
+libloong = { version = "0.6", default-features = false }
 ```

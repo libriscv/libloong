@@ -1,6 +1,6 @@
 [package]
 name = "libloong"
-version = "0.1.0"
+version = "0.6.1"
 edition = "2021"
 authors = ["LibLoong Contributors"]
 description = "Rust bindings for the libloong LoongArch emulator - a high-performance 64-bit LoongArch virtual machine"
@@ -60,5 +60,4 @@ no-default-features = true
 # System requirements note
 [package.metadata.system-requirements]
 cmake = "3.15+"
-ninja = "optional, recommended for faster builds"
 gcc = "14+ or clang 18+ (C++20 support required)"

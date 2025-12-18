@@ -418,13 +418,11 @@ INSTRUCTION(LA64_BC_BSTRINS_D, la64_bstrins_d)
 	uint64_t src = REG(fi.rj);
 	uint64_t dst = REG(fi.rd);
 
-	// Valid when msbd >= lsbd
-	if (fi.msbd >= fi.lsbd) {
-		uint32_t width = fi.msbd - fi.lsbd + 1;
-		uint64_t mask = ((1ULL << width) - 1) << fi.lsbd;
-		uint64_t bits = (src << fi.lsbd) & mask;
-		REG(fi.rd) = (dst & ~mask) | bits;
-	}
+	uint32_t width = fi.msbd - fi.lsbd + 1;
+	uint64_t mask = ((1ULL << width) - 1) << fi.lsbd;
+	uint64_t bits = (src << fi.lsbd) & mask;
+	REG(fi.rd) = (dst & ~mask) | bits;
+
 	NEXT_INSTR();
 }
 

@@ -438,7 +438,9 @@ uint32_t DecodedExecuteSegment::optimize_bytecode(uint8_t& bytecode, address_t p
 			fi.rj = (original.whole >> 5) & 0x1F;
 			fi.lsbd = (original.whole >> 10) & 0x3F;
 			fi.msbd = (original.whole >> 16) & 0x3F;
-			NOP_IF_RD_ZERO(fi.rd, bytecode);
+			if (fi.msbd < fi.lsbd || fi.rd == 0) {
+				bytecode = LA64_BC_NOP;
+			}
 			return fi.whole;
 		} break;
 		case LA64_BC_LU32I_D: {

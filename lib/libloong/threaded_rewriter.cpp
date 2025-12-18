@@ -445,6 +445,14 @@ uint32_t DecodedExecuteSegment::optimize_bytecode(uint8_t& bytecode, address_t p
 			fi.rj = original.r3.rj;
 			fi.rk = original.r3.rk;
 			fi.sa3 = (original.whole >> 15) & 0x7;
+			if (fi.sa3 == 0) {
+				// Set rd to REG(fi.rk);
+				bytecode = LA64_BC_MOVE;
+				auto nfi = *(FasterLA64_R2 *)&instruction_bits;
+				nfi.rd = fi.rd;
+				nfi.rj = fi.rk;
+				return nfi.whole;
+			}
 			NOP_IF_RD_ZERO(fi.rd, bytecode);
 			return fi.whole;
 		} break;

@@ -707,13 +707,7 @@ INSTRUCTION(LA64_BC_BYTEPICK_D, la64_bytepick_d)
 	uint64_t rj_val = REG(fi.rj);
 	uint64_t rk_val = REG(fi.rk);
 	uint32_t shift = fi.sa3 * 8;
-	uint64_t result;
-	if (shift == 0) {
-		result = rj_val;
-	} else {
-		result = (rk_val << (64 - shift)) | (rj_val >> shift);
-	}
-	REG(fi.rd) = result;
+	REG(fi.rd) = (rk_val << (64 - shift)) | (rj_val >> shift);
 	NEXT_INSTR();
 }
 
@@ -744,7 +738,6 @@ INSTRUCTION(LA64_BC_FLD_D, la64_fld_d)
 	uint64_t val = MACHINE().memory.template read<uint64_t, true>(addr);
 	auto& vr = REGISTERS().getvr(fi.rd);
 	vr.du[0] = val;
-	vr.du[1] = 0;
 	NEXT_INSTR();
 }
 

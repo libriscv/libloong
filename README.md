@@ -12,7 +12,7 @@ For discussions & help, [visit Discord](https://discord.gg/n4GcXr66X5).
 - Ultra-low latency call overheads
 - Support for 64-bit LoongArch (LA64)
 - Support for vector LSX and LASX instructions
-- C and C++ API
+- C++ API with Rust and Go bindings
 - Zero dependencies
 - Execution timeout and memory safety
 - First-class pause/resume support
@@ -74,14 +74,7 @@ int main() {
 }
 ```
 
-## Architecture
-
-libloong follows the same design principles as libriscv:
-
-- **Machine**: The main emulator state, containing CPU and Memory
-- **CPU**: Instruction decoder, executor, and register file
-- **Memory**: Arena-based memory management with multiple execute segments
-- **Decoder Cache**: Fast instruction decoding and dispatch
+## Performance
 
 ```sh
 Function    Best Rate MB/s  Avg time     Min time     Max time

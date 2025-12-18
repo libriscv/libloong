@@ -81,3 +81,15 @@ loongarch64-linux-gnu-gcc -O2 -static \
 ```
 
 The `-Wl,-Ttext-segment=0x200000` flag is required for the flat memory model.
+
+## Features
+
+### `binary-translation` (enabled by default)
+
+Enables JIT compilation for better performance. This feature requires network access during build phase (although only once).
+
+To disable:
+```toml
+[dependencies]
+libloong = { version = "0.1", default-features = false }
+```

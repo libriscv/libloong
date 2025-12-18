@@ -83,8 +83,17 @@ fn main() {
     cmake_config
         .current_dir(&build_dir)
         .arg(&libloong_root)
-        .arg("-DCMAKE_BUILD_TYPE=Release")
-        .arg("-DLA_BINARY_TRANSLATION=ON");
+        .arg("-DCMAKE_BUILD_TYPE=Release");
+
+    // Disable binary translation when building on docs.rs
+    // (FetchContent is blocked in their sandbox)
+    let is_docs_rs = env::var("DOCS_RS").is_ok();
+    if is_docs_rs {
+        println!("cargo:warning=Building for docs.rs: disabling binary translation");
+        cmake_config.arg("-DLA_BINARY_TRANSLATION=OFF");
+    } else {
+        cmake_config.arg("-DLA_BINARY_TRANSLATION=ON");
+    }
 
     // Use Ninja if available for faster builds
     if Command::new("ninja").arg("--version").output().is_ok() {

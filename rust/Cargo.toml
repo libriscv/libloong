@@ -55,7 +55,7 @@ path = "examples/memory_ops.rs"
 [package.metadata.docs.rs]
 # Docs.rs configuration
 default-target = "x86_64-unknown-linux-gnu"
-all-features = true
+no-default-features = true
 
 # System requirements note
 [package.metadata.system-requirements]

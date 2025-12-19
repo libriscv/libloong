@@ -413,6 +413,40 @@ static EmulatorOptions parse_arguments(int argc, char* argv[])
 		} else if (strcmp(argv[i], "-s") == 0 || strcmp(argv[i], "--silent") == 0) {
 			opts.silent = true;
 			first_non_option++;
+		} else if (strcmp(argv[i], "--precise") == 0) {
+			opts.precise = true;
+			first_non_option++;
+		} else if ((strcmp(argv[i], "-f") == 0 || strcmp(argv[i], "--fuel") == 0) && i + 1 < argc) {
+			i++;
+			if (strcasecmp(argv[i], "max") == 0) {
+				opts.max_instructions = UINT64_MAX;
+			} else {
+				opts.max_instructions = strtoull(argv[i], nullptr, 10);
+			}
+			first_non_option += 2;
+		} else if ((strcmp(argv[i], "-m") == 0 || strcmp(argv[i], "--memory") == 0) && i + 1 < argc) {
+			i++;
+			opts.memory_max = strtoull(argv[i], nullptr, 10) << 20; // Convert MiB to bytes
+			first_non_option += 2;
+		} else if (strcmp(argv[i], "-n") == 0 || strcmp(argv[i], "--no-translate") == 0) {
+			opts.enable_translation = false;
+			first_non_option++;
+		} else if (strcmp(argv[i], "--no-regcache") == 0) {
+			opts.enable_register_caching = false;
+			first_non_option++;
+		} else if (strcmp(argv[i], "--fast") == 0) {
+			opts.translate_unsafe = true;
+			first_non_option++;
+		} else if (strcmp(argv[i], "--nbit-as") == 0) {
+			opts.translate_nbit_as = true;
+			first_non_option++;
+		} else if (strcmp(argv[i], "-T") == 0 || strcmp(argv[i], "--trace") == 0) {
+			opts.trace_translation = true;
+			first_non_option++;
+		} else if ((strcmp(argv[i], "-O") == 0 || strcmp(argv[i], "--output") == 0) && i + 1 < argc) {
+			i++;
+			opts.translate_output_file = argv[i];
+			first_non_option += 2;
 		} else if (strcmp(argv[i], "--stats") == 0) {
 			opts.show_bytecode_stats = true;
 			first_non_option++;

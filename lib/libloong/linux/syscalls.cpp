@@ -237,7 +237,19 @@ namespace loongarch
 	{
 		auto [clockid, tp] =
 			machine.template sysargs<int, struct timespec*>();
+		// 64-bit Linux- and POSIX-compliant systems can directly call clock_gettime
+#if (defined(__linux__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)) && defined(__LP64__)
 		clock_gettime(clockid, tp);
+#else
+		// Use std::chrono to get the time for most platforms
+		auto now = std::chrono::system_clock::now();
+		auto duration = now.time_since_epoch();
+		auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration);
+		auto nanoseconds =
+			std::chrono::duration_cast<std::chrono::nanoseconds>(duration - seconds);
+		tp->tv_sec = seconds.count();
+		tp->tv_nsec = nanoseconds.count();
+#endif
 		machine.set_result(0);
 		sysprint(machine, "clock_gettime(clockid=%d, tp=0x%lx) = %d\n",
 			clockid, long(machine.cpu.reg(REG_A1)),
@@ -370,30 +382,30 @@ namespace loongarch
 
 		// Kernel sigaction structure (64-bit)
 		struct kernel_sigaction {
-			address_t sa_handler;
-			address_t sa_flags;
-			address_t sa_restorer;
-			address_t sa_mask;
+			address_t handler;
+			address_t flags;
+			address_t restorer;
+			address_t mask;
 		};
 
 		kernel_sigaction sa{};
 
 		// Return old action if requested
 		if (old_action != 0x0) {
-			sa.sa_handler = sigact.handler & ~address_t(0x3);
-			sa.sa_flags   = (sigact.altstack ? LINUX_SA_ONSTACK : 0x0);
-			sa.sa_restorer = 0;
+			sa.handler = sigact.handler & ~address_t(0x3);
+			sa.flags   = (sigact.altstack ? LINUX_SA_ONSTACK : 0x0);
+			sa.restorer = 0;
 			auto& pt = machine.signals().per_thread(machine.gettid());
-			sa.sa_mask    = pt.mask;
+			sa.mask    = pt.mask;
 			machine.memory.copy_to_guest(old_action, &sa, sizeof(sa));
 		}
 		// Set new action if provided
 		if (action != 0x0) {
 			machine.memory.copy_from_guest(&sa, action, sizeof(sa));
-			sigact.handler  = sa.sa_handler & ~address_t(0x3);
-			sigact.altstack = (sa.sa_flags & LINUX_SA_ONSTACK) != 0;
+			sigact.handler  = sa.handler & ~address_t(0x3);
+			sigact.altstack = (sa.flags & LINUX_SA_ONSTACK) != 0;
 			auto& pt = machine.signals().per_thread(machine.gettid());
-			pt.mask         = sa.sa_mask;
+			pt.mask         = sa.mask;
 		}
 		machine.set_result(0);
 		sysprint(machine, "rt_sigaction(sig=%d, action=0x%llx, old_action=0x%llx) = 0\n",

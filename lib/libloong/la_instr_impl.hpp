@@ -2048,9 +2048,9 @@ struct InstrImpl {
 		// Interleaves the low 64-bit double-words from two vectors
 
 		// Make sure to avoid aliasing issues by reading sources first
-		const auto src1_du = cpu.registers().getvr(instr.r2.rj).du[0];
+		const auto src1_du = cpu.registers().getvr(instr.r3.rj).du[0];
 		const auto src2_du = cpu.registers().getvr(instr.r3.rk).du[0];
-		auto& dst = cpu.registers().getvr(instr.r2.rd);
+		auto& dst = cpu.registers().getvr(instr.r3.rd);
 
 		// Interleave: dst[0] = src2[0], dst[1] = src1[0]
 		// For double-words (64-bit), we interleave the low element (1 element) from each source
@@ -2062,28 +2062,87 @@ struct InstrImpl {
 		// VILVH.D: Vector Interleave High Double-word
 		// Interleaves the high 64-bit elements from two vectors
 
-		const auto& src_j = cpu.registers().getvr(instr.r2.rj);
+		const auto& src_j = cpu.registers().getvr(instr.r3.rj);
 		const auto& src_k = cpu.registers().getvr(instr.r3.rk);
-		auto& dst = cpu.registers().getvr(instr.r2.rd);
+		auto& dst = cpu.registers().getvr(instr.r3.rd);
 
 		// Interleave: dst[0] = src_k[1], dst[1] = src_j[1]
 		dst.du[0] = src_k.du[1];
 		dst.du[1] = src_j.du[1];
 	}
 
+	static void VPICKEV_B(cpu_t& cpu, la_instruction instr) {
+		// VPICKEV.B: Vector Pick Even Byte
+		// Picks even-indexed 8-bit bytes from two vectors
+
+		const auto& src_j = cpu.registers().getvr(instr.r3.rj);
+		const auto& src_k = cpu.registers().getvr(instr.r3.rk);
+		auto& dst = cpu.registers().getvr(instr.r3.rd);
+
+		// Pick even bytes from src_k into lower half, src_j into upper half
+		dst.bu[0] = src_k.bu[0];
+		dst.bu[1] = src_k.bu[2];
+		dst.bu[2] = src_k.bu[4];
+		dst.bu[3] = src_k.bu[6];
+		dst.bu[4] = src_k.bu[8];
+		dst.bu[5] = src_k.bu[10];
+		dst.bu[6] = src_k.bu[12];
+		dst.bu[7] = src_k.bu[14];
+		dst.bu[8] = src_j.bu[0];
+		dst.bu[9] = src_j.bu[2];
+		dst.bu[10] = src_j.bu[4];
+		dst.bu[11] = src_j.bu[6];
+		dst.bu[12] = src_j.bu[8];
+		dst.bu[13] = src_j.bu[10];
+		dst.bu[14] = src_j.bu[12];
+		dst.bu[15] = src_j.bu[14];
+	}
+
+	static void VPICKEV_H(cpu_t& cpu, la_instruction instr) {
+		// VPICKEV.H: Vector Pick Even Halfword
+		// Picks even-indexed 16-bit halfwords from two vectors
+
+		const auto& src_j = cpu.registers().getvr(instr.r3.rj);
+		const auto& src_k = cpu.registers().getvr(instr.r3.rk);
+		auto& dst = cpu.registers().getvr(instr.r3.rd);
+
+		// Pick even halfwords from src_k into lower half, src_j into upper half
+		dst.hu[0] = src_k.hu[0];
+		dst.hu[1] = src_k.hu[2];
+		dst.hu[2] = src_k.hu[4];
+		dst.hu[3] = src_k.hu[6];
+		dst.hu[4] = src_j.hu[0];
+		dst.hu[5] = src_j.hu[2];
+		dst.hu[6] = src_j.hu[4];
+		dst.hu[7] = src_j.hu[6];
+	}
+
 	static void VPICKEV_W(cpu_t& cpu, la_instruction instr) {
 		// VPICKEV.W: Vector Pick Even Word
 		// Picks even-indexed 32-bit words from two vectors
 
-		const auto& src_j = cpu.registers().getvr(instr.r2.rj);
+		const auto& src_j = cpu.registers().getvr(instr.r3.rj);
 		const auto& src_k = cpu.registers().getvr(instr.r3.rk);
-		auto& dst = cpu.registers().getvr(instr.r2.rd);
+		auto& dst = cpu.registers().getvr(instr.r3.rd);
 
-		// Pick even words: dst = [instr.r3.rk[0], instr.r3.rk[2], instr.r2.rj[0], instr.r2.rj[2]]
+		// Pick even words: dst = [instr.r3.rk[0], instr.r3.rk[2], instr.r3.rj[0], instr.r3.rj[2]]
 		dst.wu[0] = src_k.wu[0];
 		dst.wu[1] = src_k.wu[2];
 		dst.wu[2] = src_j.wu[0];
 		dst.wu[3] = src_j.wu[2];
+	}
+
+	static void VPICKEV_D(cpu_t& cpu, la_instruction instr) {
+		// VPICKEV.D: Vector Pick Even Doubleword
+		// Picks even-indexed 64-bit doublewords from two vectors
+
+		const auto& src_j = cpu.registers().getvr(instr.r3.rj);
+		const auto& src_k = cpu.registers().getvr(instr.r3.rk);
+		auto& dst = cpu.registers().getvr(instr.r3.rd);
+
+		// Pick even doublewords (element 0 from each vector)
+		dst.du[0] = src_k.du[0];
+		dst.du[1] = src_j.du[0];
 	}
 
 	static void VNOR_V(cpu_t& cpu, la_instruction instr) {

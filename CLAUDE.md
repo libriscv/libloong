@@ -56,7 +56,24 @@ Many instructions have slow-path instructions already decoded in la64.cpp and im
 
 Unpopular instructions might be considered for removal from bytecode dispatch because performance is critical.
 
-Especially LSX or LASX instructions with subtypes B, H, W and D should share an instruction printer. Example:
+## Adding a new LSX or LASX instruction
+
+Example:
+711e0000 vpickev.b              VdVjVk
+711e8000 vpickev.h              VdVjVk
+711f0000 vpickev.w              VdVjVk
+711f8000 vpickev.d              VdVjVk
+Above are the base opcodes for vector 4 instructions in the same family. If they operate on integers, they typically have all 4 variants. Almost all vector instructions have the same format: instr.r3.rd, instr.r3.rj, instr.r3.rk as shown in la_instr.hpp
+
+  2007ac:       711e8800        vpickev.h       $vr0, $vr0, $vr2
+  2007b4:       711e8c21        vpickev.h       $vr1, $vr1, $vr3
+  2007b8:       711e0020        vpickev.b       $vr0, $vr1, $vr0
+
+Above is an example from objdump showing 3 occurences of these instructions for verification.
+
+LSX instructions go in la_instr_impl.hpp since they are always enabled, but LASX go in la_instr_lasx.hpp. We don't currently care about LASX register zero-extension.
+
+Especially LSX or LASX instructions with subtypes B, H, W and D must share an instruction printer in order to reduce code footprint. Example:
 ```cpp
 	INSTRUCTION_P(VSEQI_B, VSEQI);
 	INSTRUCTION_P(VSEQI_H, VSEQI);

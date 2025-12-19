@@ -1373,8 +1373,11 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		return snprintf(buf, len, "vilvh.d $vr%u, $vr%u, $vr%u", instr.r2.rd, instr.r2.rj, instr.r3.rk);
 	}
 
-	static int VPICKEV_W(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
-		return snprintf(buf, len, "vpickev.w $vr%u, $vr%u, $vr%u", instr.r2.rd, instr.r2.rj, instr.r3.rk);
+	static int VPICKEV(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		// Deduce suffix from opcode bits[31:15]: 0xE23C-0xE23F -> b/h/w/d
+		static const char* suffixes[] = { "b", "h", "w", "d" };
+		const char* suffix = suffixes[(instr.whole >> 15) & 3];
+		return snprintf(buf, len, "vpickev.%s $vr%u, $vr%u, $vr%u", suffix, instr.r2.rd, instr.r2.rj, instr.r3.rk);
 	}
 
 	static int VNOR_V(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {

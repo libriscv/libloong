@@ -312,7 +312,10 @@ namespace loongarch
 	INSTRUCTION_P(VILVL_W, VILVL);
 	INSTRUCTION_P(VILVL_D, VILVL);
 	INSTRUCTION(VILVH_D);
-	INSTRUCTION(VPICKEV_W);
+	INSTRUCTION_P(VPICKEV_B, VPICKEV);
+	INSTRUCTION_P(VPICKEV_H, VPICKEV);
+	INSTRUCTION_P(VPICKEV_W, VPICKEV);
+	INSTRUCTION_P(VPICKEV_D, VPICKEV);
 
 	// Vector arithmetic/logic
 	INSTRUCTION_P(VSUB_B, VSUB);
@@ -1043,14 +1046,23 @@ namespace loongarch
 					return DECODED_INSTR(VILVL_D);
 				}
 				// VILVH.D: Vector Interleave High Double-word
-				// bits[31:15] = 0xE23F
-				if ((instr.whole >> 15) == 0xE23F) {
+				// bits[31:15] = 0xE23B
+				if ((instr.whole >> 15) == 0xE23B) {
 					return DECODED_INSTR(VILVH_D);
 				}
-				// VPICKEV.W: Vector Pick Even Word
-				// bits[31:15] = 0xE23E
+				// VPICKEV: Vector Pick Even (B/H/W/D)
+				// bits[31:15] = 0xE23C-0xE23F
+				if ((instr.whole >> 15) == 0xE23C) {
+					return DECODED_INSTR(VPICKEV_B);
+				}
+				if ((instr.whole >> 15) == 0xE23D) {
+					return DECODED_INSTR(VPICKEV_H);
+				}
 				if ((instr.whole >> 15) == 0xE23E) {
 					return DECODED_INSTR(VPICKEV_W);
+				}
+				if ((instr.whole >> 15) == 0xE23F) {
+					return DECODED_INSTR(VPICKEV_D);
 				}
 				// VPICKVE2GR instructions: signed (0x72EF) and unsigned (0x72F3)
 				// bits[15:12] determine size: 0x8=B, 0xC=H, 0xE=W, 0xF=D

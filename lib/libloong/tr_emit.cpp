@@ -76,6 +76,7 @@ struct Emitter
 	int last_write_check_register = 0;
 	int last_write_check_offset = 0;
 	std::unordered_set<address_t> static_functions;
+	address_t current_callsite = 0;
 
 	static std::string function_name_from(address_t address) {
 		char buf[64];
@@ -634,8 +635,22 @@ struct Emitter
 		if (rd != 0) {
 			const address_t return_addr = pc() + 4;
 			add_code(reg(rd) + " = " + hex_address(return_addr) + "ULL;");
+		} else if (offset == 0x0 && rj == REG_RA) {
+			// Scout for single call address
+			if (this->current_callsite != 0x0) {
+				// We have a known return address - single call location
+				const auto target = this->current_callsite;
+				this->current_callsite = 0x0;
+				if (target >= tinfo.basepc && target < tinfo.endpc) {
+					char buffer[64];
+					snprintf(buffer, sizeof(buffer), "    goto label_%" PRIx64 ";", (uint64_t)target);
+					add_code("  if (pc == " + hex_address(target) + "ULL)");
+					add_code(buffer);
+				}
+			}
+			// Untrack callsite after indirect jump with no rd
+			//this->current_callsite = 0x0;
 		}
-
 		//this->emit_return();
 		add_code("  goto jump_table;"); // Jump table will handle indirect jump
 	}
@@ -728,6 +743,11 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			emit.last_fallback_pc = 0; // Reset fallback tracking
 			emit.last_read_check_pc = 0;
 			emit.last_write_check_pc = 0;
+
+			auto it = tinfo.call_locations.find(emit.pc());
+			if (it != tinfo.call_locations.end()) {
+				emit.current_callsite = it->second;
+			}
 		}
 
 		// Emit trace call if tracing is enabled

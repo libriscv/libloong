@@ -52,6 +52,7 @@ namespace loongarch
 		// Pointer to all blocks (including current)
 		std::vector<TransInfo>* blocks = nullptr;
 		std::unordered_set<address_t>& global_jump_locations;
+		const std::unordered_map<address_t, address_t>& call_locations; // Calls with counter
 
 		const uintptr_t arena_ptr;       // Pointer to memory arena
 		const address_t arena_rostart;   // Start of read-only region

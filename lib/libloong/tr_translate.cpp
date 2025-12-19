@@ -163,6 +163,7 @@ namespace loongarch
 		const size_t ITS_TIME_TO_SPLIT = is_libtcc ? 5'000 : 2'500;
 		size_t icounter = 0;
 		std::unordered_set<address_t> global_jump_locations;
+		std::unordered_map<address_t, address_t> call_locations;
 		std::vector<TransInfo> blocks;
 
 		// Insert the ELF entry point as the first global jump location
@@ -218,6 +219,15 @@ namespace loongarch
 					// Record return location for calls
 					if (is_call) {
 						global_jump_locations.insert(pc + 4);
+						// Calculate target PC
+						const auto offset = InstructionHelpers::sign_extend_26(instruction.i26.offs()) << 2;
+						const address_t target_pc = pc + offset;
+						auto it = call_locations.find(target_pc);
+						if (it == call_locations.end()) {
+							call_locations.insert_or_assign(target_pc, pc + 4);
+						} else {
+							it->second = 0x0; // Mark as multiple calls
+						}
 					}
 				}
 				// Check for conditional branches
@@ -282,6 +292,7 @@ namespace loongarch
 					std::move(jump_locations),
 					nullptr, // blocks pointer (set below)
 					global_jump_locations,
+					call_locations,
 					arena_ptr,
 					arena_rostart,
 					arena_datastart,

@@ -266,7 +266,7 @@ void Memory::process_rela_section(size_t offset, size_t size, const MachineOptio
 
 size_t Memory::strlen(address_t addr, size_t maxlen) const
 {
-	const address_t end_addr = std::min(addr + maxlen, m_arena_size);
+	const address_t end_addr = std::min(addr + maxlen, address_t(m_arena_size));
 	if (end_addr <= addr) return 0;
 	const address_t size = end_addr - addr;
 	const char* ptr = memarray<char>(addr, size);

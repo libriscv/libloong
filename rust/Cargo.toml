@@ -1,6 +1,6 @@
 [package]
 name = "libloong"
-version = "0.6.1"
+version = "0.7.0"
 edition = "2021"
 authors = ["LibLoong Contributors"]
 description = "Rust bindings for the libloong LoongArch emulator - a high-performance 64-bit LoongArch virtual machine"

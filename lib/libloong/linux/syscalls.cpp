@@ -5,9 +5,17 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include <chrono>
+#include <random>
+
+// Platform-specific includes for getrandom
+#if defined(__linux__)
+	#include <sys/random.h>
+#endif
 
 namespace loongarch
 {
+	static std::random_device rd;
+
 	// Error numbers (prefixed to avoid conflicts with system macros)
 	static constexpr int64_t LA_ENOSYS = 38;
 	static constexpr int64_t LA_ENOENT = 2;
@@ -575,12 +583,51 @@ namespace loongarch
 		size_t buflen = machine.cpu.reg(REG_A1);
 		// int flags = machine.cpu.reg(REG_A2);
 
-		// Fill buffer with pseudo-random data
-		for (size_t i = 0; i < buflen; i++) {
-			machine.memory.template write<uint8_t>(buf_addr + i, static_cast<uint8_t>(i * 17 + 31));
+		if (buflen > 256) {
+			buflen = 256; // Randomness is expensive
 		}
 
+		// Get writable buffer
+		uint8_t* buf = machine.memory.template writable_memarray<uint8_t>(buf_addr, buflen);
+
+		// Fill buffer with cryptographically secure random data from OS
+#if defined(__linux__)
+		ssize_t result = getrandom(buf, buflen, 0);
+		if (result < 0) {
+			machine.set_result(-LA_EAGAIN);
+			return;
+		}
+		machine.set_result(result);
+#elif defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
+		if (getentropy(buf, buflen) != 0) {
+			machine.set_result(-LA_EAGAIN);
+			return;
+		}
 		machine.set_result(buflen);
+#else
+		// Fallback for Windows and other systems
+		size_t i = 0;
+		while (i + 4 <= buflen) {
+			const uint32_t r = rd();
+			buf[i + 0] = (r >> 0) & 0xFF;
+			buf[i + 1] = (r >> 8) & 0xFF;
+			buf[i + 2] = (r >> 16) & 0xFF;
+			buf[i + 3] = (r >> 24) & 0xFF;
+			i += 4;
+		}
+		if (i < buflen) {
+			const uint32_t r = rd();
+			for (; i < buflen; i++)
+				buf[i] = (r >> ((i % 4) * 8)) & 0xFF;
+		}
+		machine.set_result(buflen);
+#endif
+
+		sysprint(machine, "getrandom(buf=0x%llx, buflen=%llu, flags=%d) = %lld\n",
+			static_cast<uint64_t>(buf_addr),
+			static_cast<uint64_t>(buflen),
+			machine.cpu.reg(REG_A2),
+			machine.template return_value<int64_t>());
 	}
 
 	static void syscall_prlimit64(Machine& machine)

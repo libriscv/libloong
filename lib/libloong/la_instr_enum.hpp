@@ -222,6 +222,8 @@ namespace loongarch {
 		VAND_V,
 		VBITREVI_D,
 		VBITSEL_V,
+		VBSLL_V,
+		VBSRL_V,
 		VFADD_D,
 		VFCMP_COND_D,
 		VFDIV_D,

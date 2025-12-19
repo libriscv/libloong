@@ -2809,6 +2809,60 @@ struct InstrImpl {
 		}
 	}
 
+	static void VBSLL_V(cpu_t& cpu, la_instruction instr) {
+		// VBSLL.V: Vector Bit Shift Left Logical
+		// Shifts the entire 128-bit vector left by the amount in the low 8 bits of vk[0]
+		const auto& src = cpu.registers().getvr(instr.r3.rj);
+		const auto& shift_vec = cpu.registers().getvr(instr.r3.rk);
+		auto& dst = cpu.registers().getvr(instr.r3.rd);
+
+		uint32_t shift = shift_vec.bu[0] & 0x7F;  // Low 7 bits (0-127)
+
+		if (shift == 0) {
+			dst.du[0] = src.du[0];
+			dst.du[1] = src.du[1];
+		} else if (shift < 64) {
+			// Shift less than 64 bits
+			dst.du[0] = src.du[0] << shift;
+			dst.du[1] = (src.du[1] << shift) | (src.du[0] >> (64 - shift));
+		} else if (shift < 128) {
+			// Shift 64-127 bits
+			dst.du[0] = 0;
+			dst.du[1] = src.du[0] << (shift - 64);
+		} else {
+			// Shift >= 128 bits, result is all zeros
+			dst.du[0] = 0;
+			dst.du[1] = 0;
+		}
+	}
+
+	static void VBSRL_V(cpu_t& cpu, la_instruction instr) {
+		// VBSRL.V: Vector Bit Shift Right Logical
+		// Shifts the entire 128-bit vector right by the amount in the low 8 bits of vk[0]
+		const auto& src = cpu.registers().getvr(instr.r3.rj);
+		const auto& shift_vec = cpu.registers().getvr(instr.r3.rk);
+		auto& dst = cpu.registers().getvr(instr.r3.rd);
+
+		uint32_t shift = shift_vec.bu[0] & 0x7F;  // Low 7 bits (0-127)
+
+		if (shift == 0) {
+			dst.du[0] = src.du[0];
+			dst.du[1] = src.du[1];
+		} else if (shift < 64) {
+			// Shift less than 64 bits
+			dst.du[0] = (src.du[0] >> shift) | (src.du[1] << (64 - shift));
+			dst.du[1] = src.du[1] >> shift;
+		} else if (shift < 128) {
+			// Shift 64-127 bits
+			dst.du[0] = src.du[1] >> (shift - 64);
+			dst.du[1] = 0;
+		} else {
+			// Shift >= 128 bits, result is all zeros
+			dst.du[0] = 0;
+			dst.du[1] = 0;
+		}
+	}
+
 	// === VMAX/VMIN instructions ===
 
 	static void VMAX_B(cpu_t& cpu, la_instruction instr) {

@@ -381,6 +381,8 @@ namespace loongarch
 	INSTRUCTION_P(VADD_D, VADD);
 	INSTRUCTION(VSHUF_B);
 	INSTRUCTION(VBITSEL_V);
+	INSTRUCTION(VBSLL_V);
+	INSTRUCTION(VBSRL_V);
 	INSTRUCTION_P(VMAX_B, VMAX);
 	INSTRUCTION_P(VMAX_H, VMAX);
 	INSTRUCTION_P(VMAX_W, VMAX);
@@ -1249,6 +1251,14 @@ namespace loongarch
 				// VORN.V: bits[31:15] = 0xE251
 				if ((instr.whole >> 15) == 0xE251) {
 					return DECODED_INSTR(VORN_V);
+				}
+				// VBSLL.V: bits[31:15] = 0xE51C (0x728e0000 >> 15)
+				if ((instr.whole >> 15) == 0xE51C) {
+					return DECODED_INSTR(VBSLL_V);
+				}
+				// VBSRL.V: bits[31:15] = 0xE51D (0x728e8000 >> 15)
+				if ((instr.whole >> 15) == 0xE51D) {
+					return DECODED_INSTR(VBSRL_V);
 				}
 			}
 			break;

@@ -1566,6 +1566,14 @@ static int SRA_D(char* buf, size_t len, const cpu_t&, la_instruction instr, addr
 		return snprintf(buf, len, "vbitsel.v $vr%u, $vr%u, $vr%u, $vr%u", instr.r2.rd, instr.r2.rj, instr.r3.rk, va);
 	}
 
+	static int VBSLL_V(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		return snprintf(buf, len, "vbsll.v $vr%u, $vr%u, $vr%u", instr.r3.rd, instr.r3.rj, instr.r3.rk);
+	}
+
+	static int VBSRL_V(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
+		return snprintf(buf, len, "vbsrl.v $vr%u, $vr%u, $vr%u", instr.r3.rd, instr.r3.rj, instr.r3.rk);
+	}
+
 	static int VMAX(char* buf, size_t len, const cpu_t&, la_instruction instr, addr_t) {
 		static constexpr char sizes[] = {'b', 'h', 'w', 'd'};
 		uint32_t bits15 = instr.whole >> 15;

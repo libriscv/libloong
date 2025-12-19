@@ -200,25 +200,6 @@ INTERNAL static int32_t ic_offset;
 #define INS_COUNTER(cpu) (*(uint64_t *)((uintptr_t)cpu + ic_offset))
 #define MAX_COUNTER(cpu) (*(uint64_t *)((uintptr_t)cpu + ic_offset + 8))
 
-// Flat memory arena - libloong always uses flat arena
-#define rd8(cpu, addr) \
-	*(uint8_t*)ARENA_AT(cpu, addr)
-#define rd16(cpu, addr) \
-	*(uint16_t*)ARENA_AT(cpu, addr)
-#define rd32(cpu, addr) \
-	*(uint32_t*)ARENA_AT(cpu, addr)
-#define rd64(cpu, addr) \
-	*(uint64_t*)ARENA_AT(cpu, addr)
-
-#define wr8(cpu, addr, value) \
-	*(uint8_t*)ARENA_AT(cpu, addr) = (value);
-#define wr16(cpu, addr, value) \
-	*(uint16_t*)ARENA_AT(cpu, addr) = (value);
-#define wr32(cpu, addr, value) \
-	*(uint32_t*)ARENA_AT(cpu, addr) = (value);
-#define wr64(cpu, addr, value) \
-	*(uint64_t*)ARENA_AT(cpu, addr) = (value);
-
 static inline int do_syscall(CPU* cpu, uint64_t counter, uint64_t max_counter, addr_t sysno)
 {
 	INS_COUNTER(cpu) = counter; // Reveal instruction counters

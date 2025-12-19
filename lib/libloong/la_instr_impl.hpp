@@ -894,15 +894,18 @@ struct InstrImpl {
 		switch (cond) {
 			case 0x02: // CLT - (Quiet) Less Than (ordered)
 			case 0x03: // SLT - Signaling Less Than (ordered)
-				result = !is_unordered && (fj_val < fk_val);
+				// NaN < x and x < NaN both return false, so no explicit isnan check needed
+				result = fj_val < fk_val;
 				break;
 			case 0x04: // CEQ - Equal (ordered)
 			case 0x05: // SEQ - Signaling Equal (ordered)
-				result = !is_unordered && (fj_val == fk_val);
+				// NaN == x and x == NaN both return false, so no explicit isnan check needed
+				result = fj_val == fk_val;
 				break;
 			case 0x06: // CLE - (Quiet) Less or Equal (ordered)
 			case 0x07: // SLE - Signaling Less or Equal (ordered)
-				result = !is_unordered && (fj_val <= fk_val);
+				// NaN <= x and x <= NaN both return false, so no explicit isnan check needed
+				result = fj_val <= fk_val;
 				break;
 			case 0x8:  // CUN  - (Quiet) Incomparable
 			case 0x9:  // SUN  - Signaling Incomparable
@@ -917,7 +920,8 @@ struct InstrImpl {
 				break;
 			case 0x18: // CUNE - (Quiet) Unordered or Not Equal
 			case 0x19: // SUNE - Signaling Unordered or Not Equal
-				result = is_unordered || (fj_val != fk_val);
+				// NaN != x and x != NaN both return true, so no explicit isnan check needed
+				result = fj_val != fk_val;
 				break;
 			case 0xA: // CULT - Less than or incomparable
 			case 0xB: // SULT - Signaling Less than or incomparable
@@ -949,15 +953,18 @@ struct InstrImpl {
 		switch (cond) {
 			case 0x02: // CLT - (Quiet) Less Than (ordered)
 			case 0x03: // SLT - Signaling Less Than (ordered)
-				result = !is_unordered && (fj_val < fk_val);
+				// NaN < x and x < NaN both return false, so no explicit isnan check needed
+				result = fj_val < fk_val;
 				break;
 			case 0x04: // CEQ - Equal (ordered)
 			case 0x05: // SEQ - Signaling Equal (ordered)
-				result = !is_unordered && (fj_val == fk_val);
+				// NaN == x and x == NaN both return false, so no explicit isnan check needed
+				result = fj_val == fk_val;
 				break;
 			case 0x06: // CLE - (Quiet) Less or Equal (ordered)
 			case 0x07: // SLE - Signaling Less or Equal (ordered)
-				result = !is_unordered && (fj_val <= fk_val);
+				// NaN <= x and x <= NaN both return false, so no explicit isnan check needed
+				result = fj_val <= fk_val;
 				break;
 			case 0x8:  // CUN  - (Quiet) Incomparable
 			case 0x9:  // SUN  - Signaling Incomparable
@@ -972,7 +979,8 @@ struct InstrImpl {
 				break;
 			case 0x18: // CUNE - (Quiet) Unordered or Not Equal
 			case 0x19: // SUNE - Signaling Unordered or Not Equal
-				result = is_unordered || (fj_val != fk_val);
+				// NaN != x and x != NaN both return true, so no explicit isnan check needed
+				result = fj_val != fk_val;
 				break;
 			case 0xA: // CULT - Less than or incomparable
 			case 0xB: // SULT - Signaling Less than or incomparable

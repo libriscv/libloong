@@ -2033,15 +2033,18 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			switch (cond) {
 				case 0x02: // CLT - (Quiet) Less Than (ordered)
 				case 0x03: // SLT - Signaling Less Than (ordered)
-					result = "(!" + is_unordered + " && (" + fj_val + " < " + fk_val + "))";
+					// NaN < x and x < NaN both return false, so no explicit isnan check needed
+					result = "(" + fj_val + " < " + fk_val + ")";
 					break;
 				case 0x04: // CEQ - Equal (ordered)
 				case 0x05: // SEQ - Signaling Equal (ordered)
-					result = "(!" + is_unordered + " && (" + fj_val + " == " + fk_val + "))";
+					// NaN == x and x == NaN both return false, so no explicit isnan check needed
+					result = "(" + fj_val + " == " + fk_val + ")";
 					break;
 				case 0x06: // CLE - (Quiet) Less or Equal (ordered)
 				case 0x07: // SLE - Signaling Less or Equal (ordered)
-					result = "(!" + is_unordered + " && (" + fj_val + " <= " + fk_val + "))";
+					// NaN <= x and x <= NaN both return false, so no explicit isnan check needed
+					result = "(" + fj_val + " <= " + fk_val + ")";
 					break;
 				case 0x08: // CUN - (Quiet) Incomparable
 				case 0x09: // SUN - Signaling Incomparable
@@ -2060,7 +2063,8 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 					break;
 				case 0x18: // CUNE - (Quiet) Unordered or Not Equal
 				case 0x19: // SUNE - Signaling Unordered or Not Equal
-					result = "(" + is_unordered + " || (" + fj_val + " != " + fk_val + "))";
+					// NaN != x and x != NaN both return true, so no explicit isnan check needed
+					result = "(" + fj_val + " != " + fk_val + ")";
 					break;
 				default:
 					// For unsupported conditions, fall back to slow path
@@ -2098,15 +2102,18 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			switch (cond) {
 				case 0x02: // CLT - (Quiet) Less Than (ordered)
 				case 0x03: // SLT - Signaling Less Than (ordered)
-					result = "(!" + is_unordered + " && (" + fj_val + " < " + fk_val + "))";
+					// NaN < x and x < NaN both return false, so no explicit isnan check needed
+					result = "(" + fj_val + " < " + fk_val + ")";
 					break;
 				case 0x04: // CEQ - Equal (ordered)
 				case 0x05: // SEQ - Signaling Equal (ordered)
-					result = "(!" + is_unordered + " && (" + fj_val + " == " + fk_val + "))";
+					// NaN == x and x == NaN both return false, so no explicit isnan check needed
+					result = "(" + fj_val + " == " + fk_val + ")";
 					break;
 				case 0x06: // CLE - (Quiet) Less or Equal (ordered)
 				case 0x07: // SLE - Signaling Less or Equal (ordered)
-					result = "(!" + is_unordered + " && (" + fj_val + " <= " + fk_val + "))";
+					// NaN <= x and x <= NaN both return false, so no explicit isnan check needed
+					result = "(" + fj_val + " <= " + fk_val + ")";
 					break;
 				case 0x08: // CUN - (Quiet) Incomparable
 				case 0x09: // SUN - Signaling Incomparable
@@ -2125,7 +2132,8 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 					break;
 				case 0x18: // CUNE - (Quiet) Unordered or Not Equal
 				case 0x19: // SUNE - Signaling Unordered or Not Equal
-					result = "(" + is_unordered + " || (" + fj_val + " != " + fk_val + "))";
+					// NaN != x and x != NaN both return true, so no explicit isnan check needed
+					result = "(" + fj_val + " != " + fk_val + ")";
 					break;
 				default:
 					// For unsupported conditions, fall back to slow path

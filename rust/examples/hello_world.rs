@@ -56,6 +56,12 @@ fn main() {
         process::exit(1);
     }
 
+    // Setup accelerated syscalls (native memcpy, memset, etc.)
+    if let Err(e) = machine.setup_accelerated_syscalls() {
+        eprintln!("Failed to setup accelerated syscalls: {}", e);
+        process::exit(1);
+    }
+
     // Execute the program (unlimited instructions)
     let start_time = Instant::now();
     let max_instructions = u64::MAX;

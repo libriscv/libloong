@@ -1,0 +1,251 @@
+name: Release Artifacts
+
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: write
+
+jobs:
+  # Build all artifacts in parallel
+  build-linux:
+    name: Build Linux Artifacts
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake ninja-build g++
+
+    - name: Build standard emulator
+      run: |
+        cd emulator
+        ./build.sh
+        cp .build/laemu laemu-linux-x86_64
+
+    - name: Run CoreMark benchmark (standard)
+      run: |
+        cd emulator
+        .build/laemu --fast ../tests/programs/coremark.elf | tee coremark_output.txt
+        SCORE=$(grep "CoreMark 1.0" coremark_output.txt | awk '{print $3}')
+        cat > coremark-report-linux-x86_64.md << EOF
+        # CoreMark Benchmark Report
+
+        **Platform:** Linux x86_64 (Ubuntu 24.04)
+        **Build Configuration:** Release (GCC, Binary Translation enabled)
+        **CoreMark Score:** ${SCORE}
+
+        ## Full Output
+        \`\`\`
+        EOF
+        cat coremark_output.txt >> coremark-report-linux-x86_64.md
+        echo '```' >> coremark-report-linux-x86_64.md
+
+    - name: Build optimized emulator
+      run: |
+        cd emulator
+        rm -rf .build
+        ./build.sh --native
+        cp .build/laemu laemu-linux-x86_64-optimized
+
+    - name: Run CoreMark benchmark (optimized)
+      run: |
+        cd emulator
+        .build/laemu --fast ../tests/programs/coremark.elf | tee coremark_output_opt.txt
+        SCORE=$(grep "CoreMark 1.0" coremark_output_opt.txt | awk '{print $3}')
+        cat > coremark-report-linux-x86_64-optimized.md << EOF
+        # CoreMark Benchmark Report (Optimized)
+
+        **Platform:** Linux x86_64 (Ubuntu 24.04)
+        **Build Configuration:** Release (GCC, Binary Translation enabled, Native optimizations)
+        **CoreMark Score:** ${SCORE}
+
+        ## Full Output
+        \`\`\`
+        EOF
+        cat coremark_output_opt.txt >> coremark-report-linux-x86_64-optimized.md
+        echo '```' >> coremark-report-linux-x86_64-optimized.md
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux-artifacts
+        path: |
+          emulator/laemu-linux-x86_64
+          emulator/laemu-linux-x86_64-optimized
+          emulator/coremark-report-linux-x86_64.md
+          emulator/coremark-report-linux-x86_64-optimized.md
+        retention-days: 1
+
+  build-windows:
+    name: Build Windows Artifacts
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake ninja-build g++-mingw-w64-x86-64 gcc-mingw-w64-x86-64
+
+    - name: Build Windows emulator
+      run: |
+        cd emulator
+        mkdir -p .build_mingw
+        cd .build_mingw
+        cmake .. \
+          -G Ninja \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DLA_BINARY_TRANSLATION=ON \
+          -DCMAKE_TOOLCHAIN_FILE=../mingw_toolchain.cmake
+        ninja
+        cp laemu.exe ../laemu-windows-x86_64.exe
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-artifacts
+        path: emulator/laemu-windows-x86_64.exe
+        retention-days: 1
+
+  build-deb:
+    name: Build DEB Package
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install build dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake g++ pkg-config dpkg-dev
+
+    - name: Build DEB package
+      run: |
+        mkdir -p build
+        cd build
+        cmake .. \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_C_COMPILER=gcc \
+          -DCMAKE_CXX_COMPILER=g++ \
+          -DCMAKE_INSTALL_PREFIX=/usr \
+          -DBUILD_TESTING=OFF
+        cmake --build . --config Release -- -j4
+        cpack -G DEB
+
+    - name: Rename DEB package
+      run: |
+        DEB_FILE=$(ls packages/libloong-dev_*.deb | head -1)
+        cp "$DEB_FILE" libloong-dev.deb
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: deb-artifacts
+        path: libloong-dev.deb
+        retention-days: 1
+
+  create-release:
+    name: Create Draft Release
+    runs-on: ubuntu-24.04
+    needs: [build-linux, build-windows, build-deb]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Get version info
+      id: version
+      run: |
+        # Generate version based on date and short commit SHA
+        VERSION="$(date +%Y.%m.%d)-$(git rev-parse --short HEAD)"
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Generated version: $VERSION"
+
+    - name: Get recent commits
+      id: commits
+      run: |
+        # Get last 5 commits for release notes
+        git log -5 --pretty=format:"- %s (%h)" > commits.txt
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+
+    - name: Organize artifacts
+      run: |
+        mkdir -p release_files
+        find artifacts -type f -exec cp {} release_files/ \;
+        ls -lh release_files/
+
+    - name: Create release body
+      run: |
+        cat > release_body.md << 'EOF'
+        # Automated Build Artifacts
+
+        This is an automated draft release generated from the latest commit to `main`.
+
+        **Commit:** ${{ github.sha }}
+        **Date:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+        ## Recent Changes
+        EOF
+        cat commits.txt >> release_body.md
+        cat >> release_body.md << 'EOF'
+
+        ## Artifacts Included
+        - `laemu-windows-x86_64.exe` - Windows emulator executable (MinGW)
+        - `laemu-linux-x86_64` - Linux emulator executable
+        - `laemu-linux-x86_64-optimized` - Linux emulator executable (optimized with -march=native)
+        - `libloong-dev.deb` - Debian package for development
+        - `coremark-report-linux-x86_64.md` - CoreMark benchmark report
+        - `coremark-report-linux-x86_64-optimized.md` - CoreMark benchmark report (optimized)
+
+        ## Usage
+
+        ### Linux
+        ```bash
+        chmod +x laemu-linux-x86_64
+        ./laemu-linux-x86_64 your_program.elf
+        ```
+
+        ### Windows
+        ```cmd
+        laemu-windows-x86_64.exe your_program.elf
+        ```
+
+        ### Debian/Ubuntu Package
+        ```bash
+        sudo dpkg -i libloong-dev.deb
+        ```
+        EOF
+
+    - name: Create draft release with artifacts
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ steps.version.outputs.version }}
+        name: Release v${{ steps.version.outputs.version }}
+        draft: true
+        prerelease: false
+        body_path: release_body.md
+        files: |
+          release_files/*
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

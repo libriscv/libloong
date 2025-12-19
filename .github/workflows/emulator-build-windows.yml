@@ -49,6 +49,17 @@ jobs:
         file laemu.exe
         x86_64-w64-mingw32-objdump -p laemu.exe | grep "DLL Name"
 
+    - name: Install Wine for testing
+      run: |
+        sudo dpkg --add-architecture i386
+        sudo apt-get update
+        sudo apt-get install -y wine wine64
+
+    - name: Test emulator with Wine (help command)
+      run: |
+        cd emulator/.build_mingw
+        wine laemu.exe --help
+
     - name: Upload emulator artifact
       uses: actions/upload-artifact@v4
       with:

@@ -1,8 +1,8 @@
-# libloong
+# 64-bit LoongArch sandboxing library
 
 A high-performance LoongArch userspace emulator library designed for embedding and scripting applications.
 
-Built on the proven architecture of [libriscv](https://github.com/libriscv/libriscv), libloong has competitive interpreter performance while maintaining a compact ~17k line codebase.
+Built on the proven architecture of [libriscv](https://github.com/libriscv/libriscv), libloong has competitive interpreter performance while maintaining a compact ~18k line codebase.
 
 For discussions & help, [visit Discord](https://discord.gg/n4GcXr66X5).
 
@@ -12,7 +12,7 @@ For discussions & help, [visit Discord](https://discord.gg/n4GcXr66X5).
 - Ultra-low latency call overheads
 - Support for 64-bit LoongArch (LA64)
 - Support for vector LSX and LASX instructions
-- C++ API with Rust and Go bindings
+- C++ API with [Rust](/rust) and [Go](/go) bindings
 - Zero dependencies
 - Execution timeout and memory safety
 - First-class pause/resume support
@@ -27,16 +27,6 @@ See the [example Asteroid game](/examples/gamedev).
 
 ## Building
 
-### Standard Build
-
-```bash
-mkdir build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j$(nproc)
-```
-
-### Build Options
-
 CMake configuration options:
 
 - `LA_DEBUG=ON/OFF` - Enable debug output (default: OFF)
@@ -49,7 +39,7 @@ CMake configuration options:
 cmake .. -DCMAKE_BUILD_TYPE=Release \
          -DLA_MASKED_MEMORY_BITS=32 \
          -DLA_BINARY_TRANSLATION=ON
-make -j$(nproc)
+make -j6
 ```
 
 ## Quick Start
@@ -76,25 +66,36 @@ int main() {
 
 ## Performance
 
+STREAM memory benchmark:
 ```sh
 Function    Best Rate MB/s  Avg time     Min time     Max time
-Copy:           32773.6     0.004963     0.004882     0.005249
-Scale:          18533.7     0.009850     0.008633     0.011861
-Add:            20248.1     0.012846     0.011853     0.014884
-Triad:          15246.9     0.016148     0.015741     0.017126
+Copy:           33207.4     0.004963     0.004818     0.005065
+Scale:          19829.5     0.008118     0.008069     0.008371
+Add:            30967.6     0.007800     0.007750     0.007992
+Triad:          29549.5     0.008258     0.008122     0.008415
+```
+There is a also a STREAM-like benchmark [written in Rust](/examples/rust) in the examples:
+```sh
+Fill 76.3 MiB rate 27.9 GB/s | time min 2.9ms avg 3.1ms max 3.3ms
+Copy 153 MiB  rate 35.3 GB/s | time min 4.5ms avg 4.6ms max 5.0ms
+Scale 153 MiB rate 23.0 GB/s | time min 7.0ms avg 7.0ms max 7.1ms
+Add 229 MiB   rate 31.9 GB/s | time min 7.5ms avg 7.6ms max 7.7ms
+Triad 229 MiB rate 11.1 GB/s | time min 21.5ms avg 21.6ms max 21.8ms
 ```
 
 <img width="600" height="371" alt="CoreMark 1 0 interpreters, Dec 2025 (Ryzen 7950X)" src="https://github.com/user-attachments/assets/b37e985e-8332-44fc-880b-781bc1a07cc5" />
 
 Register machines still stand strongest at the end of 2025. _libloong_ is currently the fastest 64-bit interpreter, reliably reaching 3000+ CoreMark score.
 
-The optional lightweight JIT reaches 38% of native performance (15.5k vs 41k CoreMark) with full feature parity to the interpreter:
+The lightweight JIT reaches 38% of native performance (15.5k vs 41k CoreMark) with full feature parity to the interpreter:
 
 > CoreMark 1.0 : 15580.375613 / GCC14.2.0 -O3 -DPERFORMANCE_RUN=1   / Static
 
 Using embedded binary translation, it's currently possible to reach ~75% of native:
 
 > CoreMark 1.0 : 30730.418251 / GCC14.2.0 -O3 -DPERFORMANCE_RUN=1   / Static
+
+.. however more work is needed to reach full potential. The upper bound for embedded binary translation should be around ~90% of native.
 
 ## Documentation
 

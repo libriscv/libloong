@@ -57,6 +57,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Setup accelerated syscalls (native memcpy, memset, etc.)
+	if err := machine.SetupAcceleratedSyscalls(); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to setup accelerated syscalls: %v\n", err)
+		os.Exit(1)
+	}
+
 	// Check if function exists
 	if !machine.HasSymbol(funcName) {
 		fmt.Fprintf(os.Stderr, "Function '%s' not found in binary\n", funcName)
@@ -72,13 +78,16 @@ func main() {
 	fmt.Println("NOTE: This calls the function AFTER the program has initialized.")
 
 	// Call the guest function
-	result, err := machine.VMCallByName(funcName, ^uint64(0), funcArgs...)
+	err = machine.VMCallByName(funcName, ^uint64(0), funcArgs...)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "\nVmcall failed: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Instructions executed: %d\n", machine.InstructionCounter())
 		fmt.Fprintf(os.Stderr, "PC: 0x%016x\n", machine.GetPC())
 		os.Exit(1)
 	}
+
+	// Get the return value
+	result := machine.ReturnValue()
 
 	fmt.Printf("\nFunction returned: %d (0x%x)\n", result, result)
 	fmt.Printf("Instructions executed: %d\n", machine.InstructionCounter())

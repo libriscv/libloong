@@ -49,6 +49,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Setup accelerated syscalls (native memcpy, memset, etc.)
+	if err := machine.SetupAcceleratedSyscalls(); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to setup accelerated syscalls: %v\n", err)
+		os.Exit(1)
+	}
+
 	// Execute the program (unlimited instructions)
 	startTime := time.Now()
 	const maxInstructions = ^uint64(0) // unlimited

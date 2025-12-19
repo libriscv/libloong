@@ -293,12 +293,38 @@ func (m *Machine) SetMaxInstructions(val uint64) {
 }
 
 // ReturnValue returns the integer return value (register $a0)
+// This is the value in register $a0 (r4) after a vmcall or simulate
 func (m *Machine) ReturnValue() uint64 {
 	return uint64(C.libloong_machine_return_value(m.handle))
 }
 
+// ReturnValueFloat32 returns the 32-bit float return value
+// This is the value in register $fa0 after a vmcall
+func (m *Machine) ReturnValueFloat32() float32 {
+	return float32(C.libloong_machine_get_float_register(m.handle, 0)) // FA0 = FPR 0
+}
+
+// ReturnValueFloat64 returns the 64-bit float return value
+// This is the value in register $fa0 after a vmcall
+func (m *Machine) ReturnValueFloat64() float64 {
+	return float64(C.libloong_machine_get_double_register(m.handle, 0)) // FA0 = FPR 0
+}
+
 // VMCall calls a guest function by address
-func (m *Machine) VMCall(addr uint64, maxInstructions uint64, args ...uint64) (uint64, error) {
+//
+// Use ReturnValue(), ReturnValueFloat32(), or ReturnValueFloat64() to retrieve
+// the function's return value after calling.
+//
+// Examples:
+//
+//	// Call by address
+//	err := machine.VMCall(0x12000, math.MaxUint64, 42, 13)
+//	result := machine.ReturnValue()
+//
+//	// Get float return value
+//	err := machine.VMCall(addr, math.MaxUint64)
+//	result := machine.ReturnValueFloat32()
+func (m *Machine) VMCall(addr uint64, maxInstructions uint64, args ...uint64) error {
 	var cArgs *C.uint64_t
 	if len(args) > 0 {
 		cArgs = (*C.uint64_t)(unsafe.Pointer(&args[0]))
@@ -318,13 +344,22 @@ func (m *Machine) VMCall(addr uint64, maxInstructions uint64, args ...uint64) (u
 	)
 
 	if result != C.LIBLOONG_OK {
-		return 0, convertError(&errorInfo)
+		return convertError(&errorInfo)
 	}
-	return uint64(returnValue), nil
+	return nil
 }
 
 // VMCallByName calls a guest function by symbol name
-func (m *Machine) VMCallByName(name string, maxInstructions uint64, args ...uint64) (uint64, error) {
+//
+// Use ReturnValue(), ReturnValueFloat32(), or ReturnValueFloat64() to retrieve
+// the function's return value after calling.
+//
+// Examples:
+//
+//	// Call by name
+//	err := machine.VMCallByName("factorial", math.MaxUint64, 5)
+//	result := machine.ReturnValue()
+func (m *Machine) VMCallByName(name string, maxInstructions uint64, args ...uint64) error {
 	cName := C.CString(name)
 	defer C.free(unsafe.Pointer(cName))
 
@@ -347,61 +382,9 @@ func (m *Machine) VMCallByName(name string, maxInstructions uint64, args ...uint
 	)
 
 	if result != C.LIBLOONG_OK {
-		return 0, convertError(&errorInfo)
+		return convertError(&errorInfo)
 	}
-	return uint64(returnValue), nil
-}
-
-// VMCallFloat calls a guest function and returns a float32
-func (m *Machine) VMCallFloat(addr uint64, maxInstructions uint64, args ...uint64) (float32, error) {
-	var cArgs *C.uint64_t
-	if len(args) > 0 {
-		cArgs = (*C.uint64_t)(unsafe.Pointer(&args[0]))
-	}
-
-	var returnValue C.float
-	var errorInfo C.LibLoongErrorInfo
-
-	result := C.libloong_machine_vmcall_float(
-		m.handle,
-		C.uint64_t(addr),
-		C.uint64_t(maxInstructions),
-		cArgs,
-		C.size_t(len(args)),
-		&returnValue,
-		&errorInfo,
-	)
-
-	if result != C.LIBLOONG_OK {
-		return 0, convertError(&errorInfo)
-	}
-	return float32(returnValue), nil
-}
-
-// VMCallDouble calls a guest function and returns a float64
-func (m *Machine) VMCallDouble(addr uint64, maxInstructions uint64, args ...uint64) (float64, error) {
-	var cArgs *C.uint64_t
-	if len(args) > 0 {
-		cArgs = (*C.uint64_t)(unsafe.Pointer(&args[0]))
-	}
-
-	var returnValue C.double
-	var errorInfo C.LibLoongErrorInfo
-
-	result := C.libloong_machine_vmcall_double(
-		m.handle,
-		C.uint64_t(addr),
-		C.uint64_t(maxInstructions),
-		cArgs,
-		C.size_t(len(args)),
-		&returnValue,
-		&errorInfo,
-	)
-
-	if result != C.LIBLOONG_OK {
-		return 0, convertError(&errorInfo)
-	}
-	return float64(returnValue), nil
+	return nil
 }
 
 // AddressOf looks up a symbol and returns its address

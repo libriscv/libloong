@@ -342,18 +342,6 @@ Error codes:
 3. **Shared Execute Segments**: Set `UseSharedExecuteSegments: true` (default) for better memory usage
 4. **Arena Heap**: Use arena allocation for frequently allocated guest memory
 
-## Architecture Notes
-
-- **Only 64-bit LoongArch (LA64)** is supported (32-bit LA32 removed)
-- Uses **flat memory arena** instead of virtual paging
-- **Threaded bytecode dispatch** with computed goto (GCC/Clang)
-- **Block-based execution** for performance
-- Based on the **libriscv** architecture
-
-## License
-
-This project is licensed under the same terms as the parent libloong project.
-
 ## Contributing
 
 Contributions are welcome! Please ensure:

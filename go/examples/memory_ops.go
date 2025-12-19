@@ -44,6 +44,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Setup accelerated syscalls (native memcpy, memset, etc.)
+	if err := machine.SetupAcceleratedSyscalls(); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to setup accelerated syscalls: %v\n", err)
+		os.Exit(1)
+	}
+
 	// Allocate writable guest memory for testing copy operations
 	heapSize := uint64(1024 * 1024) // 1 MB
 	heapBegin := machine.MmapAllocate(heapSize)

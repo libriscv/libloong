@@ -6,7 +6,7 @@ namespace loongarch
 {
 	struct CPU;
 
-	struct DecoderData {
+	struct alignas(8) DecoderData {
 		using handler_t = void(*)(CPU&, la_instruction);
 
 		uint8_t bytecode;         // Bytecode for threaded dispatch

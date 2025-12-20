@@ -69,6 +69,7 @@ struct Emitter
 	bool fpr_used[32] = {}; // Track which FP registers are actually used
 	address_t nbit_mask = 0;
 	address_t last_fallback_pc = 0;
+	size_t    last_fallback_restore_size = 0;
 	address_t last_read_check_pc = 0;
 	address_t last_write_check_pc = 0;
 	int last_read_check_register = 0;
@@ -153,6 +154,52 @@ struct Emitter
 		size_t pos = this->code.rfind(load_all_registers_string());
 		if (pos != std::string::npos) {
 			this->code.erase(pos, load_all_registers_string().size());
+		}
+	}
+	// We don't "understand" this instruction, but there's
+	// common formats and the default is to store all registers.
+	// In other words, we can do much better even if we store
+	// all 3x 5-bit register fields.
+	void store_single_register(int reg)
+	{
+		if (is_cached_register(reg)) {
+			mark_register_used(reg);
+			add_code("cpu->r[" + std::to_string(reg) + "] = " + cached_regname(reg) + ";");
+		}
+	}
+	void restore_single_register(int reg)
+	{
+		if (is_cached_register(reg)) {
+			mark_register_used(reg);
+			add_code(cached_regname(reg) + " = cpu->r[" + std::to_string(reg) + "];");
+		}
+	}
+	void store_unknown_instruction_registers(uint32_t instr)
+	{
+		if (is_register_caching_enabled()) {
+			const int reg0 = instr & 0x1F;
+			const int reg1 = (instr >> 5) & 0x1F;
+			const int reg2 = (instr >> 10) & 0x1F;
+			// If LASX is enabled, r4-type instructions do exist
+			// but they all operate on VR registers only.
+			store_single_register(reg0);
+			if (reg1 != reg0)
+				store_single_register(reg1);
+			if (reg2 != reg0 && reg2 != reg1)
+				store_single_register(reg2);
+		}
+	}
+	void restore_unknown_instruction_registers(uint32_t instr)
+	{
+		if (is_register_caching_enabled()) {
+			const int reg0 = instr & 0x1F;
+			const int reg1 = (instr >> 5) & 0x1F;
+			const int reg2 = (instr >> 10) & 0x1F;
+			restore_single_register(reg0);
+			if (reg1 != reg0)
+				restore_single_register(reg1);
+			if (reg2 != reg0 && reg2 != reg1)
+				restore_single_register(reg2);
 		}
 	}
 
@@ -500,9 +547,12 @@ struct Emitter
 			// If the previous instruction was a fallback,
 			// no registers have changed
 			if (this->last_fallback_pc != pc()-4) {
-				store_all_registers();
+				//store_all_registers();
+				store_unknown_instruction_registers(instr_bits);
 			} else {
-				remove_load_all_registers();
+				// Set size back to last fallback restore size
+				// (size before restore_unknown_instruction_registers)
+				this->code.resize(this->last_fallback_restore_size);
 			}
 		}
 		if (tinfo.options.translate_verbose_fallbacks) {
@@ -519,8 +569,9 @@ struct Emitter
 		}
 		// Reload cached registers after handler returns
 		if (!vr_only) {
-			reload_all_registers();
+			restore_unknown_instruction_registers(instr_bits);
 			this->last_fallback_pc = pc();
+			this->last_fallback_restore_size = this->code.size();
 		}
 	}
 

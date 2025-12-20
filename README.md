@@ -69,10 +69,10 @@ int main() {
 STREAM memory benchmark:
 ```sh
 Function    Best Rate MB/s  Avg time     Min time     Max time
-Copy:           33207.4     0.004963     0.004818     0.005065
-Scale:          19829.5     0.008118     0.008069     0.008371
-Add:            30967.6     0.007800     0.007750     0.007992
-Triad:          29549.5     0.008258     0.008122     0.008415
+Copy:           33146.7     0.004884     0.004827     0.004962
+Scale:          27825.2     0.005792     0.005750     0.005920
+Add:            31388.6     0.007712     0.007646     0.007797
+Triad:          29250.7     0.008268     0.008205     0.008379
 ```
 There is a also a STREAM-like benchmark [written in Rust](/examples/rust) in the examples:
 ```sh

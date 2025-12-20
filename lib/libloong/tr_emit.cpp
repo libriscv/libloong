@@ -19,6 +19,10 @@ static std::string hex_address(uint64_t addr) {
 
 static bool instruction_exclusively_vr(InstrId id) {
 	switch (id) {
+	case InstrId::VLD:
+	case InstrId::VST:
+	case InstrId::VLDX:
+	case InstrId::VSTX:
 	case InstrId::VINSGR2VR_B:
 	case InstrId::VINSGR2VR_D:
 	case InstrId::VINSGR2VR_H:
@@ -68,8 +72,6 @@ struct Emitter
 	bool gpr_used[32] = {}; // Track which registers are actually used
 	bool fpr_used[32] = {}; // Track which FP registers are actually used
 	address_t nbit_mask = 0;
-	address_t last_fallback_pc = 0;
-	size_t    last_fallback_restore_size = 0;
 	address_t last_read_check_pc = 0;
 	address_t last_write_check_pc = 0;
 	int last_read_check_register = 0;
@@ -544,16 +546,7 @@ struct Emitter
 		const bool vr_only = instruction_exclusively_vr(instr.id);
 		// Store cached registers before calling handler
 		if (!vr_only) {
-			// If the previous instruction was a fallback,
-			// no registers have changed
-			if (this->last_fallback_pc != pc()-4) {
-				//store_all_registers();
-				store_unknown_instruction_registers(instr_bits);
-			} else {
-				// Set size back to last fallback restore size
-				// (size before restore_unknown_instruction_registers)
-				this->code.resize(this->last_fallback_restore_size);
-			}
+			store_unknown_instruction_registers(instr_bits);
 		}
 		if (tinfo.options.translate_verbose_fallbacks) {
 			add_code("  api.fallback(cpu, " + hex_address(pc()) + "ULL, " + hex_address(instr_bits) + ");");
@@ -570,8 +563,6 @@ struct Emitter
 		// Reload cached registers after handler returns
 		if (!vr_only) {
 			restore_unknown_instruction_registers(instr_bits);
-			this->last_fallback_pc = pc();
-			this->last_fallback_restore_size = this->code.size();
 		}
 	}
 
@@ -791,7 +782,6 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			char label[64];
 			snprintf(label, sizeof(label), "label_%" PRIx64 ":", (uint64_t)emit.pc());
 			emit.add_code(label);
-			emit.last_fallback_pc = 0; // Reset fallback tracking
 			emit.last_read_check_pc = 0;
 			emit.last_write_check_pc = 0;
 

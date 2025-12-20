@@ -110,7 +110,7 @@ struct Emitter
 	}
 
 	bool is_register_caching_enabled() const {
-		return tinfo.is_libtcc && tinfo.options.translate_use_register_caching;
+		return tinfo.options.translate_use_register_caching;
 	}
 	bool is_cached_register(unsigned idx) const {
 		return is_register_caching_enabled()
@@ -2409,7 +2409,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 	// Generate function prologue
 	code += "\nstatic ReturnValues " + emit.func_name + "(CPU* cpu, uint64_t ic, uint64_t max_ic, addr_t pc) {\n";
 
-	if (tinfo.is_libtcc && tinfo.options.translate_use_register_caching) {
+	if (emit.is_register_caching_enabled()) {
 		// Declare cached register variables
 		for (unsigned reg = Emitter::CACHE_START; reg < Emitter::CACHE_END; reg++) {
 			if (emit.gpr_used[reg]) {

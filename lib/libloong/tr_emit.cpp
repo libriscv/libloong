@@ -19,6 +19,10 @@ static std::string hex_address(uint64_t addr) {
 
 static bool instruction_exclusively_vr(InstrId id) {
 	switch (id) {
+	case InstrId::VLD:
+	case InstrId::VST:
+	case InstrId::VLDX:
+	case InstrId::VSTX:
 	case InstrId::VINSGR2VR_B:
 	case InstrId::VINSGR2VR_D:
 	case InstrId::VINSGR2VR_H:
@@ -68,7 +72,6 @@ struct Emitter
 	bool gpr_used[32] = {}; // Track which registers are actually used
 	bool fpr_used[32] = {}; // Track which FP registers are actually used
 	address_t nbit_mask = 0;
-	address_t last_fallback_pc = 0;
 	address_t last_read_check_pc = 0;
 	address_t last_write_check_pc = 0;
 	int last_read_check_register = 0;
@@ -153,6 +156,52 @@ struct Emitter
 		size_t pos = this->code.rfind(load_all_registers_string());
 		if (pos != std::string::npos) {
 			this->code.erase(pos, load_all_registers_string().size());
+		}
+	}
+	// We don't "understand" this instruction, but there's
+	// common formats and the default is to store all registers.
+	// In other words, we can do much better even if we store
+	// all 3x 5-bit register fields.
+	void store_single_register(int reg)
+	{
+		if (is_cached_register(reg)) {
+			mark_register_used(reg);
+			add_code("cpu->r[" + std::to_string(reg) + "] = " + cached_regname(reg) + ";");
+		}
+	}
+	void restore_single_register(int reg)
+	{
+		if (is_cached_register(reg)) {
+			mark_register_used(reg);
+			add_code(cached_regname(reg) + " = cpu->r[" + std::to_string(reg) + "];");
+		}
+	}
+	void store_unknown_instruction_registers(uint32_t instr)
+	{
+		if (is_register_caching_enabled()) {
+			const int reg0 = instr & 0x1F;
+			const int reg1 = (instr >> 5) & 0x1F;
+			const int reg2 = (instr >> 10) & 0x1F;
+			// If LASX is enabled, r4-type instructions do exist
+			// but they all operate on VR registers only.
+			store_single_register(reg0);
+			if (reg1 != reg0)
+				store_single_register(reg1);
+			if (reg2 != reg0 && reg2 != reg1)
+				store_single_register(reg2);
+		}
+	}
+	void restore_unknown_instruction_registers(uint32_t instr)
+	{
+		if (is_register_caching_enabled()) {
+			const int reg0 = instr & 0x1F;
+			const int reg1 = (instr >> 5) & 0x1F;
+			const int reg2 = (instr >> 10) & 0x1F;
+			restore_single_register(reg0);
+			if (reg1 != reg0)
+				restore_single_register(reg1);
+			if (reg2 != reg0 && reg2 != reg1)
+				restore_single_register(reg2);
 		}
 	}
 
@@ -497,13 +546,7 @@ struct Emitter
 		const bool vr_only = instruction_exclusively_vr(instr.id);
 		// Store cached registers before calling handler
 		if (!vr_only) {
-			// If the previous instruction was a fallback,
-			// no registers have changed
-			if (this->last_fallback_pc != pc()-4) {
-				store_all_registers();
-			} else {
-				remove_load_all_registers();
-			}
+			store_unknown_instruction_registers(instr_bits);
 		}
 		if (tinfo.options.translate_verbose_fallbacks) {
 			add_code("  api.fallback(cpu, " + hex_address(pc()) + "ULL, " + hex_address(instr_bits) + ");");
@@ -519,8 +562,7 @@ struct Emitter
 		}
 		// Reload cached registers after handler returns
 		if (!vr_only) {
-			reload_all_registers();
-			this->last_fallback_pc = pc();
+			restore_unknown_instruction_registers(instr_bits);
 		}
 	}
 
@@ -740,7 +782,6 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			char label[64];
 			snprintf(label, sizeof(label), "label_%" PRIx64 ":", (uint64_t)emit.pc());
 			emit.add_code(label);
-			emit.last_fallback_pc = 0; // Reset fallback tracking
 			emit.last_read_check_pc = 0;
 			emit.last_write_check_pc = 0;
 

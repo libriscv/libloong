@@ -10,13 +10,8 @@
 namespace loongarch {
 namespace util {
 
-// Check if pointer is aligned
-static inline bool is_aligned(const uint8_t* buffer, int align) noexcept {
-	return (reinterpret_cast<uintptr_t>(buffer) & (align - 1)) == 0;
-}
-
 // CRC32-C polynomial (Castagnoli): 0x82F63B78
-constexpr uint32_t CRC32C_POLYNOMIAL = 0x82F63B78;
+static constexpr uint32_t CRC32C_POLYNOMIAL = 0x82F63B78;
 
 // Software fallback using table-based CRC32-C
 static uint32_t crc32c_sw(uint32_t crc, const void* vdata, size_t len)

@@ -1,4 +1,4 @@
-# 64-bit LoongArch sandboxing library
+# 64-bit LoongArch emulator library
 
 A high-performance LoongArch userspace emulator library designed for embedding and scripting applications.
 

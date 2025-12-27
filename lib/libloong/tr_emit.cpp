@@ -385,12 +385,12 @@ struct Emitter
 			// and any region that is writable is also readable, so we inherit the check:
 			last_read_check_pc = pc();
 			last_read_check_register = reg;
-			last_read_check_offset = offset + size;
+			last_read_check_offset = offset;
 		} else {
 			this->emit_load_bounds_check(addr, size);
 			last_read_check_pc = pc();
 			last_read_check_register = reg;
-			last_read_check_offset = offset + size;
+			last_read_check_offset = offset;
 		}
 	}
 	void emit_store_bounds_check(const std::string& addr, size_t size) {
@@ -416,7 +416,7 @@ struct Emitter
 			this->emit_store_bounds_check(addr, size);
 			last_write_check_pc = pc();
 			last_write_check_register = reg;
-			last_write_check_offset = offset + size;
+			last_write_check_offset = offset;
 		}
 	}
 

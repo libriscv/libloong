@@ -1,4 +1,6 @@
 #include <cstdlib>
+#include <cmath>
+
 // Simple guest program for benchmarking libloong vmcall overhead
 // This program provides minimal test functions with various argument counts
 
@@ -70,6 +72,34 @@ int fibonacci(int n) {
 	if (n <= 1)
 		return n;
 	return fibonacci(n - 1) + fibonacci(n - 2);
+}
+
+unsigned rainbow_color1(unsigned, int x, int z)
+{
+	static constexpr float period = 0.5f;
+	// Rainbow block color
+	const int r = std::sin(x * period) * 127 + 128;
+	const int g = std::sin(z * period) * 127 + 128;
+	const int b = std::sin((x + z) * period) * 127 + 128;
+	return 255 << 24 | r << 16 | g << 8 | b;
+}
+
+static float host_sinf(float x)
+{
+	static constexpr int syscall_number = 2;
+	register float f0 asm("f0") = x;
+	asm ("syscall %1" : "+f"(f0) : "I"(syscall_number));
+	return f0;
+}
+
+unsigned rainbow_color2(unsigned, int x, int z)
+{
+	static constexpr float period = 0.5f;
+	// Rainbow block color
+	const int r = host_sinf(x * period) * 127 + 128;
+	const int g = host_sinf(z * period) * 127 + 128;
+	const int b = host_sinf((x + z) * period) * 127 + 128;
+	return 255 << 24 | r << 16 | g << 8 | b;
 }
 
 void test_heap(int size) {

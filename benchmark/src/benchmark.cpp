@@ -1,4 +1,5 @@
 #include "benchmark.hpp"
+#include <cmath>
 #include <libloong/machine.hpp>
 #include <fstream>
 #include <memory>
@@ -50,7 +51,7 @@ void initialize(const std::string& binary_path) {
 	MachineOptions options;
 #ifdef LA_BINARY_TRANSLATION
 	options.translate_enabled = true;
-	options.translate_automatic_nbit_address_space = true;
+	options.translate_automatic_nbit_address_space = false;
 	options.translate_ignore_instruction_limit = true;
 	options.translate_use_register_caching = true;
 #endif
@@ -67,6 +68,11 @@ void initialize(const std::string& binary_path) {
 	Machine::install_syscall_handler(1, [](Machine&) {
 		// Custom empty syscall for benchmarking
 		syscall_counter++;
+	});
+	Machine::install_syscall_handler(2, [](Machine& m) {
+		// Syscall wrapper for sinf
+		auto [arg] = m.sysargs<float>();
+		m.set_result<float>(std::sin(arg));
 	});
 
 	// Set up exit address for vmcalls
@@ -166,6 +172,11 @@ template<> void test_syscall<1>() {
 static void test_fibonacci() {
 	static uint64_t func_addr = g_machine->address_of("test_fibonacci");
 	g_machine->vmcall<int>(func_addr, 40); // Fibonacci(40)
+}
+
+static void test_rainbow_color() {
+	static uint64_t func_addr = g_machine->address_of("rainbow_color2");
+	g_machine->vmcall<unsigned>(func_addr, 0, 100, 200);
 }
 
 // Run all benchmarks
@@ -314,6 +325,15 @@ void run_all_benchmarks(int samples) {
 		base_vmcall_overhead
 	);
 	print_result(fibonacci_result);
+
+	auto rainbow_result = run_benchmark<iterations>(
+		"rainbow_color(100,200)",
+		samples,
+		reset_counter,
+		test_rainbow_color,
+		overhead
+	);
+	print_result(rainbow_result);
 
 	printf("\n");
 	printf("Note: Tests after argument passing subtract base vmcall overhead (%ldns)\n", base_vmcall_overhead);

@@ -183,6 +183,45 @@ TEST_CASE("Instruction counting", "[machine][performance]") {
 		// The program shouldn't complete normally with such a low instruction limit
 		// Either it fails, or doesn't complete successfully
 		REQUIRE_FALSE(result.success);
+		REQUIRE(result.timeout);
+	}
+
+	SECTION("Instruction limit (branch)") {
+		auto binary = builder.build(R"(
+			volatile int x = 0;
+			int main() {
+			repeat:
+				if (x++ < 1000000) goto repeat;
+				return 0;
+			}
+		)", "insn_limit2");
+
+		TestMachine machine(binary);
+		machine.setup_linux();
+
+		auto result = machine.execute(5000);
+		REQUIRE_FALSE(result.success);
+		REQUIRE(result.timeout);
+	}
+
+	SECTION("Instruction limit (opaque call loop)") {
+		auto binary = builder.build(R"(
+			__attribute__((noinline))
+			int opaque_function(int val) {
+				asm volatile("" : "+r"(val)); // Prevent optimization
+				return opaque_function(val++);
+			}
+			int main() {
+				return opaque_function(0);
+			}
+		)", "insn_limit3");
+
+		TestMachine machine(binary);
+		machine.setup_linux();
+
+		auto result = machine.execute(5000);
+		REQUIRE_FALSE(result.success);
+		REQUIRE(result.timeout);
 	}
 }
 

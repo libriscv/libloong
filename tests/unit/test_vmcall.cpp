@@ -243,9 +243,6 @@ TEST_CASE("vmcall - complex scenarios", "[vmcall][advanced]") {
 	}
 }
 
-// Note: Floating-point vmcall tests are disabled until FP instructions are fully implemented
-// The emulator currently reports "UNIMPLEMENTED" for some FP operations
-/*
 TEST_CASE("vmcall - floating-point arguments and returns", "[vmcall][float]") {
 	CodeBuilder builder;
 
@@ -305,7 +302,6 @@ TEST_CASE("vmcall - floating-point arguments and returns", "[vmcall][float]") {
 		REQUIRE(result == 42);
 	}
 }
-*/
 
 TEST_CASE("vmcall - eight or more arguments", "[vmcall][args]") {
 	CodeBuilder builder;

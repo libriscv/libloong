@@ -9,6 +9,7 @@ namespace loongarch::test {
 
 struct ExecutionResult {
 	bool success = false;
+	bool timeout = false;
 	int exit_code = -1;
 	uint64_t instructions_executed = 0;
 	std::string error;
@@ -98,11 +99,13 @@ public:
 			result.instructions_executed = m_machine->instruction_counter();
 			result.final_pc = m_machine->cpu.pc();
 
-			if (m_machine->stopped()) {
+			if (m_machine->stopped() && !m_machine->instruction_limit_reached()) {
 				result.exit_code = static_cast<int>(m_machine->cpu.reg(REG_A0));
 				result.success = true;
+				result.timeout = false;
 			} else {
 				result.error = "Program did not complete within instruction limit";
+				result.timeout = true;
 			}
 
 			// Check if main was reached

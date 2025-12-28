@@ -591,10 +591,16 @@ struct Emitter
 	{
 		// Check if target is within current block
 		if (target >= tinfo.basepc && target < tinfo.endpc) {
+			// Conditional timeout check when jumping backwards
+			bool timeout_check = false;
+			if (target < pc() && !tinfo.options.translate_ignore_instruction_limit) {
+				add_code("  { if (ic < max_ic)");
+				timeout_check = true;
+			}
 			// Local jump within block
 			char label[64];
 			snprintf(label, sizeof(label), "label_%lx", (unsigned long)target);
-			add_code("  goto " + std::string(label) + ";");
+			add_code("  goto " + std::string(label) + (timeout_check ? "; else goto handle_timeout; }" : ";"));
 		} else if (false && target > pc() && this->is_global_jump_target(target)) {
 			//static int counter = 0;
 			//printf("Warning: jump %d to global target 0x%" PRIx64 "\n", ++counter, target);
@@ -677,8 +683,8 @@ struct Emitter
 		if (rd != 0) {
 			const address_t return_addr = pc() + 4;
 			add_code(reg(rd) + " = " + hex_address(return_addr) + "ULL;");
-		} else if (offset == 0x0 && rj == REG_RA) {
-			// Scout for single call address
+		} else if (offset == 0x0 && rj == REG_RA && tinfo.options.translate_ignore_instruction_limit) {
+			// Scout for single call address (no timeout)
 			if (this->current_callsite != 0x0) {
 				// We have a known return address - single call location
 				const auto target = this->current_callsite;
@@ -693,8 +699,11 @@ struct Emitter
 			// Untrack callsite after indirect jump with no rd
 			//this->current_callsite = 0x0;
 		}
-		//this->emit_return();
-		add_code("  goto jump_table;"); // Jump table will handle indirect jump
+		if (!tinfo.options.translate_ignore_instruction_limit) {
+			add_code("  if (ic < max_ic) goto jump_table; else goto handle_timeout;");
+		} else {
+			add_code("  goto jump_table;"); // Jump table will handle indirect jump
+		}
 	}
 
 	address_t pc() const { return current_pc; }
@@ -2440,6 +2449,9 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 	// and so we can call the instruction handler (essentially to re-trigger
 	// the exception in the normal way)
 	emit.add_code("    return api.exception(cpu, pc);");
+	emit.add_code("handle_timeout:");
+	emit.add_code("  cpu->pc = pc;");
+	emit.emit_return();
 	emit.add_code("}");
 
 	// Generate static function definitions

@@ -168,8 +168,6 @@ TEST_CASE("C++ templates", "[cpp][templates]") {
 TEST_CASE("C++ standard library", "[cpp][stdlib]") {
 	CodeBuilder builder;
 
-	// TODO: iostream with std::cout has issues - investigate
-	/*
 	SECTION("iostream") {
 		auto binary = builder.build_cpp(R"(
 			#include <iostream>
@@ -184,7 +182,6 @@ TEST_CASE("C++ standard library", "[cpp][stdlib]") {
 		REQUIRE(result.success);
 		REQUIRE(result.exit_code == 42);
 	}
-	*/
 
 	SECTION("string manipulation") {
 		auto binary = builder.build_cpp(R"(

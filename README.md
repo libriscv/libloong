@@ -2,17 +2,15 @@
 
 **libloong** is a high-performance LoongArch (LA64) userspace emulator library designed for embedding and high-frequency scripting. Built on the architecture of [libriscv](https://github.com/libriscv/libriscv), it provides the fastest 64-bit interpreter performance available, maintaining a compact ~18k LOC codebase with zero dependencies.
 
----
+You can also run LoongArch64 programs in the [command-line interface](/emulator).
 
 ## The Interpreter Advantage
 
-While many runtimes rely on complex, multi-tiered JIT compilers to achieve performance, **libloong** focuses on maximizing interpreter efficiency. This design choice offers critical advantages:
+While many runtimes rely on complex, multi-tiered JIT compilers to achieve performance, **libloong** focuses on maximizing interpreter efficiency. This design choice offers advantages:
 
 * **Universal Portability:** Unlike JITs, which require platform-specific code generation and often fail on locked-down platforms, libloong runs anywhere C++20 is supported. This includes **Nintendo Switch (1 & 2)**, iOS, and other environments where JIT-compiled memory execution is restricted or forbidden.
 * **Rapid Iteration:** High-performance interpretation allows developers to update guest logic instantly without re-publishing or re-signing binaries. You get the flexibility of a script with the performance of a high-end VM.
 * **Ultra-Low Latency:** Traditional VMs like Lua or Java often suffer from high call overhead (~150ns). libloong achieves a **~4ns native-to-guest call overhead**, making it suitable for hot-loop game engine scripting.
-
----
 
 ## Performance Benchmarks
 
@@ -21,34 +19,23 @@ In **CoreMark 1.0** interpreter benchmarks (December 2025), `libloong` leads the
 ### CoreMark 1.0 Interpreter Scores
 | Interpreter | Architecture | Score |
 | :--- | :--- | :--- |
-| **libloong** | **64-bit LoongArch** | **3045** |
+| libloong | 64-bit LoongArch | **3045** |
 | libriscv | 64-bit RISC-V | 2865 |
 | stitch | Wasm | 2743 |
 | wasm3 | Wasm | 2368 |
 | wasmer (WAMR) | Wasm | 2314 |
 | wasmi | Wasm | 1967 |
 
-### Memory Throughput (STREAM)
-| Function | Best Rate (MB/s) | Min Time (ms) |
-| :--- | :--- | :--- |
-| **Copy** | 33,146.7 | 0.0048 |
-| **Scale** | 27,825.2 | 0.0057 |
-| **Add** | 31,388.6 | 0.0076 |
-| **Triad** | 29,250.7 | 0.0082 |
-
 > **Advanced Modes:** While the interpreter is the primary focus for portability, libloong includes a lightweight JIT reaching **38% of native** (15.5k CoreMark) and an embedded binary translator reaching **~77% of native** (31.9k CoreMark).
 
----
 
 ## Features
 
-* **Fast LA64 Interpreter:** Optimized threaded bytecode dispatch.
 * **Vector Support:** Full support for LSX and LASX instruction sets.
 * **Multi-Language:** Native C++ API with [Rust](/rust) and [Go](/go) bindings.
 * **Memory Safety:** Strict memory sandboxing with optional masked memory arenas.
 * **State Management:** First-class support for pausing, resuming, and serializing machine state.
-
----
+* **Dynamic execution**: Can load and execute dynamic executables, as well as embedded JITs (eg. LuaJIT)*
 
 ## Design
 

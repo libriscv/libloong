@@ -1,15 +1,11 @@
-# libloong: High-Performance 64-bit LoongArch Emulator
+# LoongArch64 sandboxing library
 
-**libloong** is a high-performance LoongArch (LA64) userspace emulator library designed for embedding and high-frequency scripting. Built on the architecture of [libriscv](https://github.com/libriscv/libriscv), it provides the fastest 64-bit interpreter performance available, maintaining a compact ~18k LOC codebase with zero dependencies.
+**libloong** is a 64-bit high-performance LoongArch emulator library designed for embedding and high-frequency scripting. Built on the architecture of [libriscv](https://github.com/libriscv/libriscv), it provides the fastest 64-bit interpreter performance available, maintaining a compact ~18k LOC codebase with zero dependencies.
 
-You can also run LoongArch64 programs in the [command-line interface](/emulator).
+You can also run LoongArch64 Linux programs in the [command-line interface](/emulator).
 
-## The Interpreter Advantage
-
-While many runtimes rely on complex, multi-tiered JIT compilers to achieve performance, **libloong** focuses on maximizing interpreter efficiency. This design choice offers advantages:
-
-* **Universal Portability:** Unlike JITs, which require platform-specific code generation and often fail on locked-down platforms, libloong runs anywhere C++20 is supported. This includes **Nintendo Switch (1 & 2)**, iOS, and other environments where JIT-compiled memory execution is restricted or forbidden.
-* **Rapid Iteration:** High-performance interpretation allows developers to update guest logic instantly without re-publishing or re-signing binaries. You get the flexibility of a script with the performance of a high-end VM.
+* **Universal:** Unlike JITs, which require platform-specific code generation and are unavailable on locked-down platforms, libloong runs anywhere. This includes **Nintendo Switch (1 & 2)**, iOS, and other environments.
+* **Standard:** Runs standard Linux binaries.
 * **Ultra-Low Latency:** Traditional VMs like Lua or Java often suffer from high call overhead (~150ns). libloong achieves a **~4ns native-to-guest call overhead**, making it suitable for hot-loop game engine scripting.
 
 ## Performance Benchmarks
@@ -31,8 +27,8 @@ In **CoreMark 1.0** interpreter benchmarks (December 2025), `libloong` leads the
 
 ## Features
 
+* **Bindings:** Native C++ API with [Rust](/rust) and [Go](/go) bindings.
 * **Vector Support:** Full support for LSX and LASX instruction sets.
-* **Multi-Language:** Native C++ API with [Rust](/rust) and [Go](/go) bindings.
 * **Memory Safety:** Strict memory sandboxing with optional masked memory arenas.
 * **State Management:** First-class support for pausing, resuming, and serializing machine state.
 * **Dynamic execution**: Can load and execute dynamic executables, as well as embedded JITs (eg. LuaJIT)*

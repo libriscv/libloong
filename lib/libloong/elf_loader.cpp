@@ -16,39 +16,33 @@ static TextSegmentBounds find_text_section(const Memory& mem, const Elf::Header*
 {
 	TextSegmentBounds bounds;
 
-	// Need section headers to find .text
+	// Need section headers to find executable sections
 	const auto* shdrs = mem.elf_section_headers(ehdr);
 	if (shdrs == nullptr) {
 		return bounds;
 	}
 
-	// Find .text and .iplt sections
+	// Span all executable sections (.plt, .iplt, .init, .text, .fini, ...)
+	static constexpr uint64_t SHF_EXECINSTR = 0x4;
+	address_t lo = ~address_t(0), hi = 0;
 	for (size_t i = 0; i < ehdr->shnum; i++) {
 		const auto* shdr = &shdrs[i];
-		const char* name = mem.elf_section_name(ehdr, shdr);
-		if (name == nullptr || shdr->size == 0) {
+		if (!(shdr->flags & SHF_EXECINSTR) || shdr->size == 0 || shdr->addr == 0) {
 			continue;
 		}
-		if (strcmp(name, ".text") == 0) {
-			bounds.start = shdr->addr;
-			bounds.size = shdr->size;
-			bounds.found = true;
-			return bounds;
-		} else if (strcmp(name, ".iplt") == 0 && i + 1 < ehdr->shnum) {
-			// .iplt section comes before .text, check if next section is .text
-			const auto* next_shdr = &shdrs[i + 1];
-			const char* next_name = mem.elf_section_name(ehdr, next_shdr);
-			if (next_name != nullptr && strcmp(next_name, ".text") == 0 && next_shdr->size > 0
-				&& next_shdr->addr >= shdr->addr
-				&& next_shdr->addr + next_shdr->size >= next_shdr->addr) {
-				bounds.start = shdr->addr;
-				bounds.size = next_shdr->size + (next_shdr->addr - shdr->addr);
-				bounds.found = true;
-				return bounds;
-			}
+		const address_t end = shdr->addr + shdr->size;
+		if (end < shdr->addr) {
+			return bounds; // Malformed: fall back to the whole segment
 		}
+		lo = std::min(lo, address_t(shdr->addr));
+		hi = std::max(hi, end);
 	}
-
+	lo &= ~address_t(3); // Align start down to instruction boundary
+	if (hi > lo) {
+		bounds.start = lo;
+		bounds.size = hi - lo;
+		bounds.found = true;
+	}
 	return bounds;
 }
 

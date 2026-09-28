@@ -20,7 +20,7 @@ int main()
 	std::cout << "================================\n\n";
 
 	try {
-		Machine machine { std::string_view{}, {}};
+		Machine machine { std::string_view{}, MachineOptions{}};
 		machine.memory.allocate_custom_arena(16ull << 20, 0x10000, 0x20000);
 		machine.cpu.reg(REG_SP) = 0x800000; // Initialize stack pointer
 

@@ -576,6 +576,7 @@ private:
 		file << "linker = \"loongarch64-linux-gnu-gcc-14\"\n";
 		file << "rustflags = [\n";
 		file << "  \"-C\", \"target-feature=+crt-static\",\n";
+		file << "  \"-C\", \"relocation-model=static\",\n";
 		file << "  \"-C\", \"link-arg=-static\",\n";
 		file << "  \"-C\", \"link-arg=-Wl,-Ttext-segment=0x200000\",\n";
 

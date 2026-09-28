@@ -135,6 +135,7 @@ __asm__(
 	".type fast_exit, @function\n"
 	"fast_exit:\n"
 	"  move $zero, $zero\n"
+	"  b fast_exit\n" // Loop back to STOP if execution falls through
 	".popsection\n"
 );
 extern "C" __attribute__((noreturn)) void fast_exit(int code);

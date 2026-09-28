@@ -10,6 +10,7 @@ asm(".pushsection .text\n"
 	".type fast_exit, @function\n"
 	"fast_exit:\n"
 	"	move $zero, $zero\n"  // Indicate fast exit
+	"	b fast_exit\n"       // Loop back to STOP on fall-through
 	".popsection\n");
 
 extern "C" {

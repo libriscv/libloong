@@ -586,11 +586,20 @@ struct Emitter
 		}
 		return nullptr;
 	}
+	// BREAK instructions may be live-patched in the decoder cache after
+	// translation (eg. host function stubs), so they must never be
+	// reached by a local jump. Instead, return to the dispatcher.
+	bool is_break_target(address_t target) const {
+		if (target < tinfo.basepc || target >= tinfo.endpc)
+			return false;
+		const uint32_t bits = tinfo.instr[(target - tinfo.basepc) >> 2];
+		return (bits & 0xFFFF8000) == 0x002A0000;
+	}
 
 	void jump_to(address_t target)
 	{
 		// Check if target is within current block
-		if (target >= tinfo.basepc && target < tinfo.endpc) {
+		if (target >= tinfo.basepc && target < tinfo.endpc && !is_break_target(target)) {
 			// Conditional timeout check when jumping backwards
 			bool timeout_check = false;
 			if (target < pc() && !tinfo.options.translate_ignore_instruction_limit) {
@@ -750,6 +759,8 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			if (jump_target < tinfo.basepc || jump_target >= tinfo.endpc)
 				throw MachineException(ILLEGAL_OPERATION,
 					"emit: jump target outside block", jump_target);
+			if (emit.is_break_target(jump_target))
+				continue; // Let the dispatcher handle it
 			char label[64];
 			snprintf(label, sizeof(label), "  case 0x%" PRIx64 ": goto label_%" PRIx64 ";",
 				(uint64_t)jump_target, (uint64_t)jump_target);
@@ -761,6 +772,8 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 				continue;
 			if (tinfo.jump_locations.count(jump_target) != 0)
 				continue; // Already added
+			if (emit.is_break_target(jump_target))
+				continue; // Let the dispatcher handle it
 			char label[64];
 			snprintf(label, sizeof(label), "  case 0x%" PRIx64 ": goto label_%" PRIx64 ";",
 				(uint64_t)jump_target, (uint64_t)jump_target);
@@ -886,7 +899,7 @@ std::vector<TransMapping<>> emit(std::string& code, const TransInfo& tinfo)
 			emit.add_code("if (" + cond_str + ")");
 
 			// Check if target is within current block
-			if (emit.tinfo.jump_locations.count(target) != 0) {
+			if (emit.tinfo.jump_locations.count(target) != 0 && !emit.is_break_target(target)) {
 				char label[64];
 				snprintf(label, sizeof(label), "label_%lx", (unsigned long)target);
 				emit.add_code("  goto " + std::string(label) + ";");

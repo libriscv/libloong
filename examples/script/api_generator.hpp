@@ -42,6 +42,7 @@ __asm__(
 	".type fast_exit, @function\n"
 	"fast_exit:\n"
 	"  move $zero, $zero\n"
+	"  b fast_exit\n" // Loop back to STOP if execution falls through
 	".popsection\n"
 );
 extern "C" __attribute__((noreturn)) void fast_exit(int code);
@@ -107,6 +108,7 @@ core::arch::global_asm!(
     ".type fast_exit, @function\n",
     "fast_exit:\n",
     "  move $zero, $zero\n",
+    "  b fast_exit\n", // Loop back to STOP if execution falls through
     ".popsection\n"
 );
 extern "C" {
@@ -578,7 +580,13 @@ private:
 		file << "  \"-C\", \"target-feature=+crt-static\",\n";
 		file << "  \"-C\", \"relocation-model=static\",\n";
 		file << "  \"-C\", \"link-arg=-static\",\n";
-		file << "  \"-C\", \"link-arg=-Wl,-Ttext-segment=0x200000\",\n";
+		// Newer Rust nightlies link loongarch64 with rust-lld and always pass
+		// -Wl,--no-rosegment, which GNU ld rejects. Use rust-lld explicitly.
+		// lld does not support -Ttext-segment, so use --image-base instead.
+		file << "  \"-Z\", \"unstable-options\",\n";
+		file << "  \"-C\", \"linker-features=+lld\",\n";
+		file << "  \"-C\", \"link-self-contained=+linker\",\n";
+		file << "  \"-C\", \"link-arg=-Wl,--image-base=0x200000\",\n";
 
 		// Add --undefined flag for guest functions to prevent DCE
 		for (const auto& fn_name : functions) {

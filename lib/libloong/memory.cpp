@@ -136,59 +136,64 @@ void Memory::free_arena()
 }
 
 
+const Elf::SectionHeader* Memory::elf_section_headers(const Elf::Header* ehdr) const noexcept
+{
+	if (ehdr->shoff == 0 || ehdr->shnum == 0 || ehdr->shentsize != sizeof(Elf::SectionHeader))
+		return nullptr;
+	if (!elf_range_valid(ehdr->shoff, uint64_t(ehdr->shnum) * sizeof(Elf::SectionHeader)))
+		return nullptr;
+	return reinterpret_cast<const Elf::SectionHeader*>(m_binary.data() + ehdr->shoff);
+}
+
+const Elf::SectionHeader* Memory::elf_section_validated(const Elf::Header* ehdr, size_t idx) const noexcept
+{
+	const auto* shdrs = elf_section_headers(ehdr);
+	if (shdrs == nullptr || idx >= ehdr->shnum)
+		return nullptr;
+	const auto* shdr = &shdrs[idx];
+	if (shdr->type == Elf::SHT_NOBITS || !elf_range_valid(shdr->offset, shdr->size))
+		return nullptr;
+	return shdr;
+}
+
+const char* Memory::elf_section_name(const Elf::Header* ehdr, const Elf::SectionHeader* shdr) const noexcept
+{
+	return elf_string(elf_section_validated(ehdr, ehdr->shstrndx), shdr->name);
+}
+
+const char* Memory::elf_string(const Elf::SectionHeader* strtab, uint32_t st_name) const noexcept
+{
+	if (strtab == nullptr || st_name >= strtab->size)
+		return nullptr;
+	const char* str = m_binary.data() + strtab->offset + st_name;
+	const size_t maxlen = strtab->size - st_name;
+	if (::strnlen(str, maxlen) >= maxlen)
+		return nullptr;
+	return str;
+}
+
 void Memory::parse_symbols(const Elf::Header* ehdr, const MachineOptions& options)
 {
-	// Validate section header table
-	const address_t sh_table_end = ehdr->shoff + ehdr->shnum * sizeof(Elf::SectionHeader);
-	if (sh_table_end > m_binary.size() || sh_table_end < ehdr->shoff) {
+	const auto* shdrs = elf_section_headers(ehdr);
+	if (shdrs == nullptr) {
 		if (options.verbose_loader) {
 			fprintf(stderr, "Warning: Invalid section header table\n");
 		}
 		return;
 	}
 
-	// Find symbol table and string table sections
-	const Elf::SectionHeader* symtab = nullptr;
-	const Elf::SectionHeader* strtab = nullptr;
-	const Elf::SectionHeader* dynsym = nullptr;
-	const Elf::SectionHeader* dynstr = nullptr;
-
 	for (size_t i = 0; i < ehdr->shnum; i++) {
-		const auto* shdr = reinterpret_cast<const Elf::SectionHeader*>(
-			m_binary.data() + ehdr->shoff + i * sizeof(Elf::SectionHeader));
-
-		if (shdr->type == Elf::SHT_SYMTAB) {
-			symtab = shdr;
-			// String table is usually the linked section
-			if (shdr->link < ehdr->shnum) {
-				const address_t strtab_end = ehdr->shoff + shdr->link * sizeof(Elf::SectionHeader);
-				if (strtab_end > m_binary.size() || strtab_end < ehdr->shoff) {
-					throw MachineException(INVALID_PROGRAM, "Invalid string table section");
-				}
-				strtab = reinterpret_cast<const Elf::SectionHeader*>(
-					m_binary.data() + ehdr->shoff + shdr->link * sizeof(Elf::SectionHeader));
+		if (shdrs[i].type != Elf::SHT_SYMTAB && shdrs[i].type != Elf::SHT_DYNSYM)
+			continue;
+		const auto* symtab = elf_section_validated(ehdr, i);
+		const auto* strtab = elf_section_validated(ehdr, shdrs[i].link);
+		if (symtab == nullptr || strtab == nullptr) {
+			if (options.verbose_loader) {
+				fprintf(stderr, "Warning: Invalid symbol or string table section\n");
 			}
-		} else if (shdr->type == Elf::SHT_DYNSYM) {
-			dynsym = shdr;
-			if (shdr->link < ehdr->shnum) {
-				const address_t dynstr_end = ehdr->shoff + shdr->link * sizeof(Elf::SectionHeader);
-				if (dynstr_end > m_binary.size() || dynstr_end < ehdr->shoff) {
-					throw MachineException(INVALID_PROGRAM, "Invalid dynamic string table section");
-				}
-				dynstr = reinterpret_cast<const Elf::SectionHeader*>(
-					m_binary.data() + ehdr->shoff + shdr->link * sizeof(Elf::SectionHeader));
-			}
+			continue;
 		}
-	}
-
-	// Parse static symbol table
-	if (symtab && strtab) {
 		parse_symbol_table(symtab, strtab, options);
-	}
-
-	// Parse dynamic symbol table
-	if (dynsym && dynstr) {
-		parse_symbol_table(dynsym, dynstr, options);
 	}
 }
 
@@ -196,81 +201,36 @@ void Memory::parse_symbol_table(const Elf::SectionHeader* symtab,
                                     const Elf::SectionHeader* strtab,
                                     const MachineOptions& options)
 {
-	// Validate section offsets and sizes
-	if (symtab->offset + symtab->size > m_binary.size() ||
-	    strtab->offset + strtab->size > m_binary.size()) {
-		if (options.verbose_loader) {
-			fprintf(stderr, "Warning: Invalid symbol or string table section\n");
-		}
-		return;
-	}
-
 	const size_t num_symbols = symtab->size / sizeof(Elf::Sym);
-	const auto* symbols = reinterpret_cast<const Elf::Sym*>(m_binary.data() + symtab->offset);
-	const char* string_table = reinterpret_cast<const char*>(m_binary.data() + strtab->offset);
+	const char* symdata = m_binary.data() + symtab->offset;
 
 	for (size_t i = 0; i < num_symbols; i++) {
-		const auto& sym = symbols[i];
+		Elf::Sym sym;
+		std::memcpy(&sym, symdata + i * sizeof(Elf::Sym), sizeof(Elf::Sym));
 
 		// Only add function symbols with non-zero addresses
 		uint8_t type = Elf::ST_TYPE(sym.info);
 		if ((type == Elf::STT_FUNC || type == Elf::STT_OBJECT) && sym.value != 0) {
-			if (sym.name + 1 < strtab->size && sym.name + 1 > sym.name) {
-				const char* name = string_table + sym.name;
-				if (name[0] != '\0') {
-					m_symbols.push_back({static_cast<address_t>(sym.value), static_cast<address_t>(sym.size), name});
+			const char* name = elf_string(strtab, sym.name);
+			if (name != nullptr && name[0] != '\0') {
+				m_symbols.push_back({static_cast<address_t>(sym.value), static_cast<address_t>(sym.size), name});
 
-					if (false && options.verbose_loader) {
-						fprintf(stderr, "Symbol: 0x%lx %s (size=%lu)\n",
-							(unsigned long)sym.value, name, (unsigned long)sym.size);
-					}
+				if (false && options.verbose_loader) {
+					fprintf(stderr, "Symbol: 0x%lx %s (size=%lu)\n",
+						(unsigned long)sym.value, name, (unsigned long)sym.size);
 				}
 			}
 		}
 	}
 }
 
-void Memory::process_relocations(const Elf::Header* ehdr, const MachineOptions& options)
-{
-	// For static binaries, look for .rela.dyn section in section headers
-	if (ehdr->shoff == 0 || ehdr->shnum == 0) {
-		return;  // No section headers
-	}
-
-	// Find .rela.dyn section
-	for (size_t i = 0; i < ehdr->shnum; i++) {
-		const auto* shdr = reinterpret_cast<const Elf::SectionHeader*>(
-			m_binary.data() + ehdr->shoff + i * sizeof(Elf::SectionHeader));
-
-		// SHT_RELA = 4
-		if (shdr->type == 4 && shdr->size > 0) {
-			// Check if this is .rela.dyn by looking at the section name
-			// For now, process all RELA sections
-			process_rela_section(shdr->offset, shdr->size, options);
-		}
-	}
-}
-
-void Memory::process_rela_section(size_t offset, size_t size, const MachineOptions& options)
-{
-	const size_t num_entries = size / sizeof(Elf::Rela);
-	auto* rela = const_cast<Elf::Rela*>(reinterpret_cast<const Elf::Rela*>(m_binary.data() + offset));
-
-	for (size_t i = 0; i < num_entries; i++) {
-		uint32_t type = rela[i].info & 0xFFFFFFFF;
-		(void)type;
-
-		// Static loader overwrites everything anyway
-	}
-}
-
 size_t Memory::strlen(address_t addr, size_t maxlen) const
 {
-	const address_t end_addr = std::min(addr + maxlen, address_t(m_arena_size));
-	if (end_addr <= addr) return 0;
-	const address_t size = end_addr - addr;
-	const char* ptr = memarray<char>(addr, size);
-	return ::strnlen(ptr, size);
+	if (LA_UNLIKELY(!is_readable(addr))) {
+		protection_fault(addr, "Read from unmapped memory");
+	}
+	const size_t size = std::min(maxlen, size_t(m_arena_end_sub_rodata - (addr - m_rodata_start)));
+	return ::strnlen(reinterpret_cast<const char*>(&m_arena[addr]), size);
 }
 
 std::string Memory::memstring(address_t addr, size_t maxlen) const

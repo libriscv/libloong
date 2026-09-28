@@ -12,77 +12,39 @@ struct TextSegmentBounds {
 	bool found = false;
 };
 
-static TextSegmentBounds find_text_section(std::string_view binary, const Elf::Header* ehdr)
+static TextSegmentBounds find_text_section(const Memory& mem, const Elf::Header* ehdr)
 {
 	TextSegmentBounds bounds;
 
 	// Need section headers to find .text
-	if (ehdr->shoff == 0 || ehdr->shnum == 0 || ehdr->shstrndx >= ehdr->shnum) {
+	const auto* shdrs = mem.elf_section_headers(ehdr);
+	if (shdrs == nullptr) {
 		return bounds;
 	}
-
-	// Validate section header table
-	const address_t sh_table_end = ehdr->shoff + ehdr->shnum * sizeof(Elf::SectionHeader);
-	if (sh_table_end > binary.size() || sh_table_end < ehdr->shoff) {
-		return bounds;
-	}
-
-	// Get section string table
-	const auto* shstrtab = reinterpret_cast<const Elf::SectionHeader*>(
-		binary.data() + ehdr->shoff + ehdr->shstrndx * sizeof(Elf::SectionHeader));
-
-	if (shstrtab->offset + shstrtab->size >= binary.size()) {
-		return bounds;
-	}
-
-	const char* section_strings = reinterpret_cast<const char*>(binary.data() + shstrtab->offset);
 
 	// Find .text and .iplt sections
 	for (size_t i = 0; i < ehdr->shnum; i++) {
-		const auto* shdr = reinterpret_cast<const Elf::SectionHeader*>(
-			binary.data() + ehdr->shoff + i * sizeof(Elf::SectionHeader));
-
-		if (shdr->name < shstrtab->size) {
-			// Verify that the name fits within the string table
-			// in a secure way, by using the actual bounds of the
-			// underlying binary, and not the insecure ELF header.
-			const address_t name_offset = shstrtab->offset + shdr->name;
-			if (name_offset >= binary.size() || name_offset < shstrtab->offset) {
-				continue;
-			}
-			const address_t name_end = name_offset + 6; // ".text" + null terminator
-			if (name_end > binary.size() || name_end < name_offset) {
-				continue;
-			}
-			const char* name = section_strings + shdr->name;
-			if (strcmp(name, ".text") == 0 && shdr->size > 0) {
+		const auto* shdr = &shdrs[i];
+		const char* name = mem.elf_section_name(ehdr, shdr);
+		if (name == nullptr || shdr->size == 0) {
+			continue;
+		}
+		if (strcmp(name, ".text") == 0) {
+			bounds.start = shdr->addr;
+			bounds.size = shdr->size;
+			bounds.found = true;
+			return bounds;
+		} else if (strcmp(name, ".iplt") == 0 && i + 1 < ehdr->shnum) {
+			// .iplt section comes before .text, check if next section is .text
+			const auto* next_shdr = &shdrs[i + 1];
+			const char* next_name = mem.elf_section_name(ehdr, next_shdr);
+			if (next_name != nullptr && strcmp(next_name, ".text") == 0 && next_shdr->size > 0
+				&& next_shdr->addr >= shdr->addr
+				&& next_shdr->addr + next_shdr->size >= next_shdr->addr) {
 				bounds.start = shdr->addr;
-				bounds.size = shdr->size;
+				bounds.size = next_shdr->size + (next_shdr->addr - shdr->addr);
 				bounds.found = true;
 				return bounds;
-			} else if (strcmp(name, ".iplt") == 0 && shdr->size > 0) {
-				// .iplt section comes before .text, check if next section is .text
-				if (i + 1 < ehdr->shnum) {
-					const auto* next_shdr = reinterpret_cast<const Elf::SectionHeader*>(
-						binary.data() + ehdr->shoff + (i + 1) * sizeof(Elf::SectionHeader));
-					if (next_shdr->name < shstrtab->size) {
-						const address_t next_name_offset = shstrtab->offset + next_shdr->name;
-						if (next_name_offset >= binary.size() || next_name_offset < shstrtab->offset) {
-							continue;
-						}
-						const address_t next_name_end = next_name_offset + 6; // ".text" + null terminator
-						if (next_name_end > binary.size() || next_name_end < next_name_offset) {
-							continue;
-						}
-						const char* next_name = section_strings + next_shdr->name;
-						if (strcmp(next_name, ".text") == 0 && next_shdr->size > 0) {
-							bounds.start = shdr->addr;
-							bounds.size = next_shdr->size + (next_shdr->addr - shdr->addr);
-							bounds.found = true;
-							return bounds;
-						}
-					}
-				}
 			}
 		}
 	}
@@ -200,7 +162,7 @@ void Memory::binary_loader(const MachineOptions& options)
 	}
 
 	// Find .text section bounds to limit execute segment creation
-	const TextSegmentBounds text_bounds = find_text_section(m_binary, ehdr);
+	const TextSegmentBounds text_bounds = find_text_section(*this, ehdr);
 
 	// Load segments into memory
 	for (size_t i = 0; i < ehdr->phnum; i++) {
@@ -233,9 +195,9 @@ void Memory::binary_loader(const MachineOptions& options)
 					// Check if .text section is within this segment
 					const address_t seg_start = phdr->vaddr;
 					const address_t seg_end = phdr->vaddr + phdr->filesz;
-					const address_t text_end = text_bounds.start + text_bounds.size;
 
-					if (text_bounds.start >= seg_start && text_end <= seg_end) {
+					if (text_bounds.start >= seg_start && text_bounds.size <= phdr->filesz
+						&& text_bounds.start + text_bounds.size <= seg_end) {
 						exec_vaddr = text_bounds.start;
 						exec_size  = text_bounds.size & ~size_t(3); // Align to instruction boundary
 						file_offset = phdr->offset + (text_bounds.start - seg_start);
@@ -254,13 +216,10 @@ void Memory::binary_loader(const MachineOptions& options)
 		}
 	}
 
-	// Parse symbols from section headers (before processing relocations)
+	// Parse symbols from section headers
 	if (ehdr->shoff > 0 && ehdr->shnum > 0) {
 		parse_symbols(ehdr, options);
 	}
-
-	// Process ELF relocations (after symbols are loaded)
-	//process_relocations(ehdr, options);
 }
 
 } // loongarch

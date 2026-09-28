@@ -88,6 +88,7 @@ namespace loongarch
 	static constexpr uint32_t SHT_NULL = 0;
 	static constexpr uint32_t SHT_SYMTAB = 2;
 	static constexpr uint32_t SHT_STRTAB = 3;
+	static constexpr uint32_t SHT_NOBITS = 8;
 	static constexpr uint32_t SHT_DYNSYM = 11;
 
 	// Symbol binding

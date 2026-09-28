@@ -13,7 +13,7 @@ namespace loongarch
 			if (LA_UNLIKELY(dest + len >= LA_MASKED_MEMORY_SIZE)) {
 				throw MachineException(PROTECTION_FAULT, "Write to out-of-bounds memory", dest);
 			}
-		} else if (LA_UNLIKELY(!is_writable(dest, len))) {
+		} else if (LA_UNLIKELY(!is_writable_range(dest, len))) {
 			throw MachineException(PROTECTION_FAULT, "Write to read-only memory", dest);
 		}
 
@@ -31,7 +31,7 @@ namespace loongarch
 			if (LA_UNLIKELY(src + len >= LA_MASKED_MEMORY_SIZE)) {
 				throw MachineException(PROTECTION_FAULT, "Read from out-of-bounds memory", src);
 			}
-		} else if (LA_UNLIKELY(src < m_rodata_start || src + len >= m_arena_size)) {
+		} else if (LA_UNLIKELY(!is_readable_range(src, len))) {
 			throw MachineException(PROTECTION_FAULT, "Read from unmapped memory", src);
 		}
 
@@ -40,7 +40,7 @@ namespace loongarch
 
 	void Memory::memset(address_t dest, uint8_t value, size_t len)
 	{
-		if (LA_UNLIKELY(!is_writable(dest, len))) {
+		if (LA_UNLIKELY(!is_writable_range(dest, len))) {
 			throw MachineException(PROTECTION_FAULT, "Write to read-only memory", dest);
 		}
 
@@ -49,10 +49,10 @@ namespace loongarch
 
 	int Memory::memcmp(address_t addr1, address_t addr2, size_t len) const
 	{
-		if (LA_UNLIKELY(addr1 < m_rodata_start || addr1 + len >= m_arena_size)) {
+		if (LA_UNLIKELY(!is_readable_range(addr1, len))) {
 			throw MachineException(PROTECTION_FAULT, "Read from unmapped memory", addr1);
 		}
-		if (LA_UNLIKELY(addr2 < m_rodata_start || addr2 + len >= m_arena_size)) {
+		if (LA_UNLIKELY(!is_readable_range(addr2, len))) {
 			throw MachineException(PROTECTION_FAULT, "Read from unmapped memory", addr2);
 		}
 
@@ -66,7 +66,7 @@ namespace loongarch
 
 	void Memory::copy_into_arena_unsafe(address_t dest, const void* src, size_t len)
 	{
-		if (LA_UNLIKELY(dest + len >= m_arena_size)) {
+		if (LA_UNLIKELY(dest >= m_arena_size || len > m_arena_size - dest)) {
 			throw MachineException(PROTECTION_FAULT, "Write to out-of-bounds memory", dest);
 		}
 		std::memcpy(&m_arena[dest], src, len);

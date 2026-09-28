@@ -57,6 +57,13 @@ namespace loongarch
 
 		// Binary info
 		const auto& binary() const noexcept { return m_binary; }
+		bool elf_range_valid(uint64_t offset, uint64_t size) const noexcept {
+			return offset + size >= offset && offset + size <= m_binary.size();
+		}
+		const Elf::SectionHeader* elf_section_headers(const Elf::Header* ehdr) const noexcept;
+		const Elf::SectionHeader* elf_section_validated(const Elf::Header* ehdr, size_t idx) const noexcept;
+		const char* elf_section_name(const Elf::Header* ehdr, const Elf::SectionHeader* shdr) const noexcept;
+		const char* elf_string(const Elf::SectionHeader* strtab, uint32_t st_name) const noexcept;
 		address_t start_address() const noexcept { return m_start_address; }
 		address_t stack_address() const noexcept { return m_stack_address; }
 		void set_stack_address(address_t addr) noexcept { m_stack_address = addr; }
@@ -134,8 +141,6 @@ namespace loongarch
 		void parse_symbol_table(const Elf::SectionHeader* symtab,
 		                        const Elf::SectionHeader* strtab,
 		                        const MachineOptions& options);
-		void process_relocations(const Elf::Header* ehdr, const MachineOptions& options);
-		void process_rela_section(size_t offset, size_t size, const MachineOptions& options);
 
 		// Symbol storage
 		std::vector<Symbol> m_symbols;
@@ -145,13 +150,31 @@ namespace loongarch
 		void use_custom_arena(void* ptr, size_t size);
 		void free_arena();
 		static void free_arena_internal(uint8_t* arena, size_t size);
-		inline bool is_readable(address_t addr, size_t size = sizeof(address_t)) const noexcept {
-			(void)size; // XXX: static_assert(size <= LA_OVER_ALLOCATE_SIZE);
+		inline bool is_readable(address_t addr) const noexcept {
 			return addr - m_rodata_start < m_arena_end_sub_rodata;
 		}
-		inline bool is_writable(address_t addr, size_t size = sizeof(address_t)) const noexcept {
-			(void)size;
+		inline bool is_writable(address_t addr) const noexcept {
 			return addr - m_data_start < m_arena_end_sub_data;
+		}
+		inline bool is_readable_range(address_t addr, size_t len) const noexcept {
+			const address_t offset = addr - m_rodata_start;
+			return offset < m_arena_end_sub_rodata && len <= m_arena_end_sub_rodata - offset;
+		}
+		inline bool is_writable_range(address_t addr, size_t len) const noexcept {
+			const address_t offset = addr - m_data_start;
+			return offset < m_arena_end_sub_data && len <= m_arena_end_sub_data - offset;
+		}
+		template <typename T>
+		inline bool is_readable_array(address_t addr, size_t count) const noexcept {
+			const address_t offset = addr - m_rodata_start;
+			return addr % alignof(T) == 0 && offset < m_arena_end_sub_rodata
+				&& count <= (m_arena_end_sub_rodata - offset) / sizeof(T);
+		}
+		template <typename T>
+		inline bool is_writable_array(address_t addr, size_t count) const noexcept {
+			const address_t offset = addr - m_data_start;
+			return addr % alignof(T) == 0 && offset < m_arena_end_sub_data
+				&& count <= (m_arena_end_sub_data - offset) / sizeof(T);
 		}
 		[[noreturn]] LA_COLD_PATH() static void protection_fault(address_t addr, const char* message);
 	};

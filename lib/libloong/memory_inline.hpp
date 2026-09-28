@@ -38,7 +38,8 @@ inline void Memory::write(address_t addr, T value)
 			addr &= LA_MASKED_MEMORY_MASK;
 		}
 	} else {
-		if (LA_UNLIKELY(!is_writable(addr, sizeof(T)))) {
+		static_assert(sizeof(T) <= LA_OVER_ALLOCATE_SIZE);
+		if (LA_UNLIKELY(!is_writable(addr))) {
 			protection_fault(addr, "Write to read-only memory");
 		}
 	}
@@ -54,7 +55,10 @@ inline void Memory::write(address_t addr, T value)
 template <typename T>
 inline const T* Memory::memarray(address_t addr, size_t count) const
 {
-	if (LA_UNLIKELY(!is_readable(addr, count * sizeof(T)))) {
+	if (count == 0) {
+		return reinterpret_cast<const T*>(m_arena);
+	}
+	if (LA_UNLIKELY(!is_readable_array<T>(addr, count))) {
 		throw MachineException(PROTECTION_FAULT, "Read from unmapped memory", addr);
 	}
 
@@ -64,7 +68,10 @@ inline const T* Memory::memarray(address_t addr, size_t count) const
 template <typename T>
 inline T* Memory::writable_memarray(address_t addr, size_t count)
 {
-	if (LA_UNLIKELY(!is_writable(addr, count * sizeof(T)))) {
+	if (count == 0) {
+		return reinterpret_cast<T*>(m_arena);
+	}
+	if (LA_UNLIKELY(!is_writable_array<T>(addr, count))) {
 		throw MachineException(PROTECTION_FAULT, "Write to read-only memory", addr);
 	}
 

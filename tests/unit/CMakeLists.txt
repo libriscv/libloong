@@ -45,6 +45,8 @@ add_executable(unit_tests
 	test_instructions.cpp
 	test_native.cpp
 	test_shared_segments.cpp
+	test_elf.cpp
+	test_memory.cpp
 )
 
 # Set C++ standard

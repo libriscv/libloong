@@ -57,6 +57,11 @@ static bool has_sse42()
 #elif defined(__aarch64__) || defined(_M_ARM64)
 // ARM64 CRC32 implementation
 
+#if defined(__clang__)
+__attribute__((target("crc")))
+#elif defined(__GNUC__)
+__attribute__((target("+crc")))
+#endif
 static uint32_t crc32c_hw_arm(uint32_t crc, const uint8_t* buf, size_t len)
 {
 	// Align to 8-byte boundary
